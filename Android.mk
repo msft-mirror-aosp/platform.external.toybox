@@ -17,21 +17,29 @@
 LOCAL_PATH := $(call my-dir)
 
 #
-# To update:
+# To sync with upstream:
 #
 
+#  # Update.
 #  git remote add toybox https://github.com/landley/toybox.git
 #  git fetch toybox
 #  git merge toybox/master
+
+#  # Regenerate generated files.
+#  make
+
+#  # Make any necessary Android.mk changes and rebuild.
 #  mm -j32
-#  # (Make any necessary Android.mk changes and test the new toybox.)
-#  repo upload .
+
+#  # Run tests.
+#  ./run-tests-on-android.sh
+#  # Run a single test.
+#  ./run-tests-on-android.sh wc
+
+#  # Upload changes.
+#  git commit -a --amend
 #  git push aosp HEAD:refs/for/master  # Push to gerrit for review.
 #  git push aosp HEAD:master  # Push directly, avoiding gerrit.
-#
-#  # Now commit any necessary Android.mk changes like normal:
-#  repo start post-sync .
-#  git commit -a
 
 
 #
@@ -44,9 +52,7 @@ LOCAL_PATH := $(call my-dir)
 #  # If you just want to use it as "toybox x" rather than "x", you can stop now.
 #  # If you want this toy to have a symbolic link in /system/bin, add the toy to ALL_TOOLS.
 
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := \
+common_SRC_FILES := \
     lib/args.c \
     lib/dirtree.c \
     lib/getmountlist.c \
@@ -81,6 +87,7 @@ LOCAL_SRC_FILES := \
     toys/lsb/sync.c \
     toys/lsb/umount.c \
     toys/net/ifconfig.c \
+    toys/net/microcom.c \
     toys/net/netcat.c \
     toys/net/netstat.c \
     toys/net/rfkill.c \
@@ -89,9 +96,9 @@ LOCAL_SRC_FILES := \
     toys/other/base64.c \
     toys/other/blkid.c \
     toys/other/blockdev.c \
-    toys/other/bzcat.c \
     toys/other/chcon.c \
     toys/other/chroot.c \
+    toys/other/chrt.c \
     toys/other/clear.c \
     toys/other/dos2unix.c \
     toys/other/fallocate.c \
@@ -107,6 +114,7 @@ LOCAL_SRC_FILES := \
     toys/other/losetup.c \
     toys/other/lsattr.c \
     toys/other/lsmod.c \
+    toys/other/lspci.c \
     toys/other/lsusb.c \
     toys/other/makedevs.c \
     toys/other/mkswap.c \
@@ -138,11 +146,13 @@ LOCAL_SRC_FILES := \
     toys/other/which.c \
     toys/other/xxd.c \
     toys/other/yes.c \
-    toys/pending/chrt.c \
     toys/pending/dd.c \
+    toys/pending/diff.c \
     toys/pending/expr.c \
     toys/pending/getfattr.c \
+    toys/pending/gzip.c \
     toys/pending/lsof.c \
+    toys/pending/modprobe.c \
     toys/pending/more.c \
     toys/pending/setfattr.c \
     toys/pending/tar.c \
@@ -208,10 +218,13 @@ LOCAL_SRC_FILES := \
     toys/posix/wc.c \
     toys/posix/xargs.c \
 
-LOCAL_CFLAGS += \
-    -std=c99 \
+common_CFLAGS := \
+    -std=gnu11 \
     -Os \
+    -Wall -Werror \
     -Wno-char-subscripts \
+    -Wno-gnu-variable-sized-type-not-at-end \
+    -Wno-missing-field-initializers \
     -Wno-sign-compare \
     -Wno-string-plus-int \
     -Wno-uninitialized \
@@ -220,34 +233,21 @@ LOCAL_CFLAGS += \
     -ffunction-sections -fdata-sections \
     -fno-asynchronous-unwind-tables \
 
-toybox_upstream_version := $(shell awk 'match($$0, /TOYBOX_VERSION.*"(.*)"/, ary) {print ary[1]}' $(LOCAL_PATH)/main.c)
-toybox_sha := $(shell git -C $(LOCAL_PATH) rev-parse --short=12 HEAD 2>/dev/null)
+toybox_libraries := liblog libselinux libcutils libcrypto libz
 
-toybox_version := $(toybox_upstream_version)-$(toybox_sha)-android
-LOCAL_CFLAGS += -DTOYBOX_VERSION='"$(toybox_version)"'
+common_CFLAGS += -DTOYBOX_VENDOR=\"-android\"
 
-LOCAL_CLANG := true
-
-LOCAL_SHARED_LIBRARIES := liblog libcutils libselinux libcrypto
-
-# This doesn't actually prevent us from dragging in libc++ at runtime
-# because libnetd_client.so is C++.
-LOCAL_CXX_STL := none
-
-LOCAL_MODULE := toybox
-
-# dupes: dd
-# useless?: freeramdisk fsfreeze install makedevs mkfifo nbd-client
-#           partprobe pivot_root pwdx rev rfkill vconfig
-# prefer BSD netcat instead?: nc netcat
-# prefer efs2progs instead?: blkid chattr lsattr
+# not usable on Android?: freeramdisk fsfreeze install makedevs nbd-client
+#                         partprobe pivot_root pwdx rev rfkill vconfig
+# currently prefer BSD system/core/toolbox: dd
+# currently prefer BSD external/netcat: nc netcat
+# currently prefer external/efs2progs: blkid chattr lsattr
 
 ALL_TOOLS := \
     acpi \
     base64 \
     basename \
     blockdev \
-    bzcat \
     cal \
     cat \
     chcon \
@@ -265,6 +265,7 @@ ALL_TOOLS := \
     cut \
     date \
     df \
+    diff \
     dirname \
     dmesg \
     dos2unix \
@@ -282,6 +283,8 @@ ALL_TOOLS := \
     getenforce \
     getprop \
     groups \
+    gunzip \
+    gzip \
     head \
     hostname \
     hwclock \
@@ -301,13 +304,17 @@ ALL_TOOLS := \
     ls \
     lsmod \
     lsof \
+    lspci \
     lsusb \
     md5sum \
     mkdir \
+    mkfifo \
     mknod \
     mkswap \
     mktemp \
+    microcom \
     modinfo \
+    modprobe \
     more \
     mount \
     mountpoint \
@@ -386,8 +393,50 @@ ALL_TOOLS := \
     xargs \
     xxd \
     yes \
+    zcat \
 
-# Install the symlinks.
+############################################
+# toybox for /system
+############################################
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := toybox
+LOCAL_SRC_FILES := $(common_SRC_FILES)
+LOCAL_CFLAGS := $(common_CFLAGS)
+LOCAL_SHARED_LIBRARIES := $(toybox_libraries)
+# This doesn't actually prevent us from dragging in libc++ at runtime
+# because libnetd_client.so is C++.
+LOCAL_CXX_STL := none
 LOCAL_POST_INSTALL_CMD := $(hide) $(foreach t,$(ALL_TOOLS),ln -sf toybox $(TARGET_OUT)/bin/$(t);)
+include $(BUILD_EXECUTABLE)
 
+############################################
+# toybox for /vendor
+############################################
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := toybox_vendor
+LOCAL_VENDOR_MODULE := true
+LOCAL_SRC_FILES := $(common_SRC_FILES)
+LOCAL_CFLAGS := $(common_CFLAGS)
+LOCAL_STATIC_LIBRARIES := libcutils libcrypto libz
+LOCAL_SHARED_LIBRARIES := libselinux liblog
+LOCAL_MODULE_TAGS := optional
+LOCAL_POST_INSTALL_CMD := $(hide) $(foreach t,$(ALL_TOOLS),ln -sf ${LOCAL_MODULE} $(TARGET_OUT_VENDOR_EXECUTABLES)/$(t);)
+include $(BUILD_EXECUTABLE)
+
+############################################
+# static version to be installed in recovery
+############################################
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := toybox_static
+LOCAL_SRC_FILES := $(common_SRC_FILES)
+LOCAL_CFLAGS := $(common_CFLAGS)
+LOCAL_STATIC_LIBRARIES := $(toybox_libraries)
+# libc++_static is needed by static liblog
+LOCAL_CXX_STL := libc++_static
+LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_POST_INSTALL_CMD := $(hide) $(foreach t,$(ALL_TOOLS),ln -sf ${LOCAL_MODULE} $(LOCAL_MODULE_PATH)/$(t);)
 include $(BUILD_EXECUTABLE)

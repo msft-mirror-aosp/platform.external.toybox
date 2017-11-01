@@ -1,4 +1,9 @@
-//#include "toys.h"
+/* config2.help.c - config2hep Config.in .config > help.h
+
+   function parse() reads Config.in data into *sym list, then
+   we read .config and set sym->try on each enabled symbol.
+
+*/
 
 #include <ctype.h>
 #include <stdio.h>
@@ -12,6 +17,7 @@
 #include <termios.h>
 #include <poll.h>
 #include <sys/socket.h>
+
 struct statvfs {int i;};
 #include "lib/portability.h"
 #include "lib/lib.h"
@@ -32,7 +38,7 @@ struct symbol {
 } *sym;
 
 // remove leading spaces
-char *trim(char *s)
+char *skip_spaces(char *s)
 {
   while (isspace(*s)) s++;
 
@@ -44,11 +50,11 @@ char *keyword(char *name, char *line)
 {
   int len = strlen(name);
 
-  line = trim(line);
+  line = skip_spaces(line);
   if (strncmp(name, line, len)) return 0;
   line += len;
   if (*line && !isspace(*line)) return 0;
-  line = trim(line);
+  line = skip_spaces(line);
 
   return line;
 }
@@ -71,7 +77,7 @@ int zap_blank_lines(struct double_list **help)
   while (*help) {
     char *s;
 
-    s = trim((*help)->data);
+    s = skip_spaces((*help)->data);
 
     if (*s) break;
     got++;
@@ -104,7 +110,7 @@ char **grab_dashlines(struct double_list **help, struct double_list **from,
 
   // Find start of dash block. Must be at start or after blank line.
   for (;;) {
-    s = trim((*from)->data);
+    s = skip_spaces((*from)->data);
     if (*s == '-' && s[1] != '-' && !count) break;
 
     if (!*s) count = 0;
@@ -117,7 +123,7 @@ char **grab_dashlines(struct double_list **help, struct double_list **from,
   // If there was whitespace before this, zap it. This can't take out *help
   // because zap_blank_lines skipped blank lines, and we had to have at least
   // one non-blank line (a dash line) to get this far.
-  while (!*trim((*from)->prev->data)) {
+  while (!*skip_spaces((*from)->prev->data)) {
     *from = (*from)->prev;
     free(dlist_zap(from));
   }
@@ -128,7 +134,7 @@ char **grab_dashlines(struct double_list **help, struct double_list **from,
   dd = *from;
   if (*help == *from) *help = 0;
   for (;;) {
-   if (*trim(dd->data) != '-') break;
+   if (*skip_spaces(dd->data) != '-') break;
    count++;
    if (*from == (dd = dd->next)) break;
   }
@@ -140,6 +146,7 @@ char **grab_dashlines(struct double_list **help, struct double_list **from,
   return list;
 }
 
+// Read Config.in (and includes) to populate global struct symbol *sym list.
 void parse(char *filename)
 {
   FILE *fp = xfopen(filename, "r");
@@ -208,6 +215,8 @@ int dashlinesort(char **a, char **b)
   return strcmp(*a, *b);
 }
 
+// Three stages: read data, collate entries, output results.
+
 int main(int argc, char *argv[])
 {
   FILE *fp;
@@ -216,6 +225,9 @@ int main(int argc, char *argv[])
     fprintf(stderr, "usage: config2help Config.in .config\n");
     exit(1);
   }
+
+  // Stage 1: read data. Read Config.in to global 'struct symbol *sym' list,
+  // then read .config to set "enabled" member of each enabled symbol.
 
   // Read Config.in
   parse(argv[1]);
@@ -241,6 +253,8 @@ int main(int argc, char *argv[])
     }
   }
 
+  // Stage 2: process data.
+
   // Collate help according to usage, depends, and .config
 
   // Loop through each entry, finding duplicate enabled "usage:" names
@@ -248,7 +262,7 @@ int main(int argc, char *argv[])
   // entry until we run out of matching pairs.
   for (;;) {
     struct symbol *throw = 0, *catch;
-    char *this, *that, *cusage, *tusage, *name;
+    char *this, *that, *cusage, *tusage, *name = 0;
     int len;
 
     // find a usage: name and collate all enabled entries with that name
@@ -256,17 +270,19 @@ int main(int argc, char *argv[])
       if (catch->enabled != 1) continue;
       if (catch->help && (that = keyword("usage:", catch->help->data))) {
         struct double_list *cfrom, *tfrom, *anchor;
-        char *try, **cdashlines, **tdashlines;
+        char *try, **cdashlines, **tdashlines, *usage;
         int clen, tlen;
 
         // Align usage: lines, finding a matching pair so we can suck help
         // text out of throw into catch, copying from this to that
-        if (!throw) name = that;
+        if (!throw) usage = that;
         else if (strncmp(name, that, len) || !isspace(that[len])) continue;
         catch->enabled++;
         while (!isspace(*that) && *that) that++;
-        if (!throw) len = that-name;
-        that = trim(that);
+        if (!throw) len = that-usage;
+        free(name);
+        name = strndup(usage, len);
+        that = skip_spaces(that);
         if (!throw) {
           throw = catch;
           this = that;
@@ -305,7 +321,7 @@ int main(int argc, char *argv[])
           }
           while (throw->help && throw->help != tfrom)
             dlist_add(&cfrom, dlist_zap(&throw->help));
-          if (cfrom && cfrom->prev->data && *trim(cfrom->prev->data))
+          if (cfrom && cfrom->prev->data && *skip_spaces(cfrom->prev->data))
             dlist_add(&cfrom, strdup(""));
         }
         if (!anchor) {
@@ -326,7 +342,7 @@ int main(int argc, char *argv[])
         if (!anchor->data) dlist_zap(&anchor);
 
         // zap whitespace at end of catch help text
-        while (!*trim(anchor->prev->data)) {
+        while (!*skip_spaces(anchor->prev->data)) {
           anchor = anchor->prev;
           free(dlist_zap(&anchor));
         }
@@ -345,8 +361,8 @@ int main(int argc, char *argv[])
           if (from[ff] == ']' && to[tt] == ']') {
             try = xmprintf("[-%.*s%.*s] ", ff, from, tt, to);
             qsort(try+2, ff+tt, 1, (void *)charsort);
-            this = trim(this+ff+3);
-            that = trim(that+tt+3);
+            this = skip_spaces(this+ff+3);
+            that = skip_spaces(that+tt+3);
           }
         }
 
@@ -374,6 +390,8 @@ int main(int argc, char *argv[])
 
     if (!throw) break;
   }
+
+  // Stage 3: output results to stdout.
 
   // Print out help #defines
   while (sym) {

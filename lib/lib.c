@@ -12,7 +12,9 @@ void verror_msg(char *msg, int err, va_list va)
   fprintf(stderr, "%s: ", toys.which->name);
   if (msg) vfprintf(stderr, msg, va);
   else s+=2;
-  if (err) fprintf(stderr, s, strerror(err));
+  if (err>0) fprintf(stderr, s, strerror(err));
+  if (err<0 && CFG_TOYBOX_HELP)
+    fprintf(stderr, " (See \"%s --help\")", toys.which->name);
   if (msg || err) putc('\n', stderr);
   if (!toys.exitval) toys.exitval++;
 }
@@ -66,11 +68,10 @@ void help_exit(char *msg, ...)
 {
   va_list va;
 
-  if (CFG_TOYBOX_HELP) show_help(stderr);
-
-  if (msg) {
+  if (!msg) show_help(stdout);
+  else {
     va_start(va, msg);
-    verror_msg(msg, 0, va);
+    verror_msg(msg, -1, va);
     va_end(va);
   }
 
@@ -289,20 +290,22 @@ long long xstrtol(char *str, char **end, int base)
   return l;
 }
 
-// atol() with the kilo/mega/giga/tera/peta/exa extensions.
+// atol() with the kilo/mega/giga/tera/peta/exa extensions, plus word and block.
 // (zetta and yotta don't fit in 64 bits.)
 long long atolx(char *numstr)
 {
-  char *c = numstr, *suffixes="cbkmgtpe", *end;
+  char *c = numstr, *suffixes="cwbkmgtpe", *end;
   long long val;
 
   val = xstrtol(numstr, &c, 0);
   if (c != numstr && *c && (end = strchr(suffixes, tolower(*c)))) {
     int shift = end-suffixes-2;
 
-    if (shift >= 0) {
-      if (toupper(*++c)=='d') do val *= 1000; while (shift--);
-      else val *= 1024LL<<(shift*10);
+    if (shift==-1) val *= 2;
+    if (!shift) val *= 512;
+    else if (shift>0) {
+      if (toupper(*++c)=='d') while (shift--) val *= 1000;
+      else val *= 1LL<<(shift*10);
     }
   }
   while (isspace(*c)) c++;
@@ -332,6 +335,35 @@ int stridx(char *haystack, char needle)
   return off-haystack;
 }
 
+// Convert utf8 sequence to a unicode wide character
+int utf8towc(wchar_t *wc, char *str, unsigned len)
+{
+  unsigned result, mask, first;
+  char *s, c;
+
+  // fast path ASCII
+  if (len && *str<128) return !!(*wc = *str);
+
+  result = first = *(s = str++);
+  if (result<0xc2 || result>0xf4) return -1;
+  for (mask = 6; (first&0xc0)==0xc0; mask += 5, first <<= 1) {
+    if (!--len) return -2;
+    if (((c = *(str++))&0xc0) != 0x80) return -1;
+    result = (result<<6)|(c&0x3f);
+  }
+  result &= (1<<mask)-1;
+  c = str-s;
+
+  // Avoid overlong encodings
+  if (result<(unsigned []){0x80,0x800,0x10000}[c-2]) return -1;
+
+  // Limit unicode so it can't encode anything UTF-16 can't.
+  if (result>0x10ffff || (result>=0xd800 && result<=0xdfff)) return -1;
+  *wc = result;
+
+  return str-s;
+}
+
 char *strlower(char *s)
 {
   char *try, *new;
@@ -345,7 +377,7 @@ char *strlower(char *s)
 
     while (*s) {
       wchar_t c;
-      int len = mbrtowc(&c, s, MB_CUR_MAX, 0);
+      int len = utf8towc(&c, s, MB_CUR_MAX);
 
       if (len < 1) *(new++) = *(s++);
       else {
@@ -390,6 +422,17 @@ int unescape(char c)
   int idx = stridx(from, c);
 
   return (idx == -1) ? 0 : to[idx];
+}
+
+// If string ends with suffix return pointer to start of suffix in string,
+// else NULL
+char *strend(char *str, char *suffix)
+{
+  long a = strlen(str), b = strlen(suffix);
+
+  if (a>b && !strcmp(str += a-b, suffix)) return str;
+
+  return 0;
 }
 
 // If *a starts with b, advance *a past it and return 1, else return 0;
@@ -503,6 +546,16 @@ void msleep(long miliseconds)
   nanosleep(&ts, &ts);
 }
 
+// return 1<<x of highest bit set
+int highest_bit(unsigned long l)
+{
+  int i;
+
+  for (i = 0; l; i++) l >>= 1;
+
+  return i-1;
+}
+
 // Inefficient, but deals with unaligned access
 int64_t peek_le(void *ptr, unsigned size)
 {
@@ -584,6 +637,19 @@ void loopfiles(char **argv, void (*function)(int fd, char *name))
   loopfiles_rw(argv, O_RDONLY|O_CLOEXEC|WARN_ONLY, 0, function);
 }
 
+// call loopfiles with do_lines()
+static void (*do_lines_bridge)(char **pline, long len);
+static void loopfile_lines_bridge(int fd, char *name)
+{
+  do_lines(fd, do_lines_bridge);
+}
+
+void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
+{
+  do_lines_bridge = function;
+  loopfiles(argv, loopfile_lines_bridge);
+}
+
 // Slow, but small.
 
 char *get_rawline(int fd, long *plen, char end)
@@ -634,6 +700,7 @@ int copy_tempfile(int fdin, char *name, char **tempname)
 {
   struct stat statbuf;
   int fd;
+  int ignored __attribute__((__unused__));
 
   *tempname = xmprintf("%s%s", name, "XXXXXX");
   if(-1 == (fd = mkstemp(*tempname))) error_exit("no temp file");
@@ -645,9 +712,12 @@ int copy_tempfile(int fdin, char *name, char **tempname)
   fstat(fdin, &statbuf);
   fchmod(fd, statbuf.st_mode);
 
-  // It's fine if this fails (generally because we're not root), but gcc no
-  // longer lets a (void) typecast silence the "unused result" warning, so...
-  if (fchown(fd, statbuf.st_uid, statbuf.st_gid));
+  // We chmod before chown, which strips the suid bit. Caller has to explicitly
+  // switch it back on if they want to keep suid.
+
+  // Suppress warn-unused-result. Both gcc and clang clutch their pearls about
+  // this but it's _supposed_ to fail when we're not root.
+  ignored = fchown(fd, statbuf.st_uid, statbuf.st_gid);
 
   return fd;
 }
@@ -1235,4 +1305,17 @@ void do_lines(int fd, void (*call)(char **pline, long len))
   }
 
   if (fd) fclose(fp);
+}
+
+// Returns the number of bytes taken by the environment variables. For use
+// when calculating the maximum bytes of environment+argument data that can
+// be passed to exec for find(1) and xargs(1).
+long environ_bytes()
+{
+  long bytes = sizeof(char *);
+  char **ev;
+
+  for (ev = environ; *ev; ev++)
+    bytes += sizeof(char *) + strlen(*ev) + 1;
+  return bytes;
 }

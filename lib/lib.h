@@ -115,6 +115,7 @@ void xstrncpy(char *dest, char *src, size_t size);
 void xstrncat(char *dest, char *src, size_t size);
 void _xexit(void) noreturn;
 void xexit(void) noreturn;
+void *xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t off);
 void *xmalloc(size_t size);
 void *xzalloc(size_t size);
 void *xrealloc(void *ptr, size_t size);
@@ -130,7 +131,7 @@ void xexec(char **argv);
 pid_t xpopen_both(char **argv, int *pipes);
 int xwaitpid(pid_t pid);
 int xpclose_both(pid_t pid, int *pipes);
-pid_t xpopen(char **argv, int *pipe, int stdout);
+pid_t xpopen(char **argv, int *pipe, int isstdout);
 pid_t xpclose(pid_t pid, int pipe);
 int xrun(char **argv);
 int xpspawn(char **argv, int*pipes);
@@ -167,6 +168,7 @@ unsigned xgetuid(char *name);
 unsigned xgetgid(char *name);
 void xsetuser(struct passwd *pwd);
 char *xreadlink(char *name);
+double xstrtod(char *s);
 long xparsetime(char *arg, long units, long *fraction);
 void xpidfile(char *name);
 void xregcomp(regex_t *preg, char *rexec, int cflags);
@@ -192,6 +194,7 @@ struct string_list **splitpath(char *path, struct string_list **list);
 char *readfileat(int dirfd, char *name, char *buf, off_t *len);
 char *readfile(char *name, char *buf, off_t len);
 void msleep(long miliseconds);
+int highest_bit(unsigned long l);
 int64_t peek_le(void *ptr, unsigned size);
 int64_t peek_be(void *ptr, unsigned size);
 int64_t peek(void *ptr, unsigned size);
@@ -202,16 +205,19 @@ long long xstrtol(char *str, char **end, int base);
 long long atolx(char *c);
 long long atolx_range(char *numstr, long long low, long long high);
 int stridx(char *haystack, char needle);
+int utf8towc(wchar_t *wc, char *str, unsigned len);
 char *strlower(char *s);
 char *strafter(char *haystack, char *needle);
 char *chomp(char *s);
 int unescape(char c);
+char *strend(char *str, char *suffix);
 int strstart(char **a, char *b);
 off_t fdlength(int fd);
 void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name));
 void loopfiles(char **argv, void (*function)(int fd, char *name));
-void xsendfile(int in, int out);
+void loopfiles_lines(char **argv, void (*function)(char **pline, long len));
+long long xsendfile(int in, int out);
 int wfchmodat(int rc, char *name, mode_t mode);
 int copy_tempfile(int fdin, char *name, char **tempname);
 void delete_tempfile(int fdin, int fdout, char **tempname);
@@ -236,6 +242,7 @@ int regexec0(regex_t *preg, char *string, long len, int nmatch,
 char *getusername(uid_t uid);
 char *getgroupname(gid_t gid);
 void do_lines(int fd, void (*call)(char **pline, long len));
+long environ_bytes();
 
 #define HR_SPACE 1 // Space between number and units
 #define HR_B     2 // Use "B" for single byte units
@@ -281,8 +288,9 @@ void tty_sigreset(int i);
 // net.c
 int xsocket(int domain, int type, int protocol);
 void xsetsockopt(int fd, int level, int opt, void *val, socklen_t len);
-int xconnect(char *host, char *port, int family, int socktype, int protocol,
-  int flags);
+struct addrinfo *xgetaddrinfo(char *host, char *port, int family, int socktype,
+  int protocol, int flags);
+int xconnect(struct addrinfo *ai_arg);
 int xpoll(struct pollfd *fds, int nfds, int timeout);
 int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_timeout);
 
@@ -322,7 +330,7 @@ void mode_to_string(mode_t mode, char *buf);
 char *getbasename(char *name);
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name));
 
-pid_t xvforkwrap(pid_t pid);
+pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
 #define XVFORK() xvforkwrap(vfork())
 
 // Wrapper to make xfuncs() return (via longjmp) instead of exiting.
@@ -338,6 +346,9 @@ pid_t xvforkwrap(pid_t pid);
 
 // Wrapper that discards true/false "did it exit" value.
 #define NOEXIT(x) WOULD_EXIT(_noexit_res, x)
+
+#define minof(a, b) ({typeof(a) aa = (a); typeof(b) bb = (b); aa<bb ? aa : bb;})
+#define maxof(a, b) ({typeof(a) aa = (a); typeof(b) bb = (b); aa>bb ? aa : bb;})
 
 // Functions in need of further review/cleanup
 #include "lib/pending.h"

@@ -6,7 +6,10 @@
 #include "toys.h"
 
 #ifndef TOYBOX_VERSION
-#define TOYBOX_VERSION "0.7.2"
+#ifndef TOYBOX_VENDOR
+#define TOYBOX_VENDOR ""
+#endif
+#define TOYBOX_VERSION "0.7.5"TOYBOX_VENDOR
 #endif
 
 // Populate toy_list[].
@@ -49,7 +52,7 @@ struct toy_list *toy_find(char *name)
     if (middle<bottom || middle>top) return NULL;
     result = strcmp(name,toy_list[middle].name);
     if (!result) return toy_list+middle;
-    if (result<0) top=--middle;
+    if (result<0) top = --middle;
     else bottom = ++middle;
   }
 }
@@ -80,7 +83,7 @@ static void toy_singleinit(struct toy_list *which, char *argv[])
   toys.which = which;
   toys.argv = argv;
 
-  if (CFG_TOYBOX_I18N) setlocale(LC_ALL, "C"+!!(which->flags & TOYFLAG_LOCALE));
+  if (CFG_TOYBOX_I18N) setlocale(LC_CTYPE, "C.UTF-8");
 
   // Parse --help and --version for (almost) all commands
   if (CFG_TOYBOX_HELP_DASHDASH && !(which->flags & TOYFLAG_NOHELP) && argv[1]) {
@@ -212,6 +215,14 @@ int main(int argc, char *argv[])
     toys.stacktop = &stack;
   }
   *argv = getbasename(*argv);
+
+  // Up to and including Android M, bionic's dynamic linker added a handler to
+  // cause a crash dump on SIGPIPE. That was removed in Android N, but adbd
+  // was still setting the SIGPIPE disposition to SIG_IGN, and its children
+  // were inheriting that. In Android O, adbd is fixed, but manually asking
+  // for the default disposition is harmless, and it'll be a long time before
+  // no one's using anything older than O!
+  if (CFG_TOYBOX_ON_ANDROID) signal(SIGPIPE, SIG_DFL);
 
   // If nommu can't fork, special reentry path.
   // Use !stacktop to signal "vfork happened", both before and after xexec()

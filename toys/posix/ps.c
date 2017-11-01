@@ -13,7 +13,8 @@
  * Similarly -f outputs USER but calls it UID (we call it USER).
  * It also says that -o "args" and "comm" should behave differently but use
  * the same title, which is not the same title as the default output. (No.)
- * Select by session id is -s not -g.
+ * Select by session id is -s not -g. Posix doesn't say truncated fields
+ * should end with "+" but it's pretty common behavior.
  *
  * Posix defines -o ADDR as "The address of the process" but the process
  * start address is a constant on any elf system with mmu. The procps ADDR
@@ -79,11 +80,11 @@ config PS
     -k	Sort FIELDs in +increasing or -decreasting order (--sort)
     -M	Measure field widths (expanding as necessary)
     -n	Show numeric USER and GROUP
-    -w	Wide output (don't truncate at terminal width)
+    -w	Wide output (don't truncate fields)
 
     Which FIELDs to show. (Default = -o PID,TTY,TIME,CMD)
 
-    -f	Full listing (-o USER:8=UID,PID,PPID,C,STIME,TTY,TIME,ARGS=CMD)
+    -f	Full listing (-o USER:12=UID,PID,PPID,C,STIME,TTY,TIME,ARGS=CMD)
     -l	Long listing (-o F,S,UID,PID,PPID,C,PRI,NI,ADDR,SZ,WCHAN,TTY,TIME,CMD)
     -o	Output FIELDs instead of defaults, each with optional :size and =title
     -O	Add FIELDS to defaults
@@ -127,10 +128,9 @@ config PS
 
 config TOP
   bool "top"
-  depends on TOP_COMMON
   default y
   help
-    usage: top [-H] [-k FIELD,] [-o FIELD,] [-s SORT]
+    usage: top [-Hbq] [-k FIELD,] [-o FIELD,] [-s SORT] [-n NUMBER] [-d SECONDS] [-p PID,] [-u USER,]
 
     Show process activity in real time.
 
@@ -139,14 +139,22 @@ config TOP
     -o	Show FIELDS (def PID,USER,PR,NI,VIRT,RES,SHR,S,%CPU,%MEM,TIME+,CMDLINE)
     -O	Add FIELDS (replacing PR,NI,VIRT,RES,SHR,S from default)
     -s	Sort by field number (1-X, default 9)
+    -b	Batch mode (no tty)
+    -d	Delay SECONDS between each cycle (default 3)
+    -n	Exit after NUMBER iterations
+    -p	Show these PIDs
+    -u	Show these USERs
+    -q	Quiet (no header lines)
+
+    Cursor LEFT/RIGHT to change sort, UP/DOWN move list, space to force
+    update, R to reverse sort, Q to exit.
 
 # Requires CONFIG_IRQ_TIME_ACCOUNTING in the kernel for /proc/$$/io
 config IOTOP
   bool "iotop"
-  depends on TOP_COMMON
   default y
   help
-    usage: iotop [-AaKO]
+    usage: iotop [-AaKObq] [-n NUMBER] [-d SECONDS] [-p PID,] [-u USER,]
 
     Rank processes by I/O.
 
@@ -157,13 +165,6 @@ config IOTOP
     -O	Only show processes doing I/O
     -o	Show FIELDS (default PID,PR,USER,[D]READ,[D]WRITE,SWAP,[D]IO,COMM)
     -s	Sort by field number (0-X, default 6)
-
-config TOP_COMMON
-  bool
-  default y
-  help
-    usage: * [-bq] [-n NUMBER] [-d SECONDS] [-p PID,] [-u USER,]
-
     -b	Batch mode (no tty)
     -d	Delay SECONDS between each cycle (default 3)
     -n	Exit after NUMBER iterations
@@ -177,9 +178,8 @@ config TOP_COMMON
 config PGREP
   bool "pgrep"
   default y
-  depends on PGKILL_COMMON
   help
-    usage: pgrep [-cL] [-d DELIM] [-L SIGNAL] [PATTERN]
+    usage: pgrep [-clfnovx] [-d DELIM] [-L SIGNAL] [PATTERN] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]
 
     Search for process(es). PATTERN is an extended regular expression checked
     against command names.
@@ -188,23 +188,27 @@ config PGREP
     -d	Use DELIM instead of newline
     -L	Send SIGNAL instead of printing name
     -l	Show command name
+    -f	Check full command line for PATTERN
+    -G	Match real Group ID(s)
+    -g	Match Process Group(s) (0 is current user)
+    -n	Newest match only
+    -o	Oldest match only
+    -P	Match Parent Process ID(s)
+    -s	Match Session ID(s) (0 for current)
+    -t	Match Terminal(s)
+    -U	Match real User ID(s)
+    -u	Match effective User ID(s)
+    -v	Negate the match
+    -x	Match whole command (not substring)
 
 config PKILL
   bool "pkill"
   default y
-  depends on PGKILL_COMMON
   help
-    usage: pkill [-SIGNAL|-l SIGNAL] [PATTERN]
+    usage: pkill [-fnovx] [-SIGNAL|-l SIGNAL] [PATTERN] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]
 
     -l	Send SIGNAL (default SIGTERM)
     -V	verbose
-
-config PGKILL_COMMON
-  bool
-  default y
-  help
-    usage: * [-fnovx] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]
-
     -f	Check full command line for PATTERN
     -G	Match real Group ID(s)
     -g	Match Process Group(s) (0 is current user)
@@ -350,7 +354,7 @@ struct typography {
   {"ARGS", -27, -6}, {"CMD", -15, -1},
 
   // user/group
-  {"UID", 5, SLOT_uid}, {"USER", -8, 64|SLOT_uid}, {"RUID", 4, SLOT_ruid},
+  {"UID", 5, SLOT_uid}, {"USER", -12, 64|SLOT_uid}, {"RUID", 4, SLOT_ruid},
   {"RUSER", -8, 64|SLOT_ruid}, {"GID", 8, SLOT_gid}, {"GROUP", -8, 64|SLOT_gid},
   {"RGID", 4, SLOT_rgid}, {"RGROUP", -8, 64|SLOT_rgid},
 
@@ -566,29 +570,40 @@ static void show_ps(void *p)
     // fields that can naturally be shorter
     abslen = abs(field->len);
     sign = field->len<0 ? -1 : 1;
-    olen = strlen(out);
+    olen = (TT.tty) ? utf8len(out) : strlen(out);
     if ((field->which<=PS_BIT || (toys.optflags&FLAG_w)) && olen>abslen) {
       // overflow but remember by how much
       extra += olen-abslen;
       abslen = olen;
     } else if (extra && olen<abslen) {
+      int unused = abslen-olen;
+
       // If later fields have slack space, take back overflow
-      olen = abslen-olen;
-      if (olen>extra) olen = extra;
-      abslen -= olen;
-      extra -= olen;
+      if (unused>extra) unused = extra;
+      abslen -= unused;
+      extra -= unused;
     }
     if (abslen>width) abslen = width;
     len = pad = abslen;
     pad *= sign;
+
     // If last field is left justified, no trailing spaces.
     if (!field->next && sign<0) {
-      pad = 0;
+      pad = -1;
       len = width;
+    }
+
+    // If we truncated a left-justified field, show + instead of last char
+    if (olen>len && len>1 && sign<0) {
+      width--;
+      len--;
+      if (field->next) pad++;
+      abslen = 0;
     }
 
     if (TT.tty) width -= draw_trim(out, pad, len);
     else width -= printf("%*.*s", pad, len, out);
+    if (!abslen) putchar('+');
     if (!width) break;
   }
   xputc(TT.time ? '\r' : '\n');
@@ -810,7 +825,7 @@ static int get_ps(struct dirtree *new)
         }
 
         s = buf;
-        if (strstart(&s, "/dev/")) memmove(buf, s, len -= 5);
+        if (strstart(&s, "/dev/")) memmove(buf, s, len -= 4);
       }
 
     // Data we want is in a file.
@@ -884,6 +899,7 @@ static int get_threads(struct dirtree *new)
   kcount = TT.kcount;
   sprintf(toybuf, "/proc/%u/task", pid);
   new->child = dirtree_flagread(toybuf, DIRTREE_SHUTUP|DIRTREE_PROC, get_ps);
+  if (new->child == DIRTREE_ABORTVAL) new->child = 0;
   TT.threadparent = 0;
   kcount = TT.kcount-kcount+1;
   tb = (void *)new->extra;
@@ -899,15 +915,16 @@ static int get_threads(struct dirtree *new)
   // Save or display
   if (!TT.show_process) return DIRTREE_SAVE;
   TT.show_process((void *)new->extra);
-  dt = new->child;
-  new->child = 0;
-  while (dt->child) {
-    new = dt->child->next;
-    TT.show_process((void *)dt->child->extra);
-    free(dt->child);
-    dt->child = new;
+  if ((dt = new->child)) {
+    new->child = 0;
+    while (dt->child) {
+      new = dt->child->next;
+      TT.show_process((void *)dt->child->extra);
+      free(dt->child);
+      dt->child = new;
+    }
+    free(dt);
   }
-  free(dt);
 
   return 0;
 }
@@ -975,7 +992,7 @@ static char *parse_ko(void *data, char *type, int length)
   return 0;
 }
 
-long long get_headers(struct strawberry *fields, char *buf, int blen)
+static long long get_headers(struct strawberry *fields, char *buf, int blen)
 {
   long long bits = 0;
   int len = 0;
@@ -1133,9 +1150,13 @@ static void shared_main(void)
 
   TT.ticks = sysconf(_SC_CLK_TCK);
   if (!TT.width) {
-    TT.width = (toys.which->name[1] == 's') ? 99999 : 80;
+    TT.width = 80;
     TT.height = 25;
-    terminal_size(&TT.width, &TT.height);
+    // If ps can't query terminal size pad to 80 but do -w
+    if (toys.which->name[1] == 's') {
+      if (!isatty(1) || !terminal_size(&TT.width, &TT.height))
+        toys.optflags |= FLAG_w;
+    }
   }
 
   // find controlling tty, falling back to /dev/tty if none
@@ -1157,8 +1178,8 @@ void ps_main(void)
   char *not_o;
   int i;
 
-  if (toys.optflags&FLAG_w) TT.width = 99999;
   shared_main();
+  if (toys.optflags&FLAG_w) TT.width = 99999;
 
   // parse command line options other than -o
   comma_args(TT.ps.P, &TT.PP, "bad -P", parse_rest);
@@ -1179,10 +1200,11 @@ void ps_main(void)
   // Figure out which fields to display
   not_o = "%sTTY,TIME,CMD";
   if (toys.optflags&FLAG_f)
-    sprintf(not_o = toybuf+128, "USER:8=UID,%%sPPID,%s,STIME,TTY,TIME,ARGS=CMD",
+    sprintf(not_o = toybuf+128,
+      "USER:12=UID,%%sPPID,%s,STIME,TTY,TIME,ARGS=CMD",
       (toys.optflags&FLAG_T) ? "TCNT" : "C");
   else if (toys.optflags&FLAG_l)
-    not_o = "F,S,UID,%sPPID,C,PRI,NI,ADDR,SZ,WCHAN,TTY,TIME,CMD";
+    not_o = "F,S,UID,%sPPID,C,PRI,NI,BIT,SZ,WCHAN,TTY,TIME,CMD";
   else if (CFG_TOYBOX_ON_ANDROID)
     sprintf(not_o = toybuf+128,
             "USER,%%sPPID,VSIZE,RSS,WCHAN:10,ADDR:10,S,%s",
@@ -1221,7 +1243,7 @@ void ps_main(void)
     ((toys.optflags&FLAG_T) || (TT.bits&(_PS_TID|_PS_TCNT)))
       ? get_threads : get_ps);
 
-  if (toys.optflags&(FLAG_k|FLAG_M)) {
+  if ((dt != DIRTREE_ABORTVAL) && toys.optflags&(FLAG_k|FLAG_M)) {
     struct carveup **tbsort = collate(TT.kcount, dt);
 
     if (toys.optflags&FLAG_M) {
@@ -1350,6 +1372,7 @@ static void top_common(
     dt = dirtree_flagread("/proc", DIRTREE_SHUTUP|DIRTREE_PROC,
       ((toys.optflags&FLAG_H) || (TT.bits&(_PS_TID|_PS_TCNT)))
         ? get_threads : get_ps);
+    if (dt == DIRTREE_ABORTVAL) error_exit("no /proc");
     plnew->tb = collate(plnew->count = TT.kcount, dt);
     TT.kcount = 0;
 
@@ -1534,6 +1557,7 @@ static void top_common(
         break;
       }
       if (i==-2) break;
+      if (i==-3) continue;
 
       // Flush unknown escape sequences.
       if (i==27) while (0<scan_key_getsize(scratch, 0, &TT.width, &TT.height));
@@ -1598,10 +1622,9 @@ static void top_setup(char *defo, char *defk)
 
 void top_main(void)
 {
-  // usage: [-h HEADER] -o OUTPUT -k SORT
-
-  sprintf(toybuf, "PID,USER,%s%%CPU,%%MEM,TIME+,ARGS",
-    TT.top.O ? "" : "PR,NI,VIRT,RES,SHR,S,");
+  sprintf(toybuf, "PID,USER,%s%%CPU,%%MEM,TIME+,%s",
+    TT.top.O ? "" : "PR,NI,VIRT,RES,SHR,S,",
+    toys.optflags&FLAG_H ? "CMD:15=THREAD,NAME=PROCESS" : "ARGS");
   if (!TT.top.s) TT.top.s = TT.top.O ? 3 : 9;
   top_setup(toybuf, "-%CPU,-ETIME,-PID");
   if (TT.top.O) {

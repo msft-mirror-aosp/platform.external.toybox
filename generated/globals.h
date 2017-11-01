@@ -45,7 +45,8 @@ struct dmesg_data {
   long level;
   long size;
 
-  int color;
+  int use_color;
+  time_t tea;
 };
 
 // toys/lsb/hostname.c
@@ -124,6 +125,8 @@ struct pidof_data {
 struct seq_data {
   char *sep;
   char *fmt;
+
+  int precision;
 };
 
 // toys/lsb/su.c
@@ -141,10 +144,29 @@ struct umount_data {
   char *types;
 };
 
+// toys/net/ftpget.c
+
+struct ftpget_data {
+  char *user;
+  char *port;
+  char *password;
+
+  int fd;
+};
+
 // toys/net/ifconfig.c
 
 struct ifconfig_data {
   int sockfd;
+};
+
+// toys/net/microcom.c
+
+struct microcom_data {
+  char *s;
+
+  int fd;
+  struct termios original_stdin_state, original_fd_state;
 };
 
 // toys/net/netcat.c
@@ -190,6 +212,12 @@ struct base64_data {
 
 struct blockdev_data {
   long bsz;
+};
+
+// toys/other/chrt.c
+
+struct chrt_data {
+  long pid;
 };
 
 // toys/other/dos2unix.c
@@ -430,12 +458,6 @@ struct brctl_data {
     int sockfd;
 };
 
-// toys/pending/chrt.c
-
-struct chrt_data {
-  long pid;
-};
-
 // toys/pending/compress.c
 
 struct compress_data {
@@ -479,8 +501,7 @@ struct crontab_data {
 // toys/pending/dd.c
 
 struct dd_data {
-  int show_xfer;
-  int show_records;
+  int show_xfer, show_records;
   unsigned long long bytes, c_count, in_full, in_part, out_full, out_part;
   struct timeval start;
   struct {
@@ -584,19 +605,6 @@ struct fsck_data {
   long max_nr_run;
 };
 
-// toys/pending/ftpget.c
-
-struct ftpget_data {
-  long port; //  char *port;
-  char *password;
-  char *username;
-
-  FILE *sockfp;
-  int c;
-  int isget;
-  char buf[sizeof(struct sockaddr_storage)];
-};
-
 // toys/pending/getfattr.c
 
 struct getfattr_data {
@@ -623,6 +631,12 @@ struct getty_data {
 
 struct groupadd_data {
   long gid;
+};
+
+// toys/pending/gzip.c
+
+struct gzip_data {
+  int level;
 };
 
 // toys/pending/host.c
@@ -694,11 +708,8 @@ struct lsof_data {
   struct arg_list *p;
 
   struct stat *sought_files;
-
-  struct double_list *all_sockets;
-  struct double_list *files;
-  int last_shown_pid;
-  int shown_header;
+  struct double_list *all_sockets, *files;
+  int last_shown_pid, shown_header;
 };
 
 // toys/pending/mke2fs.c
@@ -733,12 +744,13 @@ struct mke2fs_data {
 // toys/pending/modprobe.c
 
 struct modprobe_data {
+  struct arg_list *dirs;
+
   struct arg_list *probes;
   struct arg_list *dbase[256];
   char *cmdopts;
   int nudeps;
   uint8_t symreq;
-  void (*dbg)(char *format, ...);
 };
 
 // toys/pending/more.c
@@ -1015,14 +1027,12 @@ struct cpio_data {
 // toys/posix/cut.c
 
 struct cut_data {
-  char *delim;
-  char *flist;
-  char *clist;
-  char *blist;
+  char *d;
+  char *O;
+  struct arg_list *select[5]; // we treat them the same, so loop through
 
-  void *slist_head;
-  unsigned nelem;
-  void (*do_cut)(int fd);
+  int pairs;
+  regex_t reg;
 };
 
 // toys/posix/date.c
@@ -1032,7 +1042,6 @@ struct date_data {
   char *setfmt;
   char *showdate;
 
-  char *tz;
   unsigned nano;
 };
 
@@ -1094,13 +1103,17 @@ struct grep_data {
   long a;
   long b;
   long c;
+  struct arg_list *M;
+  struct arg_list *S;
 
   char indelim, outdelim;
+  int found;
 };
 
 // toys/posix/head.c
 
 struct head_data {
+  long bytes;
   long lines;
   int file_no;
 };
@@ -1121,6 +1134,7 @@ struct kill_data {
 // toys/posix/ls.c
 
 struct ls_data {
+  long ll;
   char *color;
 
   struct dirtree *files, *singledir;
@@ -1185,7 +1199,9 @@ struct od_data {
 // toys/posix/paste.c
 
 struct paste_data {
-  char *delim;
+  char *d;
+
+  int files;
 };
 
 // toys/posix/patch.c
@@ -1307,6 +1323,7 @@ struct split_data {
 
 struct strings_data {
   long num;
+  char *t;
 };
 
 // toys/posix/tail.c
@@ -1389,13 +1406,16 @@ extern union global_union {
 	struct seq_data seq;
 	struct su_data su;
 	struct umount_data umount;
+	struct ftpget_data ftpget;
 	struct ifconfig_data ifconfig;
+	struct microcom_data microcom;
 	struct netcat_data netcat;
 	struct netstat_data netstat;
 	struct tunctl_data tunctl;
 	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blockdev_data blockdev;
+	struct chrt_data chrt;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
 	struct free_data free;
@@ -1423,7 +1443,6 @@ extern union global_union {
 	struct arping_data arping;
 	struct bootchartd_data bootchartd;
 	struct brctl_data brctl;
-	struct chrt_data chrt;
 	struct compress_data compress;
 	struct crond_data crond;
 	struct crontab_data crontab;
@@ -1437,10 +1456,10 @@ extern union global_union {
 	struct fdisk_data fdisk;
 	struct fold_data fold;
 	struct fsck_data fsck;
-	struct ftpget_data ftpget;
 	struct getfattr_data getfattr;
 	struct getty_data getty;
 	struct groupadd_data groupadd;
+	struct gzip_data gzip;
 	struct host_data host;
 	struct iconv_data iconv;
 	struct ip_data ip;

@@ -8,6 +8,264 @@ a development environment. See the links on the left for details.</p>
 
 <h2>News</h2>
 
+<a name="12-10-2017" /><a href="#03-10-2017"><hr><h2><b>October 12, 2017</b></h2></a>
+<blockquote><p>Would it save you a lot of time if I just gave up and went
+mad now?</p>
+<p> - The Hitchhiker's Guide to the Galaxy</p>
+</blockquote>
+
+<p><a href=downloads/toybox-0.7.5.tar.gz>Toybox 0.7.5</a>
+(<a href=https://github.com/landley/toybox/releases/tag/0.7.5>git commit</a>)
+is out.</p>
+
+<p>This is another <b>mostly bugfix release</b>. I delayed it a bit trying to get some
+of the many half-finished projects (dd, ping, lsof, iconv, cut, sysconf,
+the cp --parents option...) finished/promoted/tested, but decided adding big
+things at the end of the dev cycle would be too destabilizing.</p>
+
+<p>A couple <b>new features</b> slipped in anyway. Ilya Kuzmich added head -c
+and strings -t (and corrected strings' output in a couple places). Elliott
+Hughes taught file to recognize Macintosh (Mach-O) binaries.</p>
+
+<p><b>NOTE</b>: the chrt command is broken when built against musl-libc
+because that project's maintainer decided he didn't like the system calls
+it depends on, so he
+<a href=https://git.musl-libc.org/cgit/musl/commit/?id=1e21e78bf7a5>removed
+them from his libc</a>. The prebuilt binaries are built against musl,
+so the chrt command there will always say -ENOSYS. (It works fine built against
+glibc, and presumably bionic or uClibc.)</p>
+
+<p><b>Bugfixes</b>: Remounting (mount -o remount,rw) should work properly now,
+and we fixed another place ps was segfaulting when /proc
+entries vanished out from under us (a hard to hit race condition
+mostly noticeable in long-running "top" exiting; error value was treated
+as a pointer). Elliott Hughes fixed a -Wformat warning in expr.c,
+and made xargs split the command
+line at ARG_MAX (which is 1/4 the stack size ulimit, which normal users
+can arbitrarily increase but execve() will complain if they don't).
+Josh Gao made netcat -l exit after handling a request, and reported a
+seq bug (seq "1000000 10000001" output 1e+06, fixed now). Zach Riggle fixed a
+broken URL in the README. Rob fixed env -0 checking the flag wrong so
+it didn't work in combination with other flags (typo).</p>
+
+<p><b>Plumbing</b>:
+Replaced mbrtowc() with a new utf8towc() that doesn't have a context
+struct or care about locale. A bugfix in comma_scan() (wasn't removing an entry at the end
+of the list) is why remount _sometimes_ worked (depending on argument
+order), xgetaddrinfo() is now separate from xconnect(),
+atolx_range() learned the w (word=2) suffix, and b is now (block=512) instead
+of (byte=1).</p>
+
+<p><b>Build</b>: Patrick Oppenlander added a workaround for a bug in config2help.c
+that resulted in segfaults on newer toolchains. (It was actually a use
+after free error; the build infrastructure isn't nearly as heavily audited as
+code that gets installed on the target; oops.) A new GITHASH
+environment variable can force the build version from
+the command line, and the build checks for .git in the top directory
+before asking git what our version is (so it isn't confused by ../../.git
+in an enclosing directory). Added a build #warning about musl intentionally
+breaking chrt (as with nommu fork() musl now provides a broken
+stub function so compile-time probes for its existence think it's there, and
+you can't run the result to test behavior when cross compiling).</p>
+
+<a name="19-06-2017" /><a href="#19-06-2017"><hr><h2><b>June 19, 2017</b></h2></a>
+<blockquote><p>It is a well-known fact that those people who most want to rule people are, ipso facto, those least suited to do it.
+To summarize the summary: anyone who is capable of getting themselves made President should on no account be allowed to do the job.</p>
+<p>- The Hitchhiker's Guide to the Galaxy</p>
+</blockquote>
+
+<p><a href=downloads/toybox-0.7.4.tar.gz>Toybox 0.7.4</a>
+(<a href=https://github.com/landley/toybox/releases/tag/0.7.4>git commit</a>)
+is out. No new commands this time, but
+<b>chrt</b> and <b>dmesg</b> got promoted out of pending.</p>
+
+<p><u>New features</u>:
+Rob rewrote paste, which should work much better now, and added grep
+-M and -S to match and skip wildcards respectively (useful with -r).
+Elliott's updated dmesg has -T and --color. The file
+command can recognize gzip now, uptime grew -s, date grew %N, env knows - as a first argument
+means -i (posix!) and grew -0, ls defaults to -b
+instead of -q now when there's a tty, and ls has a new -ll option (with
+--full-time as a compatibility synonym) showing nanoseconds and (for some
+reason) timezone. (Why do individual files have timezones?) Elliott added
+"uudecode -o -" support. Illya Kuzmich taught head -v and -q. The cpio
+code no longer adds the "TRAILER!!!" entry by default (initramfs extractor
+doesn't care) without which you can concatenate cpio archives with "cat".
+(Use the new --trailer option if you want the legacy behavior.)
+In pending, fdisk compiles now and tar understands bzip2.</p>
+
+<p><u>Build</u>:
+The "make install_airlock" target now symlinks bc from the host because
+the kernel <a href=https://landley.net/notes-2013.html#28-03-2013>inexplicably</a>
+needs that to build. This was motivated by
+<a href=https://github.com/landley/mkroot>mkroot</a>, which builds under
+a toybox airlock directory.</p>
+
+<p>Lots of work on the test suite, mostly from the Android guys who are now
+running it under Android. This fixed several existing tests that didn't
+pass, made more tests run on a toybox-only system, and so on. The test suite
+infrastructure now has a second testing function,
+"testcmd", which supplies the command name being tested (bypassing
+shell builtins).</p>
+
+<p>Various android build and config fixes, getting closer to being able
+to let android someday use scripts/make.sh instead of generated/* snapshots.
+Also more work into building under android's NDK; not quite there yet
+but much closer.
+Use nproc in scripts/make.sh detect available processors (so you can control the SMP level with taskset).
+Removed the old uClibc compatibility glue, it's been 5 years since their
+<a href=http://lists.busybox.net/pipermail/buildroot/2016-December/180102.html>last release</a>.</p>
+
+<p>The new config option TOYBOX_PEDANTIC_ARGS checks arguments when there
+are no arguments, so things like "uptime" no longer silently ignore arguments
+you pass but instead refuse to run.</p>
+
+<p><u>Docs</u>:
+The FAQ now has more than one entry. Commands no longer output the full
+help text for argument errors but instead just say "See %s --help" with the
+command name (in addition to the actual error message).
+Elliott did a big period-ectomy on all the --help text, and
+we cleaned up some tab/space inconsistency. The
+non-html help -a output now has separators with the command name.
+The top/iotop and pkill/pgrep help text now describe a lot more of what
+the commands can do. Twitter's code of conduct page went down so we
+mirrored the text locally.</p>
+
+<p><u>Bugfixes</u>:
+Fixed a race condition in ps/top where a process that exited right as we
+read its data returned a different error value than we were expecting (which
+was causing long-running top instances to occasionally exit),
+mount now gives an error if it can't autodetect the filesystem
+type, ps no longer queries the terminal size when output isn't to a tty
+(so "ps -A | cat" doesn't vary), date's chkmktime() was replaced with
+simple range checks for fields (to avoid false positives from things like
+timezones and daylight savings time), removed %s from date's help (we
+didn't implement it, we have @seconds[.nanoseconds] instead), fixed
+zcat's buffer flush logic (which was always failing on files larger
+than 32k), and factor now detects requests for numbers >64 bits and fails
+loudly instead of producing incorrect answers.
+Elliott fixed touch -a/-m (they were backwards), and allowed ':' in
+setprop's property names. Grep now exits with 2 for errors (so -q can
+distinguish "didn't find" from "didn't work"), doesn't stop on symlinks
+that point nowhere (there was an error_exit() that should just be a warning),
+and provides error messages for files we could open but not read.</p>
+
+<p><u>Library</u>:
+New library functions: strend() complements strstart(), minof()/maxof()
+are min/max macros that evalute arguments once and autodetect type (why
+isn't this in libc?), xmmap() checks MAP_FAILED (which is not NULL).</p>
+
+<a name="21-02-2017" /><a href="#21-02-2017"><hr><h2><b>February 21, 2017</b></h2></a>
+<blockquote><p>Only six people in the Galaxy knew that the job of the
+Galactic President was not to wield power but to attract attention
+away from it. Zaphod Beeblebrox was amazingly good at his job.</p>
+<p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
+
+<p>Despite everything, <a href=downloads/toybox-0.7.3.tar.gz>Toybox 0.7.3</a>
+(<a href=https://github.com/landley/toybox/releases/tag/0.7.3>git commit</a>)
+is out. The <u>new commands</u> this time are <b>ftpget</b>, <b>ftpput</b>, <b>microcom</b>, and <b>ascii</b>.<p>
+
+<p>We also had two command _demotions_ out of defconfig:
+<b>hostid</b> got moved to toys/example and
+switched to "default n" because despite <a href=http://pubs.opengroup.org/onlinepubs/9699919799/functions/gethostid.html>still being in posix</a>
+the concept of a unique 32 bit number identifying a system is something
+Linux outgrew about the time Pauline Middelink wrote the first IP
+Masquerading code. And Elliott did a complete rewrite of <b>dmesg</b> introducing
+two codepaths that I didn't get a chance to unify and didn't want to
+hold up the release for, so that's back in pending.</p>
+
+<p><u>New features</u>: Rob added units to <b>find</b> -atime and friends
+(with the legacy -amin alias). Elliott added color and -w to dmesg, fallocate
+-o, and improved file's ELF parsing. Steve Muckle added -d and finit_module
+support to modprobe. Rob and Elliott tweaked the
+ps/top display format a bit more (extending the USER field from 8 to 18 chars
+and putting + at the end of string fields that got truncated).
+df -a isn't entirely new, but wasn't documented and needed a bugfix.</p>
+
+<p><u>Bugfixes</u>:
+Last release broke oneit because -c didn't get moved to xopen_stdio() (oops).
+Rob and Elliott simultaneously spotted ps padding each line to 99999
+chars when there's no tty (serial console or adb); now it pads to 80 in
+that case but also switches on -w to avoid field truncation. The "tty"
+field also sometimes had trailing debris (that's fixed now). And "top" was
+endlessly redrawing with out tty because receipt of the ANSI size probe
+results would set SIGWINCH, and handling that sent another ansi probe. (Sigh.)
+And while we're there, replace "ADDR" with "BIT" in ps -l so there are
+more than 4 chars left for the "CMD" field on 64 bit systems.</p>
+
+<p>Izabera pointed out that split -b and -l can't mix, and suggested seq should
+multiply to avoid accumulating rounding errors from repeated fractional
+increments. Wang Xiao Jian fixed a bug in sort -k.
+Elliott let getprop use the @ character in property names, and
+Dimitry Ivanov removed the name length limit for system properties.
+Elliott also improved some error reporting and improved top -H's display
+of thread names.
+
+<p>Josh Gao pointed out that recursive operations on . and .. could be ignored
+in chmod -R (and the resulting generic fix to dirtree_notdotdot() fixed
+it in several other places).</p>
+
+<p>Justin Cormack caught tar producing a warning to stdout that screwed up
+"tar c" to stdout.
+Rob fixed an option parsing bug (where switching off a --longopt in menuconfig
+confused the parser), and another one where an option excluding itself
+(ala "abc[-ab][!abc]" with "command -a -b") would segfault.</p>
+
+<p>There's some sort of gcc stack over-optimization bug where musl-libc's
+version of vfork() doesn't get marked with attribute(returns_twice) so
+stack varabiles in the same function after that get semi-randomly overwritten
+when the optimizer decides to reclaim the space. So add the attribute
+to the function the XVFORK() wrapper macro calls. (It's a nommu thing.)</p>
+
+<p>Fixed a couple variable size mismatch bugs that were only tested on 64 bit
+(printf %x 64) or only tested on 32 bit (modprobe), removed some
+unnecessary casts in stat.</p>
+
+<p>Continuing attempts to build under Android NDK brought up that posix
+defines the global 'stdout' as a macro, which older versions of bionic
+turned into an array member, but a function was using it as an argument
+name. (This worked in the AOSP build because it only builds against current
+bionic, where there's a global 'stdout'.)</p>
+
+<p>Several commits argued with clang's warning generation, eventually
+settling on a variant of __attribute__((__shut_up__)).</p>
+
+<p>Android should no longer give spurious error messages
+when you "ps -A | head" about EPIPE on output. (Older versions of bionic
+set an error handler on SIGPIPE, but it shouldn't do that now. More recent
+versions of adb set the SIGPIPE handler to SIGIGN instead of SIGDFL,
+leading to write returning an error message instead of silently killing
+the program. So we set it back to the default.)</p>
+
+<p><u>Docs</u>:
+Removed website link to the gmane archive (which didn't survive gmane's
+change of ownership). The FAQ now answers a _second_ question. (Woo!)
+Some roadmap updates.</p>
+
+<p><u>Build tweaks</u>:
+Upgraded "make install_airlock" target to only warn about missing
+commands (unless $PEDANTIC is set) when it sets up the hermetic build
+path. (The plan is still to implement everything but the toolchain
+binaries in toybox, but in the meantime we're symlinking other stuff from
+the $HOST that isn't ready yet. See
+<a href=https://github.com/landley/mkroot>mkroot</a> for an example using
+this.)</p>
+
+<p>Elliott and Rob continue to poke at building toybox with Android's NDK,
+but it's a work in progress (<a href=http://lists.landley.net/pipermail/toybox-landley.net/2016-December/008767.html>thread</a>). Various changes
+removing libcutils dependencies and adding an selinux dependency to getprop
+are fallout from this.</p>
+
+<p>Cross-compiling from Macs needs to use "gsed" instead of apple's
+version, so teach the build to use that name if it exists in the $PATH.
+If you try to build without running config first, you should get better
+error reporting now. Added a workaround for Centos' broken "which" command
+producing output when it _can't_ find a name in the $PATH.</p>
+
+<p><u>Library</u>:
+The new dirtree flag DIRTREE_PROC skips non-numeric entries so things
+like ps and top can scan /proc more efficiently.</p>
+
 <a name="21-10-2016" /><a href="#21-10-2016"><hr><h2><b>October 21, 2016</b></h2></a>
 <blockquote><p>Probability factor of one to one. We have normality. I repeat,
 we have normality. Anything you still can't cope with is therefore your

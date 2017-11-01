@@ -50,7 +50,7 @@ static void do_elf_file(int fd, struct stat *sb)
   int stripped = 1;
   char *map;
   off_t phoff, shoff;
-  int phsize, phnum, shsize, shnum;
+  int phentsize, phnum, shsize, shnum;
 
   printf("ELF ");
 
@@ -89,27 +89,32 @@ static void do_elf_file(int fd, struct stat *sb)
 
   bits--;
   // If what we've seen so far doesn't seem consistent, bail.
-  if (!((bits&1)==bits && endian &&
-       (i = elf_int(toybuf+42+12*bits, 2)) == 32+24*bits)) {
+  if (!((bits&1)==bits && endian)) {
     printf(", corrupt?\n");
     return;
   }
 
   // Stash what we need from the header; it's okay to reuse toybuf after this.
-  phsize = i;
+  phentsize = elf_int(toybuf+42+12*bits, 2);
   phnum = elf_int(toybuf+44+12*bits, 2);
   phoff = elf_int(toybuf+28+4*bits, 4+4*bits);
   shsize = elf_int(toybuf+46+12*bits, 2);
   shnum = elf_int(toybuf+48+12*bits, 2);
   shoff = elf_int(toybuf+32+8*bits, 4+4*bits);
 
-  map = mmap(0, sb->st_size, PROT_READ, MAP_SHARED, fd, 0);
-  if (!map) perror_exit("mmap");
+  // With binutils, phentsize seems to only be non-zero if phnum is non-zero.
+  // Such ELF files are rare, but do exist. (Android's crtbegin files, say.)
+  if (phnum && (phentsize != 32+24*bits)) {
+    printf(", corrupt phentsize %d?\n", phentsize);
+    return;
+  }
 
-  // We need to read the phdrs for dynamic vs static and any notes.
+  map = xmmap(0, sb->st_size, PROT_READ, MAP_SHARED, fd, 0);
+
+  // We need to read the phdrs for dynamic vs static.
   // (Note: fields got reordered for 64 bit)
   for (i = 0; i<phnum; i++) {
-    char *phdr = map+phoff+i*phsize;
+    char *phdr = map+phoff+i*phentsize;
     int p_type = elf_int(phdr, 4);
     long long p_offset, p_filesz;
 
@@ -122,44 +127,51 @@ static void do_elf_file(int fd, struct stat *sb)
 
     if (p_type==3 /*PT_INTERP*/)
       printf(", dynamic (%.*s)", (int)p_filesz, map+p_offset);
-    else {
-      char *note = map+p_offset;
+  }
+  if (!dynamic) printf(", static");
 
-      // A PT_NOTE phdr is a sequence of entries, each consisting of an
+  // We need to read the shdrs for stripped/unstripped and any notes.
+  // Notes are in program headers *and* section headers, but some files don't
+  // contain program headers, so we prefer to check here.
+  // (Note: fields got reordered for 64 bit)
+  for (i = 0; i<shnum; i++) {
+    char *shdr = map+shoff+i*shsize;
+    int sh_type = elf_int(shdr+4, 4);
+    long sh_offset = elf_int(shdr+8+8*(bits+1), 4*(bits+1));
+    int sh_size = elf_int(shdr+8+12*(bits+1), 4);
+
+    if (sh_type == 2 /*SHT_SYMTAB*/) {
+      stripped = 0;
+      break;
+    } else if (sh_type == 7 /*SHT_NOTE*/) {
+      char *note = map+sh_offset;
+
+      // An ELF note is a sequence of entries, each consisting of an
       // ndhr followed by n_namesz+n_descsz bytes of data (each of those
       // rounded up to the next 4 bytes, without this being reflected in
       // the header byte counts themselves).
-      while (p_filesz >= 3*4) { // Don't try to read a truncated entry.
+      while (sh_size >= 3*4) { // Don't try to read a truncated entry.
         int n_namesz = elf_int(note, 4);
         int n_descsz = elf_int(note+4, 4);
         int n_type = elf_int(note+8, 4);
         int notesz = 3*4 + ((n_namesz+3)&~3) + ((n_descsz+3)&~3);
 
         if (n_namesz==4 && !memcmp(note+12, "GNU", 4)) {
-          if (n_type == 3 /*NT_GNU_BUILD_ID*/) {
+          if (n_type==3 /*NT_GNU_BUILD_ID*/) {
             printf(", BuildID=");
             for (j = 0; j < n_descsz; ++j) printf("%02x", note[16 + j]);
           }
         } else if (n_namesz==8 && !memcmp(note+12, "Android", 8)) {
-          if (n_type==1) printf(", for Android %d", (int)elf_int(note+20, 4));
+          if (n_type==1 /*.android.note.ident*/) {
+            printf(", for Android %d", (int)elf_int(note+20, 4));
+            if (n_descsz > 24)
+              printf(", built by NDK %.64s (%.64s)", note+24, note+24+64);
+          }
         }
 
         note += notesz;
-        p_filesz -= notesz;
+        sh_size -= notesz;
       }
-    }
-  }
-  if (!dynamic) printf(", static");
-
-  // We need to read the shdrs for stripped/unstripped.
-  // (Note: fields got reordered for 64 bit)
-  for (i = 0; i<shnum; i++) {
-    char *shdr = map+shoff+i*shsize;
-    int sh_type = elf_int(shdr+4, 4);
-
-    if (sh_type == 2 /*SHT_SYMTAB*/) {
-      stripped = 0;
-      break;
     }
   }
   printf(", %sstripped", stripped ? "" : "not ");
@@ -206,8 +218,7 @@ static void do_regular_file(int fd, char *name, struct stat *sb)
       (int)peek_le(s, 2), (int)peek_le(s+8, 2));
 
   // TODO: parsing JPEG for width/height is harder than GIF or PNG.
-  else if (len>32 && memcmp(toybuf, "\xff\xd8", 2) == 0)
-    xprintf("JPEG image data\n");
+  else if (len>32 && !memcmp(toybuf, "\xff\xd8", 2)) xputs("JPEG image data");
 
   // https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html
   else if (len>8 && strstart(&s, "\xca\xfe\xba\xbe"))
@@ -219,6 +230,7 @@ static void do_regular_file(int fd, char *name, struct stat *sb)
   // cpio archive ends with a record for "TARGET!!!"
   else if (len>85 && strstart(&s, "07070")) {
     char *cpioformat = "unknown type";
+
     if (toybuf[5] == '7') cpioformat = "pre-SVR4 or odc";
     else if (toybuf[5] == '1') cpioformat = "SVR4 with no CRC";
     else if (toybuf[5] == '2') cpioformat = "SVR4 with CRC";
@@ -227,15 +239,37 @@ static void do_regular_file(int fd, char *name, struct stat *sb)
     if (magic == 0143561) printf("byte-swapped ");
     xprintf("cpio archive\n");
   // tar archive (ustar/pax or gnu)
-  } else if (len>500 && !strncmp(s+257, "ustar", 5)) {
+  } else if (len>500 && !strncmp(s+257, "ustar", 5))
     xprintf("POSIX tar archive%s\n", strncmp(s+262,"  ",2)?"":" (GNU)");
   // zip/jar/apk archive, ODF/OOXML document, or such
-  } else if (len>5 && strstart(&s, "PK\03\04")) {
-    int ver = (int)(char)(toybuf[4]);
+  else if (len>5 && strstart(&s, "PK\03\04")) {
+    int ver = toybuf[4];
+
     xprintf("Zip archive data");
-    if (ver)
-      xprintf(", requires at least v%d.%d to extract", ver/10, ver%10);
+    if (ver) xprintf(", requires at least v%d.%d to extract", ver/10, ver%10);
     xputc('\n');
+  } else if (len>4 && strstart(&s, "BZh") && isdigit(*s))
+    xprintf("bzip2 compressed data, block size = %c00k\n", *s);
+  else if (len>10 && strstart(&s, "\x1f\x8b")) xputs("gzip compressed data");
+  else if (len>32 && !memcmp(s+1, "\xfa\xed\xfe", 3)) {
+    int bit = s[0]=='\xce'?32:64;
+    char *what;
+
+    xprintf("Mach-O %d-bit ", bit);
+
+    if (s[4] == 7) what = (bit==32)?"x86":"x86-";
+    else if (s[4] == 12) what = "arm";
+    else if (s[4] == 18) what = "ppc";
+    else what = NULL;
+    if (what) xprintf("%s%s ", what, (bit==32)?"":"64");
+    else xprintf("(bad arch %d) ", s[4]);
+
+    if (s[12] == 1) what = "object";
+    else if (s[12] == 2) what = "executable";
+    else if (s[12] == 6) what = "shared library";
+    else what = NULL;
+    if (what) xprintf("%s\n", what);
+    else xprintf("(bad type %d)\n", s[9]);
   } else {
     char *what = 0;
     int i, bytes;
@@ -252,7 +286,7 @@ static void do_regular_file(int fd, char *name, struct stat *sb)
     } else for (i = 0; i<len; ++i) {
       if (!(isprint(toybuf[i]) || isspace(toybuf[i]))) {
         wchar_t wc;
-        if ((bytes = mbrtowc(&wc, s+i, len-i, 0))>0 && wcwidth(wc)>=0) {
+        if ((bytes = utf8towc(&wc, s+i, len-i))>0 && wcwidth(wc)>=0) {
           i += bytes-1;
           if (!what) what = "UTF-8 text";
         } else {
