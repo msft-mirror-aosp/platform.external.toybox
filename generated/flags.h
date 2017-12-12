@@ -450,14 +450,15 @@
 #undef FOR_deallocvt
 #endif
 
-// df HPkht*a[-HPkh] HPkht*a[-HPkh]
+// df HPkhit*a[-HPkh] HPkhit*a[-HPkh]
 #undef OPTSTR_df
-#define OPTSTR_df "HPkht*a[-HPkh]"
+#define OPTSTR_df "HPkhit*a[-HPkh]"
 #ifdef CLEANUP_df
 #undef CLEANUP_df
 #undef FOR_df
 #undef FLAG_a
 #undef FLAG_t
+#undef FLAG_i
 #undef FLAG_h
 #undef FLAG_k
 #undef FLAG_P
@@ -2431,6 +2432,17 @@
 #undef FLAG_t
 #endif
 
+// stty ?aF:g[!ag] ?aF:g[!ag]
+#undef OPTSTR_stty
+#define OPTSTR_stty "?aF:g[!ag]"
+#ifdef CLEANUP_stty
+#undef CLEANUP_stty
+#undef FOR_stty
+#undef FLAG_g
+#undef FLAG_F
+#undef FLAG_a
+#endif
+
 // su   lmpc:s:
 #undef OPTSTR_su
 #define OPTSTR_su "lmpc:s:"
@@ -2773,12 +2785,13 @@
 #undef FLAG_r
 #endif
 
-// time <1^p <1^p
+// time <1^pv <1^pv
 #undef OPTSTR_time
-#define OPTSTR_time "<1^p"
+#define OPTSTR_time "<1^pv"
 #ifdef CLEANUP_time
 #undef CLEANUP_time
 #undef FOR_time
+#undef FLAG_v
 #undef FLAG_p
 #endif
 
@@ -3031,13 +3044,14 @@
 #undef FLAG_f
 #endif
 
-// uptime >0s >0s
+// uptime >0ps >0ps
 #undef OPTSTR_uptime
-#define OPTSTR_uptime ">0s"
+#define OPTSTR_uptime ">0ps"
 #ifdef CLEANUP_uptime
 #undef CLEANUP_uptime
 #undef FOR_uptime
 #undef FLAG_s
+#undef FLAG_p
 #endif
 
 // useradd   <1>2u#<0G:s:g:h:SDH
@@ -3617,10 +3631,11 @@
 #endif
 #define FLAG_a (1<<0)
 #define FLAG_t (1<<1)
-#define FLAG_h (1<<2)
-#define FLAG_k (1<<3)
-#define FLAG_P (1<<4)
-#define FLAG_H (1<<5)
+#define FLAG_i (1<<2)
+#define FLAG_h (1<<3)
+#define FLAG_k (1<<4)
+#define FLAG_P (1<<5)
+#define FLAG_H (1<<6)
 #endif
 
 #ifdef FOR_dhcp
@@ -5276,6 +5291,15 @@
 #define FLAG_t (1<<4)
 #endif
 
+#ifdef FOR_stty
+#ifndef TT
+#define TT this.stty
+#endif
+#define FLAG_g (1<<0)
+#define FLAG_F (1<<1)
+#define FLAG_a (1<<2)
+#endif
+
 #ifdef FOR_su
 #ifndef TT
 #define TT this.su
@@ -5576,7 +5600,8 @@
 #ifndef TT
 #define TT this.time
 #endif
-#define FLAG_p (1<<0)
+#define FLAG_v (1<<0)
+#define FLAG_p (1<<1)
 #endif
 
 #ifdef FOR_timeout
@@ -5799,6 +5824,7 @@
 #define TT this.uptime
 #endif
 #define FLAG_s (1<<0)
+#define FLAG_p (1<<1)
 #endif
 
 #ifdef FOR_useradd
