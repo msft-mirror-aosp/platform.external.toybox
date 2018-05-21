@@ -54,6 +54,7 @@ LOCAL_PATH := $(call my-dir)
 
 common_SRC_FILES := \
     lib/args.c \
+    lib/commas.c \
     lib/dirtree.c \
     lib/getmountlist.c \
     lib/help.c \
@@ -66,7 +67,6 @@ common_SRC_FILES := \
     lib/xwrap.c \
     main.c \
     toys/android/getenforce.c \
-    toys/android/getprop.c \
     toys/android/load_policy.c \
     toys/android/log.c \
     toys/android/restorecon.c \
@@ -121,6 +121,7 @@ common_SRC_FILES := \
     toys/other/modinfo.c \
     toys/other/mountpoint.c \
     toys/other/nbd_client.c \
+    toys/other/nsenter.c \
     toys/other/partprobe.c \
     toys/other/pivot_root.c \
     toys/other/pmap.c \
@@ -130,6 +131,7 @@ common_SRC_FILES := \
     toys/other/realpath.c \
     toys/other/rev.c \
     toys/other/rmmod.c \
+    toys/other/setfattr.c \
     toys/other/setsid.c \
     toys/other/stat.c \
     toys/other/swapoff.c \
@@ -141,6 +143,7 @@ common_SRC_FILES := \
     toys/other/truncate.c \
     toys/other/uptime.c \
     toys/other/usleep.c \
+    toys/other/uuidgen.c \
     toys/other/vconfig.c \
     toys/other/vmstat.c \
     toys/other/which.c \
@@ -149,12 +152,12 @@ common_SRC_FILES := \
     toys/pending/dd.c \
     toys/pending/diff.c \
     toys/pending/expr.c \
+    toys/pending/fmt.c \
     toys/pending/getfattr.c \
     toys/pending/gzip.c \
     toys/pending/lsof.c \
     toys/pending/modprobe.c \
     toys/pending/more.c \
-    toys/pending/setfattr.c \
     toys/pending/stty.c \
     toys/pending/tar.c \
     toys/pending/tr.c \
@@ -228,7 +231,6 @@ common_CFLAGS := \
     -Wno-missing-field-initializers \
     -Wno-sign-compare \
     -Wno-string-plus-int \
-    -Wno-uninitialized \
     -Wno-unused-parameter \
     -funsigned-char \
     -ffunction-sections -fdata-sections \
@@ -240,8 +242,6 @@ common_CFLAGS += -DTOYBOX_VENDOR=\"-android\"
 
 # not usable on Android?: freeramdisk fsfreeze install makedevs nbd-client
 #                         partprobe pivot_root pwdx rev rfkill vconfig
-# currently prefer BSD system/core/toolbox: dd
-# currently prefer BSD external/netcat: nc netcat
 # currently prefer external/efs2progs: blkid chattr lsattr
 
 ALL_TOOLS := \
@@ -265,6 +265,7 @@ ALL_TOOLS := \
     cpio \
     cut \
     date \
+    dd \
     df \
     diff \
     dirname \
@@ -280,9 +281,9 @@ ALL_TOOLS := \
     file \
     find \
     flock \
+    fmt \
     free \
     getenforce \
-    getprop \
     groups \
     gunzip \
     gzip \
@@ -320,10 +321,13 @@ ALL_TOOLS := \
     mount \
     mountpoint \
     mv \
+    nc \
+    netcat \
     netstat \
     nice \
     nl \
     nohup \
+    nsenter \
     od \
     paste \
     patch \
@@ -384,10 +388,12 @@ ALL_TOOLS := \
     uname \
     uniq \
     unix2dos \
+    unshare \
     uptime \
     usleep \
     uudecode \
     uuencode \
+    uuidgen \
     vmstat \
     wc \
     which \

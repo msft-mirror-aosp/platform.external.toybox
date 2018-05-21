@@ -212,6 +212,7 @@ struct base64_data {
 
 struct blockdev_data {
   long bsz;
+  long ra;
 };
 
 // toys/other/chrt.c
@@ -348,6 +349,12 @@ struct oneit_data {
   char *console;
 };
 
+// toys/other/setfattr.c
+
+struct setfattr_data {
+  char *x, *v, *n;
+};
+
 // toys/other/shred.c
 
 struct shred_data {
@@ -411,6 +418,7 @@ struct truncate_data {
 struct xxd_data {
   long s;
   long g;
+  long o;
   long l;
   long c;
 };
@@ -583,6 +591,12 @@ struct fdisk_data {
   long cylinders;
 };
 
+// toys/pending/fmt.c
+
+struct fmt_data {
+  int width;
+};
+
 // toys/pending/fold.c
 
 struct fold_data {
@@ -645,15 +659,6 @@ struct host_data {
   char *type_str;
 };
 
-// toys/pending/iconv.c
-
-struct iconv_data {
-  char *from;
-  char *to;
-
-  void *ic;
-};
-
 // toys/pending/ip.c
 
 struct ip_data {
@@ -695,13 +700,6 @@ struct last_data {
   struct arg_list *list;
 };
 
-// toys/pending/logger.c
-
-struct logger_data {
-  char *priority_arg;
-  char *ident;
-};
-
 // toys/pending/lsof.c
 
 struct lsof_data {
@@ -737,8 +735,6 @@ struct mke2fs_data {
   unsigned nextblock;    // Next data block to allocate
   unsigned nextgroup;    // Next group we'll be allocating from
   int fsfd;              // File descriptor of filesystem (to output to).
-
-  struct ext2_superblock sb;
 };
 
 // toys/pending/modprobe.c
@@ -769,26 +765,22 @@ struct openvt_data {
 // toys/pending/ping.c
 
 struct ping_data {
-  long wait_exit;
-  long wait_resp;
-  char *iface;
-  long size;
-  long count;
-  long ttl;
+  long w;
+  long W;
+  char *i;
+  char *I;
+  long s;
+  long c;
+  long t;
 
   int sock;
+  long i_ms;
 };
 
 // toys/pending/route.c
 
 struct route_data {
   char *family;
-};
-
-// toys/pending/setfattr.c
-
-struct setfattr_data {
-  char *x, *v, *n;
 };
 
 // toys/pending/sh.c
@@ -1128,6 +1120,15 @@ struct head_data {
   int file_no;
 };
 
+// toys/posix/iconv.c
+
+struct iconv_data {
+  char *from;
+  char *to;
+
+  void *ic;
+};
+
 // toys/posix/id.c
 
 struct id_data {
@@ -1139,6 +1140,13 @@ struct id_data {
 struct kill_data {
   char *signame;
   struct arg_list *olist;
+};
+
+// toys/posix/logger.c
+
+struct logger_data {
+  char *priority;
+  char *ident;
 };
 
 // toys/posix/ls.c
@@ -1248,13 +1256,15 @@ struct ps_data {
     struct {
       long n;
       long m;
-      long d;
+      char *d;
       long s;
       struct arg_list *u;
       struct arg_list *p;
       struct arg_list *o;
       struct arg_list *k;
       struct arg_list *O;
+
+      long d_ms;
     } top;
     struct {
       char *L;
@@ -1443,6 +1453,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct setfattr_data setfattr;
 	struct shred_data shred;
 	struct stat_data stat;
 	struct swapon_data swapon;
@@ -1465,6 +1476,7 @@ extern union global_union {
 	struct dumpleases_data dumpleases;
 	struct expr_data expr;
 	struct fdisk_data fdisk;
+	struct fmt_data fmt;
 	struct fold_data fold;
 	struct fsck_data fsck;
 	struct getfattr_data getfattr;
@@ -1472,13 +1484,11 @@ extern union global_union {
 	struct groupadd_data groupadd;
 	struct gzip_data gzip;
 	struct host_data host;
-	struct iconv_data iconv;
 	struct ip_data ip;
 	struct ipcrm_data ipcrm;
 	struct ipcs_data ipcs;
 	struct klogd_data klogd;
 	struct last_data last;
-	struct logger_data logger;
 	struct lsof_data lsof;
 	struct mke2fs_data mke2fs;
 	struct modprobe_data modprobe;
@@ -1486,7 +1496,6 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct ping_data ping;
 	struct route_data route;
-	struct setfattr_data setfattr;
 	struct sh_data sh;
 	struct stty_data stty;
 	struct sulogin_data sulogin;
@@ -1519,8 +1528,10 @@ extern union global_union {
 	struct find_data find;
 	struct grep_data grep;
 	struct head_data head;
+	struct iconv_data iconv;
 	struct id_data id;
 	struct kill_data kill;
+	struct logger_data logger;
 	struct ls_data ls;
 	struct mkdir_data mkdir;
 	struct mkfifo_data mkfifo;

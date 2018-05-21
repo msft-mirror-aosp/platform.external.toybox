@@ -92,14 +92,16 @@
 #undef FOR_blkid
 #endif
 
-// blockdev <1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(flushbufs)(rereadpt) <1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(flushbufs)(rereadpt)
+// blockdev <1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(getra)(setra)#<0(flushbufs)(rereadpt) <1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(getra)(setra)#<0(flushbufs)(rereadpt)
 #undef OPTSTR_blockdev
-#define OPTSTR_blockdev "<1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(flushbufs)(rereadpt)"
+#define OPTSTR_blockdev "<1>1(setro)(setrw)(getro)(getss)(getbsz)(setbsz)#<0(getsz)(getsize)(getsize64)(getra)(setra)#<0(flushbufs)(rereadpt)"
 #ifdef CLEANUP_blockdev
 #undef CLEANUP_blockdev
 #undef FOR_blockdev
 #undef FLAG_rereadpt
 #undef FLAG_flushbufs
+#undef FLAG_setra
+#undef FLAG_getra
 #undef FLAG_getsize64
 #undef FLAG_getsize
 #undef FLAG_getsz
@@ -329,9 +331,9 @@
 #undef FOR_count
 #endif
 
-// cp <2(preserve):;RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni] <2(preserve):;RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni]
+// cp <2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni] <2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<2(preserve):;RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni]"
+#define OPTSTR_cp "<2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -351,6 +353,8 @@
 #undef FLAG_L
 #undef FLAG_H
 #undef FLAG_R
+#undef FLAG_parents
+#undef FLAG_D
 #undef FLAG_preserve
 #endif
 
@@ -373,6 +377,14 @@
 #undef FLAG_m
 #undef FLAG_trailer
 #undef FLAG_no_preserve_owner
+#endif
+
+// crc32    
+#undef OPTSTR_crc32
+#define OPTSTR_crc32 0
+#ifdef CLEANUP_crc32
+#undef CLEANUP_crc32
+#undef FOR_crc32
 #endif
 
 // crond   fbSl#<0=8d#<0L:c:[-bf][-LS][-ld]
@@ -448,6 +460,94 @@
 #ifdef CLEANUP_deallocvt
 #undef CLEANUP_deallocvt
 #undef FOR_deallocvt
+#endif
+
+// demo_many_options   ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba
+#undef OPTSTR_demo_many_options
+#define OPTSTR_demo_many_options "ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba"
+#ifdef CLEANUP_demo_many_options
+#undef CLEANUP_demo_many_options
+#undef FOR_demo_many_options
+#undef FLAG_a
+#undef FLAG_b
+#undef FLAG_c
+#undef FLAG_d
+#undef FLAG_e
+#undef FLAG_f
+#undef FLAG_g
+#undef FLAG_h
+#undef FLAG_i
+#undef FLAG_j
+#undef FLAG_k
+#undef FLAG_l
+#undef FLAG_m
+#undef FLAG_n
+#undef FLAG_o
+#undef FLAG_p
+#undef FLAG_q
+#undef FLAG_r
+#undef FLAG_s
+#undef FLAG_t
+#undef FLAG_u
+#undef FLAG_v
+#undef FLAG_w
+#undef FLAG_x
+#undef FLAG_y
+#undef FLAG_z
+#undef FLAG_A
+#undef FLAG_B
+#undef FLAG_C
+#undef FLAG_D
+#undef FLAG_E
+#undef FLAG_F
+#undef FLAG_G
+#undef FLAG_H
+#undef FLAG_I
+#undef FLAG_J
+#undef FLAG_K
+#undef FLAG_L
+#undef FLAG_M
+#undef FLAG_N
+#undef FLAG_O
+#undef FLAG_P
+#undef FLAG_Q
+#undef FLAG_R
+#undef FLAG_S
+#undef FLAG_T
+#undef FLAG_U
+#undef FLAG_V
+#undef FLAG_W
+#undef FLAG_X
+#undef FLAG_Y
+#undef FLAG_Z
+#endif
+
+// demo_number   hdbs
+#undef OPTSTR_demo_number
+#define OPTSTR_demo_number "hdbs"
+#ifdef CLEANUP_demo_number
+#undef CLEANUP_demo_number
+#undef FOR_demo_number
+#undef FLAG_s
+#undef FLAG_b
+#undef FLAG_d
+#undef FLAG_h
+#endif
+
+// demo_scankey    
+#undef OPTSTR_demo_scankey
+#define OPTSTR_demo_scankey 0
+#ifdef CLEANUP_demo_scankey
+#undef CLEANUP_demo_scankey
+#undef FOR_demo_scankey
+#endif
+
+// demo_utf8towc    
+#undef OPTSTR_demo_utf8towc
+#define OPTSTR_demo_utf8towc 0
+#ifdef CLEANUP_demo_utf8towc
+#undef CLEANUP_demo_utf8towc
+#undef FOR_demo_utf8towc
 #endif
 
 // df HPkhit*a[-HPkh] HPkhit*a[-HPkh]
@@ -605,9 +705,9 @@
 #undef FOR_dos2unix
 #endif
 
-// du d#<0hmlcaHkKLsx[-HL][-kKmh] d#<0hmlcaHkKLsx[-HL][-kKmh]
+// du d#<0=-1hmlcaHkKLsx[-HL][-kKmh] d#<0=-1hmlcaHkKLsx[-HL][-kKmh]
 #undef OPTSTR_du
-#define OPTSTR_du "d#<0hmlcaHkKLsx[-HL][-kKmh]"
+#define OPTSTR_du "d#<0=-1hmlcaHkKLsx[-HL][-kKmh]"
 #ifdef CLEANUP_du
 #undef CLEANUP_du
 #undef FOR_du
@@ -765,6 +865,15 @@
 #undef FLAG_n
 #endif
 
+// fmt w# w#
+#undef OPTSTR_fmt
+#define OPTSTR_fmt "w#"
+#ifdef CLEANUP_fmt
+#undef CLEANUP_fmt
+#undef FOR_fmt
+#undef FLAG_w
+#endif
+
 // fold   bsuw#<1
 #undef OPTSTR_fold
 #define OPTSTR_fold "bsuw#<1"
@@ -864,6 +973,15 @@
 #undef FLAG_P
 #endif
 
+// getconf   l
+#undef OPTSTR_getconf
+#define OPTSTR_getconf "l"
+#ifdef CLEANUP_getconf
+#undef CLEANUP_getconf
+#undef FOR_getconf
+#undef FLAG_l
+#endif
+
 // getenforce >0 >0
 #undef OPTSTR_getenforce
 #define OPTSTR_getenforce ">0"
@@ -883,7 +1001,7 @@
 #undef FLAG_d
 #endif
 
-// getprop >2Z >2Z
+// getprop   >2Z
 #undef OPTSTR_getprop
 #define OPTSTR_getprop ">2Z"
 #ifdef CLEANUP_getprop
@@ -974,9 +1092,9 @@
 #undef FOR_groups
 #endif
 
-// gunzip cdfk123456789 cdfk123456789
+// gunzip cdfk123456789[-123456789] cdfk123456789[-123456789]
 #undef OPTSTR_gunzip
-#define OPTSTR_gunzip "cdfk123456789"
+#define OPTSTR_gunzip "cdfk123456789[-123456789]"
 #ifdef CLEANUP_gunzip
 #undef CLEANUP_gunzip
 #undef FOR_gunzip
@@ -995,9 +1113,9 @@
 #undef FLAG_c
 #endif
 
-// gzip cdfk123456789 cdfk123456789
+// gzip cdfk123456789[-123456789] cdfk123456789[-123456789]
 #undef OPTSTR_gzip
-#define OPTSTR_gzip "cdfk123456789"
+#define OPTSTR_gzip "cdfk123456789[-123456789]"
 #ifdef CLEANUP_gzip
 #undef CLEANUP_gzip
 #undef FOR_gzip
@@ -1203,9 +1321,9 @@
 #undef FOR_iorenice
 #endif
 
-// iotop >0AaKOHk*o*p*u*s#<1=7d#=3<1m#n#<1bq >0AaKOHk*o*p*u*s#<1=7d#=3<1m#n#<1bq
+// iotop >0AaKOHk*o*p*u*s#<1=7d:m#n#<1bq >0AaKOHk*o*p*u*s#<1=7d:m#n#<1bq
 #undef OPTSTR_iotop
-#define OPTSTR_iotop ">0AaKOHk*o*p*u*s#<1=7d#=3<1m#n#<1bq"
+#define OPTSTR_iotop ">0AaKOHk*o*p*u*s#<1=7d:m#n#<1bq"
 #ifdef CLEANUP_iotop
 #undef CLEANUP_iotop
 #undef FOR_iotop
@@ -1722,9 +1840,9 @@
 #undef FLAG_n
 #endif
 
-// netcat ^tlLw#W#p#s:q#f:[!tlL][!Lw] ^tlLw#W#p#s:q#f:[!tlL][!Lw]
+// netcat ^tlLw#<1W#<1p#<1>65535s:q#<1f:[!tlL][!Lw] ^tlLw#<1W#<1p#<1>65535s:q#<1f:[!tlL][!Lw]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tlLw#W#p#s:q#f:[!tlL][!Lw]"
+#define OPTSTR_netcat "^tlLw#<1W#<1p#<1>65535s:q#<1f:[!tlL][!Lw]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
@@ -1799,7 +1917,7 @@
 #undef FLAG_all
 #endif
 
-// nsenter   <1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
+// nsenter <1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
 #undef OPTSTR_nsenter
 #define OPTSTR_nsenter "<1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);"
 #ifdef CLEANUP_nsenter
@@ -1946,17 +2064,19 @@
 #undef FLAG_s
 #endif
 
-// ping   <1>1t#<0>255c#<0s#<0>65535I:W#<0w#<0q46[-46]
+// ping   <1>1t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=10w#<0qf46[-46]
 #undef OPTSTR_ping
-#define OPTSTR_ping "<1>1t#<0>255c#<0s#<0>65535I:W#<0w#<0q46[-46]"
+#define OPTSTR_ping "<1>1t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=10w#<0qf46[-46]"
 #ifdef CLEANUP_ping
 #undef CLEANUP_ping
 #undef FOR_ping
 #undef FLAG_6
 #undef FLAG_4
+#undef FLAG_f
 #undef FLAG_q
 #undef FLAG_w
 #undef FLAG_W
+#undef FLAG_i
 #undef FLAG_I
 #undef FLAG_s
 #undef FLAG_c
@@ -2081,16 +2201,17 @@
 #undef FOR_readahead
 #endif
 
-// readlink <1>1fenq[-fe] <1>1fenq[-fe]
+// readlink <1>1nqmef[-mef] <1>1nqmef[-mef]
 #undef OPTSTR_readlink
-#define OPTSTR_readlink "<1>1fenq[-fe]"
+#define OPTSTR_readlink "<1>1nqmef[-mef]"
 #ifdef CLEANUP_readlink
 #undef CLEANUP_readlink
 #undef FOR_readlink
+#undef FLAG_f
+#undef FLAG_e
+#undef FLAG_m
 #undef FLAG_q
 #undef FLAG_n
-#undef FLAG_e
-#undef FLAG_f
 #endif
 
 // realpath <1 <1
@@ -2673,93 +2794,6 @@
 #undef FOR_test
 #endif
 
-// test_human_readable   <1>1ibs
-#undef OPTSTR_test_human_readable
-#define OPTSTR_test_human_readable "<1>1ibs"
-#ifdef CLEANUP_test_human_readable
-#undef CLEANUP_test_human_readable
-#undef FOR_test_human_readable
-#undef FLAG_s
-#undef FLAG_b
-#undef FLAG_i
-#endif
-
-// test_many_options   ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba
-#undef OPTSTR_test_many_options
-#define OPTSTR_test_many_options "ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba"
-#ifdef CLEANUP_test_many_options
-#undef CLEANUP_test_many_options
-#undef FOR_test_many_options
-#undef FLAG_a
-#undef FLAG_b
-#undef FLAG_c
-#undef FLAG_d
-#undef FLAG_e
-#undef FLAG_f
-#undef FLAG_g
-#undef FLAG_h
-#undef FLAG_i
-#undef FLAG_j
-#undef FLAG_k
-#undef FLAG_l
-#undef FLAG_m
-#undef FLAG_n
-#undef FLAG_o
-#undef FLAG_p
-#undef FLAG_q
-#undef FLAG_r
-#undef FLAG_s
-#undef FLAG_t
-#undef FLAG_u
-#undef FLAG_v
-#undef FLAG_w
-#undef FLAG_x
-#undef FLAG_y
-#undef FLAG_z
-#undef FLAG_A
-#undef FLAG_B
-#undef FLAG_C
-#undef FLAG_D
-#undef FLAG_E
-#undef FLAG_F
-#undef FLAG_G
-#undef FLAG_H
-#undef FLAG_I
-#undef FLAG_J
-#undef FLAG_K
-#undef FLAG_L
-#undef FLAG_M
-#undef FLAG_N
-#undef FLAG_O
-#undef FLAG_P
-#undef FLAG_Q
-#undef FLAG_R
-#undef FLAG_S
-#undef FLAG_T
-#undef FLAG_U
-#undef FLAG_V
-#undef FLAG_W
-#undef FLAG_X
-#undef FLAG_Y
-#undef FLAG_Z
-#endif
-
-// test_scankey    
-#undef OPTSTR_test_scankey
-#define OPTSTR_test_scankey 0
-#ifdef CLEANUP_test_scankey
-#undef CLEANUP_test_scankey
-#undef FOR_test_scankey
-#endif
-
-// test_utf8towc    
-#undef OPTSTR_test_utf8towc
-#define OPTSTR_test_utf8towc 0
-#ifdef CLEANUP_test_utf8towc
-#undef CLEANUP_test_utf8towc
-#undef FOR_test_utf8towc
-#endif
-
 // tftp   <1b#<8>65464r:l:g|p|[!gp]
 #undef OPTSTR_tftp
 #define OPTSTR_tftp "<1b#<8>65464r:l:g|p|[!gp]"
@@ -2806,9 +2840,9 @@
 #undef FLAG_v
 #endif
 
-// top >0O*Hk*o*p*u*s#<1d#=3<1m#n#<1bq[!oO] >0O*Hk*o*p*u*s#<1d#=3<1m#n#<1bq[!oO]
+// top >0O*Hk*o*p*u*s#<1d:m#n#<1bq[!oO] >0O*Hk*o*p*u*s#<1d:m#n#<1bq[!oO]
 #undef OPTSTR_top
-#define OPTSTR_top ">0O*Hk*o*p*u*s#<1d#=3<1m#n#<1bq[!oO]"
+#define OPTSTR_top ">0O*Hk*o*p*u*s#<1d:m#n#<1bq[!oO]"
 #ifdef CLEANUP_top
 #undef CLEANUP_top
 #undef FOR_top
@@ -3020,7 +3054,7 @@
 #undef FOR_unlink
 #endif
 
-// unshare   <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
+// unshare <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
 #undef OPTSTR_unshare
 #define OPTSTR_unshare "<1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);"
 #ifdef CLEANUP_unshare
@@ -3105,6 +3139,16 @@
 #undef FLAG_m
 #endif
 
+// uuidgen >0r(random) >0r(random)
+#undef OPTSTR_uuidgen
+#define OPTSTR_uuidgen ">0r(random)"
+#ifdef CLEANUP_uuidgen
+#undef CLEANUP_uuidgen
+#undef FOR_uuidgen
+#undef FLAG_random
+#undef FLAG_r
+#endif
+
 // vconfig <2>4 <2>4
 #undef OPTSTR_vconfig
 #define OPTSTR_vconfig "<2>4"
@@ -3138,12 +3182,13 @@
 #undef FOR_w
 #endif
 
-// watch   ^<1n#<0=2te
+// watch   ^<1n#<0=2teb
 #undef OPTSTR_watch
-#define OPTSTR_watch "^<1n#<0=2te"
+#define OPTSTR_watch "^<1n#<0=2teb"
 #ifdef CLEANUP_watch
 #undef CLEANUP_watch
 #undef FOR_watch
+#undef FLAG_b
 #undef FLAG_e
 #undef FLAG_t
 #undef FLAG_n
@@ -3188,9 +3233,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^I:E:L#ptxrn#<1s#0 ^I:E:L#ptxrn#<1s#0
+// xargs ^I:E:L#ptxrn#<1s#0[!0E] ^I:E:L#ptxrn#<1s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^I:E:L#ptxrn#<1s#0"
+#define OPTSTR_xargs "^I:E:L#ptxrn#<1s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
@@ -3206,16 +3251,18 @@
 #undef FLAG_I
 #endif
 
-// xxd >1c#<1>4096=16l#g#<1=2prs#[!rs] >1c#<1>4096=16l#g#<1=2prs#[!rs]
+// xxd >1c#l#o#g#<1=2iprs#[!rs] >1c#l#o#g#<1=2iprs#[!rs]
 #undef OPTSTR_xxd
-#define OPTSTR_xxd ">1c#<1>4096=16l#g#<1=2prs#[!rs]"
+#define OPTSTR_xxd ">1c#l#o#g#<1=2iprs#[!rs]"
 #ifdef CLEANUP_xxd
 #undef CLEANUP_xxd
 #undef FOR_xxd
 #undef FLAG_s
 #undef FLAG_r
 #undef FLAG_p
+#undef FLAG_i
 #undef FLAG_g
+#undef FLAG_o
 #undef FLAG_l
 #undef FLAG_c
 #endif
@@ -3236,9 +3283,9 @@
 #undef FOR_yes
 #endif
 
-// zcat cdfk123456789 cdfk123456789
+// zcat cdfk123456789[-123456789] cdfk123456789[-123456789]
 #undef OPTSTR_zcat
-#define OPTSTR_zcat "cdfk123456789"
+#define OPTSTR_zcat "cdfk123456789[-123456789]"
 #ifdef CLEANUP_zcat
 #undef CLEANUP_zcat
 #undef FOR_zcat
@@ -3333,15 +3380,17 @@
 #endif
 #define FLAG_rereadpt (1<<0)
 #define FLAG_flushbufs (1<<1)
-#define FLAG_getsize64 (1<<2)
-#define FLAG_getsize (1<<3)
-#define FLAG_getsz (1<<4)
-#define FLAG_setbsz (1<<5)
-#define FLAG_getbsz (1<<6)
-#define FLAG_getss (1<<7)
-#define FLAG_getro (1<<8)
-#define FLAG_setrw (1<<9)
-#define FLAG_setro (1<<10)
+#define FLAG_setra (1<<2)
+#define FLAG_getra (1<<3)
+#define FLAG_getsize64 (1<<4)
+#define FLAG_getsize (1<<5)
+#define FLAG_getsz (1<<6)
+#define FLAG_setbsz (1<<7)
+#define FLAG_getbsz (1<<8)
+#define FLAG_getss (1<<9)
+#define FLAG_getro (1<<10)
+#define FLAG_setrw (1<<11)
+#define FLAG_setro (1<<12)
 #endif
 
 #ifdef FOR_bootchartd
@@ -3540,7 +3589,9 @@
 #define FLAG_L (1<<12)
 #define FLAG_H (1<<13)
 #define FLAG_R (1<<14)
-#define FLAG_preserve (1<<15)
+#define FLAG_parents (1<<15)
+#define FLAG_D (1<<15)
+#define FLAG_preserve (1<<16)
 #endif
 
 #ifdef FOR_cpio
@@ -3560,6 +3611,12 @@
 #define FLAG_m (1<<9)
 #define FLAG_trailer (1<<10)
 #define FLAG_no_preserve_owner (1<<11)
+#endif
+
+#ifdef FOR_crc32
+#ifndef TT
+#define TT this.crc32
+#endif
 #endif
 
 #ifdef FOR_crond
@@ -3622,6 +3679,86 @@
 #ifdef FOR_deallocvt
 #ifndef TT
 #define TT this.deallocvt
+#endif
+#endif
+
+#ifdef FOR_demo_many_options
+#ifndef TT
+#define TT this.demo_many_options
+#endif
+#define FLAG_a (FORCED_FLAG<<0)
+#define FLAG_b (FORCED_FLAG<<1)
+#define FLAG_c (FORCED_FLAG<<2)
+#define FLAG_d (FORCED_FLAG<<3)
+#define FLAG_e (FORCED_FLAG<<4)
+#define FLAG_f (FORCED_FLAG<<5)
+#define FLAG_g (FORCED_FLAG<<6)
+#define FLAG_h (FORCED_FLAG<<7)
+#define FLAG_i (FORCED_FLAG<<8)
+#define FLAG_j (FORCED_FLAG<<9)
+#define FLAG_k (FORCED_FLAG<<10)
+#define FLAG_l (FORCED_FLAG<<11)
+#define FLAG_m (FORCED_FLAG<<12)
+#define FLAG_n (FORCED_FLAG<<13)
+#define FLAG_o (FORCED_FLAG<<14)
+#define FLAG_p (FORCED_FLAG<<15)
+#define FLAG_q (FORCED_FLAG<<16)
+#define FLAG_r (FORCED_FLAG<<17)
+#define FLAG_s (FORCED_FLAG<<18)
+#define FLAG_t (FORCED_FLAG<<19)
+#define FLAG_u (FORCED_FLAG<<20)
+#define FLAG_v (FORCED_FLAG<<21)
+#define FLAG_w (FORCED_FLAG<<22)
+#define FLAG_x (FORCED_FLAG<<23)
+#define FLAG_y (FORCED_FLAG<<24)
+#define FLAG_z (FORCED_FLAG<<25)
+#define FLAG_A (FORCED_FLAG<<26)
+#define FLAG_B (FORCED_FLAG<<27)
+#define FLAG_C (FORCED_FLAG<<28)
+#define FLAG_D (FORCED_FLAG<<29)
+#define FLAG_E (FORCED_FLAG<<30)
+#define FLAG_F (FORCED_FLAG<<31)
+#define FLAG_G (FORCED_FLAGLL<<32)
+#define FLAG_H (FORCED_FLAGLL<<33)
+#define FLAG_I (FORCED_FLAGLL<<34)
+#define FLAG_J (FORCED_FLAGLL<<35)
+#define FLAG_K (FORCED_FLAGLL<<36)
+#define FLAG_L (FORCED_FLAGLL<<37)
+#define FLAG_M (FORCED_FLAGLL<<38)
+#define FLAG_N (FORCED_FLAGLL<<39)
+#define FLAG_O (FORCED_FLAGLL<<40)
+#define FLAG_P (FORCED_FLAGLL<<41)
+#define FLAG_Q (FORCED_FLAGLL<<42)
+#define FLAG_R (FORCED_FLAGLL<<43)
+#define FLAG_S (FORCED_FLAGLL<<44)
+#define FLAG_T (FORCED_FLAGLL<<45)
+#define FLAG_U (FORCED_FLAGLL<<46)
+#define FLAG_V (FORCED_FLAGLL<<47)
+#define FLAG_W (FORCED_FLAGLL<<48)
+#define FLAG_X (FORCED_FLAGLL<<49)
+#define FLAG_Y (FORCED_FLAGLL<<50)
+#define FLAG_Z (FORCED_FLAGLL<<51)
+#endif
+
+#ifdef FOR_demo_number
+#ifndef TT
+#define TT this.demo_number
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_b (FORCED_FLAG<<1)
+#define FLAG_d (FORCED_FLAG<<2)
+#define FLAG_h (FORCED_FLAG<<3)
+#endif
+
+#ifdef FOR_demo_scankey
+#ifndef TT
+#define TT this.demo_scankey
+#endif
+#endif
+
+#ifdef FOR_demo_utf8towc
+#ifndef TT
+#define TT this.demo_utf8towc
 #endif
 #endif
 
@@ -3894,6 +4031,13 @@
 #define FLAG_n (1<<3)
 #endif
 
+#ifdef FOR_fmt
+#ifndef TT
+#define TT this.fmt
+#endif
+#define FLAG_w (1<<0)
+#endif
+
 #ifdef FOR_fold
 #ifndef TT
 #define TT this.fold
@@ -3977,6 +4121,13 @@
 #define FLAG_P (FORCED_FLAG<<12)
 #endif
 
+#ifdef FOR_getconf
+#ifndef TT
+#define TT this.getconf
+#endif
+#define FLAG_l (FORCED_FLAG<<0)
+#endif
+
 #ifdef FOR_getenforce
 #ifndef TT
 #define TT this.getenforce
@@ -3996,7 +4147,7 @@
 #ifndef TT
 #define TT this.getprop
 #endif
-#define FLAG_Z (1<<0)
+#define FLAG_Z (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_getty
@@ -4766,22 +4917,22 @@
 #ifndef TT
 #define TT this.nsenter
 #endif
-#define FLAG_user (FORCED_FLAG<<0)
-#define FLAG_U (FORCED_FLAG<<0)
-#define FLAG_uts (FORCED_FLAG<<1)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_pid (FORCED_FLAG<<2)
-#define FLAG_p (FORCED_FLAG<<2)
-#define FLAG_net (FORCED_FLAG<<3)
-#define FLAG_n (FORCED_FLAG<<3)
-#define FLAG_mount (FORCED_FLAG<<4)
-#define FLAG_m (FORCED_FLAG<<4)
-#define FLAG_ipc (FORCED_FLAG<<5)
-#define FLAG_i (FORCED_FLAG<<5)
-#define FLAG_target (FORCED_FLAG<<6)
-#define FLAG_t (FORCED_FLAG<<6)
-#define FLAG_no_fork (FORCED_FLAG<<7)
-#define FLAG_F (FORCED_FLAG<<7)
+#define FLAG_user (1<<0)
+#define FLAG_U (1<<0)
+#define FLAG_uts (1<<1)
+#define FLAG_u (1<<1)
+#define FLAG_pid (1<<2)
+#define FLAG_p (1<<2)
+#define FLAG_net (1<<3)
+#define FLAG_n (1<<3)
+#define FLAG_mount (1<<4)
+#define FLAG_m (1<<4)
+#define FLAG_ipc (1<<5)
+#define FLAG_i (1<<5)
+#define FLAG_target (1<<6)
+#define FLAG_t (1<<6)
+#define FLAG_no_fork (1<<7)
+#define FLAG_F (1<<7)
 #endif
 
 #ifdef FOR_od
@@ -4895,13 +5046,15 @@
 #endif
 #define FLAG_6 (FORCED_FLAG<<0)
 #define FLAG_4 (FORCED_FLAG<<1)
-#define FLAG_q (FORCED_FLAG<<2)
-#define FLAG_w (FORCED_FLAG<<3)
-#define FLAG_W (FORCED_FLAG<<4)
-#define FLAG_I (FORCED_FLAG<<5)
-#define FLAG_s (FORCED_FLAG<<6)
-#define FLAG_c (FORCED_FLAG<<7)
-#define FLAG_t (FORCED_FLAG<<8)
+#define FLAG_f (FORCED_FLAG<<2)
+#define FLAG_q (FORCED_FLAG<<3)
+#define FLAG_w (FORCED_FLAG<<4)
+#define FLAG_W (FORCED_FLAG<<5)
+#define FLAG_i (FORCED_FLAG<<6)
+#define FLAG_I (FORCED_FLAG<<7)
+#define FLAG_s (FORCED_FLAG<<8)
+#define FLAG_c (FORCED_FLAG<<9)
+#define FLAG_t (FORCED_FLAG<<10)
 #endif
 
 #ifdef FOR_pivot_root
@@ -5008,10 +5161,11 @@
 #ifndef TT
 #define TT this.readlink
 #endif
-#define FLAG_q (1<<0)
-#define FLAG_n (1<<1)
-#define FLAG_e (1<<2)
-#define FLAG_f (1<<3)
+#define FLAG_f (1<<0)
+#define FLAG_e (1<<1)
+#define FLAG_m (1<<2)
+#define FLAG_q (1<<3)
+#define FLAG_n (1<<4)
 #endif
 
 #ifdef FOR_realpath
@@ -5496,85 +5650,6 @@
 #endif
 #endif
 
-#ifdef FOR_test_human_readable
-#ifndef TT
-#define TT this.test_human_readable
-#endif
-#define FLAG_s (FORCED_FLAG<<0)
-#define FLAG_b (FORCED_FLAG<<1)
-#define FLAG_i (FORCED_FLAG<<2)
-#endif
-
-#ifdef FOR_test_many_options
-#ifndef TT
-#define TT this.test_many_options
-#endif
-#define FLAG_a (FORCED_FLAG<<0)
-#define FLAG_b (FORCED_FLAG<<1)
-#define FLAG_c (FORCED_FLAG<<2)
-#define FLAG_d (FORCED_FLAG<<3)
-#define FLAG_e (FORCED_FLAG<<4)
-#define FLAG_f (FORCED_FLAG<<5)
-#define FLAG_g (FORCED_FLAG<<6)
-#define FLAG_h (FORCED_FLAG<<7)
-#define FLAG_i (FORCED_FLAG<<8)
-#define FLAG_j (FORCED_FLAG<<9)
-#define FLAG_k (FORCED_FLAG<<10)
-#define FLAG_l (FORCED_FLAG<<11)
-#define FLAG_m (FORCED_FLAG<<12)
-#define FLAG_n (FORCED_FLAG<<13)
-#define FLAG_o (FORCED_FLAG<<14)
-#define FLAG_p (FORCED_FLAG<<15)
-#define FLAG_q (FORCED_FLAG<<16)
-#define FLAG_r (FORCED_FLAG<<17)
-#define FLAG_s (FORCED_FLAG<<18)
-#define FLAG_t (FORCED_FLAG<<19)
-#define FLAG_u (FORCED_FLAG<<20)
-#define FLAG_v (FORCED_FLAG<<21)
-#define FLAG_w (FORCED_FLAG<<22)
-#define FLAG_x (FORCED_FLAG<<23)
-#define FLAG_y (FORCED_FLAG<<24)
-#define FLAG_z (FORCED_FLAG<<25)
-#define FLAG_A (FORCED_FLAG<<26)
-#define FLAG_B (FORCED_FLAG<<27)
-#define FLAG_C (FORCED_FLAG<<28)
-#define FLAG_D (FORCED_FLAG<<29)
-#define FLAG_E (FORCED_FLAG<<30)
-#define FLAG_F (FORCED_FLAG<<31)
-#define FLAG_G (FORCED_FLAGLL<<32)
-#define FLAG_H (FORCED_FLAGLL<<33)
-#define FLAG_I (FORCED_FLAGLL<<34)
-#define FLAG_J (FORCED_FLAGLL<<35)
-#define FLAG_K (FORCED_FLAGLL<<36)
-#define FLAG_L (FORCED_FLAGLL<<37)
-#define FLAG_M (FORCED_FLAGLL<<38)
-#define FLAG_N (FORCED_FLAGLL<<39)
-#define FLAG_O (FORCED_FLAGLL<<40)
-#define FLAG_P (FORCED_FLAGLL<<41)
-#define FLAG_Q (FORCED_FLAGLL<<42)
-#define FLAG_R (FORCED_FLAGLL<<43)
-#define FLAG_S (FORCED_FLAGLL<<44)
-#define FLAG_T (FORCED_FLAGLL<<45)
-#define FLAG_U (FORCED_FLAGLL<<46)
-#define FLAG_V (FORCED_FLAGLL<<47)
-#define FLAG_W (FORCED_FLAGLL<<48)
-#define FLAG_X (FORCED_FLAGLL<<49)
-#define FLAG_Y (FORCED_FLAGLL<<50)
-#define FLAG_Z (FORCED_FLAGLL<<51)
-#endif
-
-#ifdef FOR_test_scankey
-#ifndef TT
-#define TT this.test_scankey
-#endif
-#endif
-
-#ifdef FOR_test_utf8towc
-#ifndef TT
-#define TT this.test_utf8towc
-#endif
-#endif
-
 #ifdef FOR_tftp
 #ifndef TT
 #define TT this.tftp
@@ -5801,22 +5876,22 @@
 #ifndef TT
 #define TT this.unshare
 #endif
-#define FLAG_user (FORCED_FLAG<<0)
-#define FLAG_U (FORCED_FLAG<<0)
-#define FLAG_uts (FORCED_FLAG<<1)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_pid (FORCED_FLAG<<2)
-#define FLAG_p (FORCED_FLAG<<2)
-#define FLAG_net (FORCED_FLAG<<3)
-#define FLAG_n (FORCED_FLAG<<3)
-#define FLAG_mount (FORCED_FLAG<<4)
-#define FLAG_m (FORCED_FLAG<<4)
-#define FLAG_ipc (FORCED_FLAG<<5)
-#define FLAG_i (FORCED_FLAG<<5)
-#define FLAG_map_root_user (FORCED_FLAG<<6)
-#define FLAG_r (FORCED_FLAG<<6)
-#define FLAG_fork (FORCED_FLAG<<7)
-#define FLAG_f (FORCED_FLAG<<7)
+#define FLAG_user (1<<0)
+#define FLAG_U (1<<0)
+#define FLAG_uts (1<<1)
+#define FLAG_u (1<<1)
+#define FLAG_pid (1<<2)
+#define FLAG_p (1<<2)
+#define FLAG_net (1<<3)
+#define FLAG_n (1<<3)
+#define FLAG_mount (1<<4)
+#define FLAG_m (1<<4)
+#define FLAG_ipc (1<<5)
+#define FLAG_i (1<<5)
+#define FLAG_map_root_user (1<<6)
+#define FLAG_r (1<<6)
+#define FLAG_fork (1<<7)
+#define FLAG_f (1<<7)
 #endif
 
 #ifdef FOR_uptime
@@ -5868,6 +5943,14 @@
 #define FLAG_m (1<<0)
 #endif
 
+#ifdef FOR_uuidgen
+#ifndef TT
+#define TT this.uuidgen
+#endif
+#define FLAG_random (1<<0)
+#define FLAG_r (1<<0)
+#endif
+
 #ifdef FOR_vconfig
 #ifndef TT
 #define TT this.vconfig
@@ -5897,9 +5980,10 @@
 #ifndef TT
 #define TT this.watch
 #endif
-#define FLAG_e (FORCED_FLAG<<0)
-#define FLAG_t (FORCED_FLAG<<1)
-#define FLAG_n (FORCED_FLAG<<2)
+#define FLAG_b (FORCED_FLAG<<0)
+#define FLAG_e (FORCED_FLAG<<1)
+#define FLAG_t (FORCED_FLAG<<2)
+#define FLAG_n (FORCED_FLAG<<3)
 #endif
 
 #ifdef FOR_wc
@@ -5956,9 +6040,11 @@
 #define FLAG_s (1<<0)
 #define FLAG_r (1<<1)
 #define FLAG_p (1<<2)
-#define FLAG_g (1<<3)
-#define FLAG_l (1<<4)
-#define FLAG_c (1<<5)
+#define FLAG_i (1<<3)
+#define FLAG_g (1<<4)
+#define FLAG_o (1<<5)
+#define FLAG_l (1<<6)
+#define FLAG_c (1<<7)
 #endif
 
 #ifdef FOR_xzcat

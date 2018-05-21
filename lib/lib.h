@@ -53,6 +53,7 @@ struct num_cache *add_num_cache(struct num_cache **cache, long long num,
   void *data, int len);
 
 // args.c
+#define FLAGS_NODASH (1LL<<63)
 void get_optflags(void);
 
 // dirtree.c
@@ -137,6 +138,7 @@ int xrun(char **argv);
 int xpspawn(char **argv, int*pipes);
 void xaccess(char *path, int flags);
 void xunlink(char *path);
+int xtempfile(char *name, char **tempname);
 int xcreate(char *path, int flags, int mode);
 int xopen(char *path, int flags);
 int xcreate_stdio(char *path, int flags, int mode);
@@ -189,7 +191,11 @@ void perror_exit_raw(char *msg);
 ssize_t readall(int fd, void *buf, size_t len);
 ssize_t writeall(int fd, void *buf, size_t len);
 off_t lskip(int fd, off_t offset);
+#define MKPATHAT_MKLAST  1
+#define MKPATHAT_MAKE    2
+#define MKPATHAT_VERBOSE 4
 int mkpathat(int atfd, char *dir, mode_t lastmode, int flags);
+int mkpath(char *dir);
 struct string_list **splitpath(char *path, struct string_list **list);
 char *readfileat(int dirfd, char *name, char *buf, off_t *len);
 char *readfile(char *name, char *buf, off_t len);
@@ -243,6 +249,7 @@ char *getusername(uid_t uid);
 char *getgroupname(gid_t gid);
 void do_lines(int fd, void (*call)(char **pline, long len));
 long environ_bytes();
+long long millitime(void);
 
 #define HR_SPACE 1 // Space between number and units
 #define HR_B     2 // Use "B" for single byte units
@@ -273,7 +280,7 @@ int draw_trim_esc(char *str, int padto, int width, char *escmore,
 int draw_trim(char *str, int padto, int width);
 
 // interestingtimes.c
-int xgettty(void);
+int tty_fd(void);
 int terminal_size(unsigned *xx, unsigned *yy);
 int terminal_probesize(unsigned *xx, unsigned *yy);
 int scan_key_getsize(char *scratch, int miliwait, unsigned *xx, unsigned *yy);
@@ -293,9 +300,18 @@ struct addrinfo *xgetaddrinfo(char *host, char *port, int family, int socktype,
 int xconnect(struct addrinfo *ai_arg);
 int xpoll(struct pollfd *fds, int nfds, int timeout);
 int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_timeout);
+char *ntop(struct sockaddr *sa);
 
 // password.c
 int get_salt(char *salt, char * algo);
+
+// commas.c
+void comma_args(struct arg_list *al, void *data, char *err,
+  char *(*callback)(void *data, char *str, int len));
+void comma_collate(char **old, char *new);
+char *comma_iterate(char **list, int *len);
+int comma_scan(char *optlist, char *opt, int clean);
+int comma_scanall(char *optlist, char *scanlist);
 
 // getmountlist.c
 struct mtab_list {
@@ -308,12 +324,6 @@ struct mtab_list {
   char type[0];
 };
 
-void comma_args(struct arg_list *al, void *data, char *err,
-  char *(*callback)(void *data, char *str, int len));
-void comma_collate(char **old, char *new);
-char *comma_iterate(char **list, int *len);
-int comma_scan(char *optlist, char *opt, int clean);
-int comma_scanall(char *optlist, char *scanlist);
 int mountlist_istype(struct mtab_list  *ml, char *typelist);
 struct mtab_list *xgetmountlist(char *path);
 
@@ -327,7 +337,9 @@ char *num_to_sig(int sig);
 
 mode_t string_to_mode(char *mode_str, mode_t base);
 void mode_to_string(mode_t mode, char *buf);
+char *getdirname(char *name);
 char *getbasename(char *name);
+int fileunderdir(char *file, char *dir);
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name));
 
 pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
@@ -342,7 +354,7 @@ pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
   if (!_noexit_res) do {x;} while(0); \
   toys.rebound = 0; \
   y = _noexit_res; \
-} while(0);
+} while(0)
 
 // Wrapper that discards true/false "did it exit" value.
 #define NOEXIT(x) WOULD_EXIT(_noexit_res, x)

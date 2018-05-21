@@ -3,6 +3,7 @@
  * Copyright 2006 Rob Landley <rob@landley.net>
  */
 
+#define SYSLOG_NAMES
 #include "toys.h"
 
 void verror_msg(char *msg, int err, va_list va)
@@ -203,6 +204,12 @@ int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
   return 0;
 }
 
+// The common case
+int mkpath(char *dir)
+{
+  return mkpathat(AT_FDCWD, dir, 0, MKPATHAT_MAKE);
+}
+
 // Split a path into linked list of components, tracking head and tail of list.
 // Filters out // entries with no contents.
 struct string_list **splitpath(char *path, struct string_list **list)
@@ -300,11 +307,11 @@ long long atolx(char *numstr)
   val = xstrtol(numstr, &c, 0);
   if (c != numstr && *c && (end = strchr(suffixes, tolower(*c)))) {
     int shift = end-suffixes-2;
-
+    ++c;
     if (shift==-1) val *= 2;
-    if (!shift) val *= 512;
+    else if (!shift) val *= 512;
     else if (shift>0) {
-      if (toupper(*++c)=='d') while (shift--) val *= 1000;
+      if (*c && tolower(*c++)=='d') while (shift--) val *= 1000;
       else val *= 1LL<<(shift*10);
     }
   }
@@ -699,18 +706,14 @@ static void tempfile_handler(void)
 int copy_tempfile(int fdin, char *name, char **tempname)
 {
   struct stat statbuf;
-  int fd;
-  int ignored __attribute__((__unused__));
+  int fd = xtempfile(name, tempname), ignored __attribute__((__unused__));
 
-  *tempname = xmprintf("%s%s", name, "XXXXXX");
-  if(-1 == (fd = mkstemp(*tempname))) error_exit("no temp file");
+  // Record tempfile for exit cleanup if interrupted
   if (!tempfile2zap) sigatexit(tempfile_handler);
   tempfile2zap = *tempname;
 
-  // Set permissions of output file (ignoring errors, usually due to nonroot)
-
-  fstat(fdin, &statbuf);
-  fchmod(fd, statbuf.st_mode);
+  // Set permissions of output file.
+  if (!fstat(fdin, &statbuf)) fchmod(fd, statbuf.st_mode);
 
   // We chmod before chown, which strips the suid bit. Caller has to explicitly
   // switch it back on if they want to keep suid.
@@ -999,6 +1002,17 @@ void mode_to_string(mode_t mode, char *buf)
   *buf = c;
 }
 
+// dirname() can modify its argument or return a pointer to a constant string
+// This always returns a malloc() copy of everyting before last (run of ) '/'.
+char *getdirname(char *name)
+{
+  char *s = xstrdup(name), *ss = strrchr(s, '/');
+
+  while (*ss && *ss == '/' && s != ss) *ss-- = 0;
+
+  return s;
+}
+
 // basename() can modify its argument or return a pointer to a constant string
 // This just gives after the last '/' or the whole stirng if no /
 char *getbasename(char *name)
@@ -1010,27 +1024,76 @@ char *getbasename(char *name)
   return name;
 }
 
+// Is this file under this directory?
+int fileunderdir(char *file, char *dir)
+{
+  char *s1 = xabspath(dir, 1), *s2 = xabspath(file, -1), *ss = s2;
+  int rc = s1 && s2 && strstart(&ss, s1) && (!s1[1] || s2[strlen(s1)] == '/');
+
+  free(s1);
+  free(s2);
+
+  return rc;
+}
+
 // Execute a callback for each PID that matches a process name from a list.
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
 {
   DIR *dp;
   struct dirent *entry;
 
-  if (!(dp = opendir("/proc"))) perror_exit("opendir");
+  if (!(dp = opendir("/proc"))) perror_exit("no /proc");
 
   while ((entry = readdir(dp))) {
-    unsigned u;
-    char *cmd, **curname;
+    unsigned u = atoi(entry->d_name);
+    char *cmd = 0, *comm, **cur;
+    off_t len;
 
-    if (!(u = atoi(entry->d_name))) continue;
-    sprintf(libbuf, "/proc/%u/cmdline", u);
-    if (!(cmd = readfile(libbuf, libbuf, sizeof(libbuf)))) continue;
+    if (!u) continue;
 
-    for (curname = names; *curname; curname++)
-      if (**curname == '/' ? !strcmp(cmd, *curname)
-          : !strcmp(getbasename(cmd), getbasename(*curname)))
-        if (callback(u, *curname)) break;
-    if (*curname) break;
+    // Comm is original name of executable (argv[0] could be #! interpreter)
+    // but it's limited to 15 characters
+    sprintf(libbuf, "/proc/%u/comm", u);
+    len = sizeof(libbuf);
+    if (!(comm = readfileat(AT_FDCWD, libbuf, libbuf, &len)) || !len)
+      continue;
+    if (libbuf[len-1] == '\n') libbuf[--len] = 0;
+
+    for (cur = names; *cur; cur++) {
+      struct stat st1, st2;
+      char *bb = getbasename(*cur);
+      off_t len = strlen(bb);
+
+      // Fast path: only matching a filename (no path) that fits in comm.
+      // `len` must be 14 or less because with a full 15 bytes we don't
+      // know whether the name fit or was truncated.
+      if (len<=14 && bb==*cur && !strcmp(comm, bb)) goto match;
+
+      // If we have a path to existing file only match if same inode
+      if (bb!=*cur && !stat(*cur, &st1)) {
+        char buf[32];
+
+        sprintf(buf, "/proc/%u/exe", u);
+        if (stat(buf, &st2)) continue;
+        if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino) continue;
+        goto match;
+      }
+
+      // Nope, gotta read command line to confirm
+      if (!cmd) {
+        sprintf(cmd = libbuf+16, "/proc/%u/cmdline", u);
+        len = sizeof(libbuf)-17;
+        if (!(cmd = readfileat(AT_FDCWD, cmd, cmd, &len))) continue;
+        // readfile only guarantees one null terminator and we need two
+        // (yes the kernel should do this for us, don't care)
+        cmd[len] = 0;
+      }
+      if (!strcmp(bb, getbasename(cmd))) goto match;
+      if (bb!=*cur && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
+      continue;
+match:
+      if (callback(u, *cur)) break;
+    }
   }
   closedir(dp);
 }
@@ -1075,29 +1138,22 @@ int qstrcmp(const void *a, const void *b)
   return strcmp(*(char **)a, *(char **)b);
 }
 
-// According to http://www.opengroup.org/onlinepubs/9629399/apdxa.htm
-// we should generate a uuid structure by reading a clock with 100 nanosecond
-// precision, normalizing it to the start of the gregorian calendar in 1582,
-// and looking up our eth0 mac address.
-//
-// On the other hand, we have 128 bits to come up with a unique identifier, of
-// which 6 have a defined value.  /dev/urandom it is.
-
+// See https://tools.ietf.org/html/rfc4122, specifically section 4.4
+// "Algorithms for Creating a UUID from Truly Random or Pseudo-Random
+// Numbers".
 void create_uuid(char *uuid)
 {
-  // Read 128 random bits
+  // "Set all the ... bits to randomly (or pseudo-randomly) chosen values".
   int fd = xopenro("/dev/urandom");
   xreadall(fd, uuid, 16);
   close(fd);
 
-  // Claim to be a DCE format UUID.
+  // "Set the four most significant bits ... of the time_hi_and_version
+  // field to the 4-bit version number [4]".
   uuid[6] = (uuid[6] & 0x0F) | 0x40;
+  // "Set the two most significant bits (bits 6 and 7) of
+  // clock_seq_hi_and_reserved to zero and one, respectively".
   uuid[8] = (uuid[8] & 0x3F) | 0x80;
-
-  // rfc2518 section 6.4.1 suggests if we're not using a macaddr, we should
-  // set bit 1 of the node ID, which is the mac multicast bit.  This means we
-  // should never collide with anybody actually using a macaddr.
-  uuid[11] |= 128;
 }
 
 char *show_uuid(char *uuid)
@@ -1315,7 +1371,16 @@ long environ_bytes()
   long bytes = sizeof(char *);
   char **ev;
 
-  for (ev = environ; *ev; ev++)
-    bytes += sizeof(char *) + strlen(*ev) + 1;
+  for (ev = environ; *ev; ev++) bytes += sizeof(char *) + strlen(*ev) + 1;
+
   return bytes;
+}
+
+// Return unix time in milliseconds
+long long millitime(void)
+{
+  struct timespec ts;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec*1000+ts.tv_nsec/1000000;
 }
