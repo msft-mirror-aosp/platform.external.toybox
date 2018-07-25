@@ -644,7 +644,7 @@ void loopfiles(char **argv, void (*function)(int fd, char *name))
   loopfiles_rw(argv, O_RDONLY|O_CLOEXEC|WARN_ONLY, 0, function);
 }
 
-// call loopfiles with do_lines()
+// glue to call dl_lines() from loopfiles
 static void (*do_lines_bridge)(char **pline, long len);
 static void loopfile_lines_bridge(int fd, char *name)
 {
@@ -850,14 +850,20 @@ void exit_signal(int sig)
 // adds the handlers to a list, to be called in order.
 void sigatexit(void *handler)
 {
-  struct arg_list *al = xmalloc(sizeof(struct arg_list));
+  struct arg_list *al;
   int i;
 
   for (i=0; signames[i].num != SIGCHLD; i++)
-    signal(signames[i].num, exit_signal);
-  al->next = toys.xexit;
-  al->arg = handler;
-  toys.xexit = al;
+    signal(signames[i].num, handler ? exit_signal : SIG_DFL);
+  if (handler) {
+    al = xmalloc(sizeof(struct arg_list));
+    al->next = toys.xexit;
+    al->arg = handler;
+    toys.xexit = al;
+  } else {
+    llist_traverse(toys.xexit, free);
+    toys.xexit = 0;
+  }
 }
 
 // Convert name to signal number.  If name == NULL print names.
@@ -1144,9 +1150,7 @@ int qstrcmp(const void *a, const void *b)
 void create_uuid(char *uuid)
 {
   // "Set all the ... bits to randomly (or pseudo-randomly) chosen values".
-  int fd = xopenro("/dev/urandom");
-  xreadall(fd, uuid, 16);
-  close(fd);
+  xgetrandom(uuid, 16, 0);
 
   // "Set the four most significant bits ... of the time_hi_and_version
   // field to the 4-bit version number [4]".
@@ -1217,51 +1221,59 @@ struct passwd *bufgetpwuid(uid_t uid)
   struct pwuidbuf_list {
     struct pwuidbuf_list *next;
     struct passwd pw;
-  } *list;
+  } *list = 0;
   struct passwd *temp;
   static struct pwuidbuf_list *pwuidbuf;
+  unsigned size = 256;
 
+  // If we already have this one, return it.
   for (list = pwuidbuf; list; list = list->next)
     if (list->pw.pw_uid == uid) return &(list->pw);
 
-  list = xmalloc(512);
-  list->next = pwuidbuf;
+  for (;;) {
+    list = xrealloc(list, size *= 2);
+    errno = getpwuid_r(uid, &list->pw, sizeof(*list)+(char *)list,
+      size-sizeof(*list), &temp);
+    if (errno != ERANGE) break;
+  }
 
-  errno = getpwuid_r(uid, &list->pw, sizeof(*list)+(char *)list,
-    512-sizeof(*list), &temp);
   if (!temp) {
     free(list);
 
     return 0;
   }
+  list->next = pwuidbuf;
   pwuidbuf = list;
 
   return &list->pw;
 }
 
-// Return cached passwd entries.
+// Return cached group entries.
 struct group *bufgetgrgid(gid_t gid)
 {
   struct grgidbuf_list {
     struct grgidbuf_list *next;
     struct group gr;
-  } *list;
+  } *list = 0;
   struct group *temp;
   static struct grgidbuf_list *grgidbuf;
+  unsigned size = 256;
 
   for (list = grgidbuf; list; list = list->next)
     if (list->gr.gr_gid == gid) return &(list->gr);
 
-  list = xmalloc(512);
-  list->next = grgidbuf;
-
-  errno = getgrgid_r(gid, &list->gr, sizeof(*list)+(char *)list,
-    512-sizeof(*list), &temp);
+  for (;;) {
+    list = xrealloc(list, size *= 2);
+    errno = getgrgid_r(gid, &list->gr, sizeof(*list)+(char *)list,
+      size-sizeof(*list), &temp);
+    if (errno != ERANGE) break;
+  }
   if (!temp) {
     free(list);
 
     return 0;
   }
+  list->next = grgidbuf;
   grgidbuf = list;
 
   return &list->gr;
@@ -1344,6 +1356,7 @@ char *getgroupname(gid_t gid)
 // Iterate over lines in file, calling function. Function can write 0 to
 // the line pointer if they want to keep it, or 1 to terminate processing,
 // otherwise line is freed. Passed file descriptor is closed at the end.
+// At EOF calls function(0, 0)
 void do_lines(int fd, void (*call)(char **pline, long len))
 {
   FILE *fp = fd ? xfdopen(fd, "r") : stdin;
@@ -1359,6 +1372,7 @@ void do_lines(int fd, void (*call)(char **pline, long len))
       free(line);
     } else break;
   }
+  call(0, 0);
 
   if (fd) fclose(fp);
 }
@@ -1383,4 +1397,13 @@ long long millitime(void)
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return ts.tv_sec*1000+ts.tv_nsec/1000000;
+}
+
+// Formats `ts` in ISO format ("2018-06-28 15:08:58.846386216 -0700").
+char *format_iso_time(char *buf, size_t len, struct timespec *ts)
+{
+  strftime(buf, len, "%F %T", localtime(&(ts->tv_sec)));
+  sprintf(buf+strlen(buf), ".%09ld ", ts->tv_nsec);
+  strftime(buf+strlen(buf), len-strlen(buf), "%z", localtime(&(ts->tv_sec)));
+  return buf;
 }

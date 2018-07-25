@@ -14,6 +14,8 @@
 #define USE_TOYBOX_FORK(...) __VA_ARGS__
 #define CFG_TOYBOX_FREE 0
 #define USE_TOYBOX_FREE(...)
+#define CFG_TOYBOX_GETRANDOM 0
+#define USE_TOYBOX_GETRANDOM(...)
 #define CFG_TOYBOX_HELP_DASHDASH 1
 #define USE_TOYBOX_HELP_DASHDASH(...) __VA_ARGS__
 #define CFG_TOYBOX_HELP 1
@@ -422,8 +424,10 @@
 #define USE_PGREP(...) __VA_ARGS__
 #define CFG_PIDOF 1
 #define USE_PIDOF(...) __VA_ARGS__
-#define CFG_PING 0
-#define USE_PING(...)
+#define CFG_PING 1
+#define USE_PING(...) __VA_ARGS__
+#define CFG_PING6 1
+#define USE_PING6(...) __VA_ARGS__
 #define CFG_PIVOT_ROOT 1
 #define USE_PIVOT_ROOT(...) __VA_ARGS__
 #define CFG_PKILL 1
@@ -596,8 +600,8 @@
 #define USE_UNIQ(...) __VA_ARGS__
 #define CFG_UNIX2DOS 1
 #define USE_UNIX2DOS(...) __VA_ARGS__
-#define CFG_UNLINK 0
-#define USE_UNLINK(...)
+#define CFG_UNLINK 1
+#define USE_UNLINK(...) __VA_ARGS__
 #define CFG_UNSHARE 1
 #define USE_UNSHARE(...) __VA_ARGS__
 #define CFG_UPTIME 1

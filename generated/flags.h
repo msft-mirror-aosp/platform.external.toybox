@@ -632,9 +632,9 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3 <2>2B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(color)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3 <2>2(color)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(color)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
@@ -669,6 +669,7 @@
 #undef FLAG_d
 #undef FLAG_ignore_blank_lines
 #undef FLAG_B
+#undef FLAG_color
 #endif
 
 // dirname <1 <1
@@ -865,9 +866,9 @@
 #undef FLAG_n
 #endif
 
-// fmt w# w#
+// fmt w#<0=75 w#<0=75
 #undef OPTSTR_fmt
-#define OPTSTR_fmt "w#"
+#define OPTSTR_fmt "w#<0=75"
 #ifdef CLEANUP_fmt
 #undef CLEANUP_fmt
 #undef FOR_fmt
@@ -2064,9 +2065,9 @@
 #undef FLAG_s
 #endif
 
-// ping   <1>1t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=10w#<0qf46[-46]
+// ping <1>1m#t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=3w#<0qf46[-46] <1>1m#t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=3w#<0qf46[-46]
 #undef OPTSTR_ping
-#define OPTSTR_ping "<1>1t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=10w#<0qf46[-46]"
+#define OPTSTR_ping "<1>1m#t#<0>255=64c#<0=3s#<0>4088=56I:i:W#<0=3w#<0qf46[-46]"
 #ifdef CLEANUP_ping
 #undef CLEANUP_ping
 #undef FOR_ping
@@ -2081,6 +2082,7 @@
 #undef FLAG_s
 #undef FLAG_c
 #undef FLAG_t
+#undef FLAG_m
 #endif
 
 // pivot_root <2>2 <2>2
@@ -3046,7 +3048,7 @@
 #undef FOR_unix2dos
 #endif
 
-// unlink   <1>1
+// unlink <1>1 <1>1
 #undef OPTSTR_unlink
 #define OPTSTR_unlink "<1>1"
 #ifdef CLEANUP_unlink
@@ -3871,6 +3873,7 @@
 #define FLAG_d (1<<14)
 #define FLAG_ignore_blank_lines (1<<15)
 #define FLAG_B (1<<15)
+#define FLAG_color (1<<16)
 #endif
 
 #ifdef FOR_dirname
@@ -5044,17 +5047,18 @@
 #ifndef TT
 #define TT this.ping
 #endif
-#define FLAG_6 (FORCED_FLAG<<0)
-#define FLAG_4 (FORCED_FLAG<<1)
-#define FLAG_f (FORCED_FLAG<<2)
-#define FLAG_q (FORCED_FLAG<<3)
-#define FLAG_w (FORCED_FLAG<<4)
-#define FLAG_W (FORCED_FLAG<<5)
-#define FLAG_i (FORCED_FLAG<<6)
-#define FLAG_I (FORCED_FLAG<<7)
-#define FLAG_s (FORCED_FLAG<<8)
-#define FLAG_c (FORCED_FLAG<<9)
-#define FLAG_t (FORCED_FLAG<<10)
+#define FLAG_6 (1<<0)
+#define FLAG_4 (1<<1)
+#define FLAG_f (1<<2)
+#define FLAG_q (1<<3)
+#define FLAG_w (1<<4)
+#define FLAG_W (1<<5)
+#define FLAG_i (1<<6)
+#define FLAG_I (1<<7)
+#define FLAG_s (1<<8)
+#define FLAG_c (1<<9)
+#define FLAG_t (1<<10)
+#define FLAG_m (1<<11)
 #endif
 
 #ifdef FOR_pivot_root

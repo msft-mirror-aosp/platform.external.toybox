@@ -187,6 +187,24 @@ struct netstat_data {
   int wpad;
 };;
 
+// toys/net/ping.c
+
+struct ping_data {
+  long w;
+  long W;
+  char *i;
+  char *I;
+  long s;
+  long c;
+  long t;
+  long m;
+
+  struct sockaddr *sa;
+  int sock;
+  long i_ms;
+  unsigned long sent, recv, fugit, min, max;
+};
+
 // toys/net/tunctl.c
 
 struct tunctl_data {
@@ -232,6 +250,14 @@ struct dos2unix_data {
 struct fallocate_data {
   long offset;
   long size;
+};
+
+// toys/other/fmt.c
+
+struct fmt_data {
+  int width;
+
+  int level, pos;
 };
 
 // toys/other/free.c
@@ -361,8 +387,6 @@ struct shred_data {
   long offset;
   long iterations;
   long size;
-
-  int ufd;
 };
 
 // toys/other/stat.c
@@ -566,6 +590,7 @@ struct diff_data {
 
   int dir_num, size, is_binary, status, change, len[2];
   int *offset[2];
+  struct stat st[2];
 };
 
 // toys/pending/dumpleases.c
@@ -589,12 +614,6 @@ struct fdisk_data {
   long sectors;
   long heads;
   long cylinders;
-};
-
-// toys/pending/fmt.c
-
-struct fmt_data {
-  int width;
 };
 
 // toys/pending/fold.c
@@ -760,21 +779,6 @@ struct more_data {
 
 struct openvt_data {
   unsigned long vt_num;
-};
-
-// toys/pending/ping.c
-
-struct ping_data {
-  long w;
-  long W;
-  char *i;
-  char *I;
-  long s;
-  long c;
-  long t;
-
-  int sock;
-  long i_ms;
 };
 
 // toys/pending/route.c
@@ -1084,6 +1088,8 @@ struct expand_data {
 
 struct file_data {
   int max_name_len;
+
+  off_t len;
 };
 
 // toys/posix/find.c
@@ -1432,6 +1438,7 @@ extern union global_union {
 	struct microcom_data microcom;
 	struct netcat_data netcat;
 	struct netstat_data netstat;
+	struct ping_data ping;
 	struct tunctl_data tunctl;
 	struct acpi_data acpi;
 	struct base64_data base64;
@@ -1439,6 +1446,7 @@ extern union global_union {
 	struct chrt_data chrt;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
+	struct fmt_data fmt;
 	struct free_data free;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
@@ -1476,7 +1484,6 @@ extern union global_union {
 	struct dumpleases_data dumpleases;
 	struct expr_data expr;
 	struct fdisk_data fdisk;
-	struct fmt_data fmt;
 	struct fold_data fold;
 	struct fsck_data fsck;
 	struct getfattr_data getfattr;
@@ -1494,7 +1501,6 @@ extern union global_union {
 	struct modprobe_data modprobe;
 	struct more_data more;
 	struct openvt_data openvt;
-	struct ping_data ping;
 	struct route_data route;
 	struct sh_data sh;
 	struct stty_data stty;
