@@ -62,10 +62,7 @@
 #include <wctype.h>
 
 // LSB 4.1 headers
-#include <pty.h>
 #include <sys/ioctl.h>
-#include <sys/statfs.h>
-#include <sys/sysinfo.h>
 
 #include "lib/lib.h"
 #include "lib/lsm.h"
@@ -121,6 +118,8 @@ extern struct toy_context {
 extern char toybuf[4096], libbuf[4096];
 
 extern char **environ;
+
+#define FLAG(x) (toys.optflags&FLAG_##x)
 
 #define GLOBALS(...)
 #define ARRAY_LEN(array) (sizeof(array)/sizeof(*array))

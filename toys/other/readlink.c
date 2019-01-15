@@ -2,7 +2,7 @@
  *
  * Copyright 2007 Rob Landley <rob@landley.net>
 
-USE_READLINK(NEWTOY(readlink, "<1>1nqmef[-mef]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_READLINK(NEWTOY(readlink, "<1>1nqmef(canonicalize)[-mef]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config READLINK
   bool "readlink"
@@ -14,11 +14,11 @@ config READLINK
 
     Options for producing cannonical paths (all symlinks/./.. resolved):
 
-    -e	cannonical path to existing entry (fail if missing)
-    -f	full path (fail if directory missing)
-    -m	ignore missing entries, show where it would be
-    -n	no trailing newline
-    -q	quiet (no output, just error code)
+    -e	Canonical path to existing entry (fail if missing)
+    -f	Full path (fail if directory missing)
+    -m	Ignore missing entries, show where it would be
+    -n	No trailing newline
+    -q	Quiet (no output, just error code)
 */
 
 #define FOR_readlink

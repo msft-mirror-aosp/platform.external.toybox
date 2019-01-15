@@ -480,6 +480,7 @@ static int go_probe(struct module_s *m)
       continue;
     }
     // none of above is true insert the module.
+    errno = 0;
     rc = ins_mod(fn, options);
     if (toys.optflags&FLAG_v)
       printf("loaded %s '%s': %s\n", fn, options, strerror(errno));
@@ -552,8 +553,8 @@ void modprobe_main(void)
     if (toys.optflags&FLAG_v) puts("All modules loaded");
     return;
   }
-  dirtree_read("/etc/modprobe.conf", config_action);
-  dirtree_read("/etc/modprobe.d", config_action);
+  dirtree_flagread("/etc/modprobe.conf", DIRTREE_SHUTUP, config_action);
+  dirtree_flagread("/etc/modprobe.d", DIRTREE_SHUTUP, config_action);
 
   for (dirs = TT.dirs; dirs; dirs = dirs->next) {
     xchdir(dirs->arg);

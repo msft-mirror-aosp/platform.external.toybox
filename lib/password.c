@@ -53,13 +53,14 @@ int read_password(char *buf, int buflen, char *mesg)
   struct sigaction sa, oldsa;
   int i, ret = 1;
 
-  // NOP signal handler to return from the read
+  // NOP signal handler to return from the read. Use sigaction() instead
+  // of xsignal() because we want to restore the old handler afterwards.
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = generic_signal;
   sigaction(SIGINT, &sa, &oldsa);
 
   tcflush(0, TCIFLUSH);
-  set_terminal(0, 1, &oldtermio);
+  xset_terminal(0, 1, 0, &oldtermio);
 
   xprintf("%s", mesg);
 

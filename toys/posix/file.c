@@ -14,8 +14,8 @@ config FILE
 
     Examine the given files and describe their content types.
 
-    -h	don't follow symlinks (default)
-    -L	follow symlinks
+    -h	Don't follow symlinks (default)
+    -L	Follow symlinks
 */
 
 #define FOR_file
@@ -44,10 +44,10 @@ static void do_elf_file(int fd)
     {189, "microblaze"}, {0xbaab, "microblaze-old"}, {8, "mips"},
     {10, "mips-old"}, {89, "mn10300"}, {0xbeef, "mn10300-old"}, {113, "nios2"},
     {92, "openrisc"}, {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"},
-    {21, "ppc64"}, {22, "s390"}, {0xa390, "s390-old"}, {135, "score"},
-    {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"}, {188, "tile"},
-    {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"}, {94, "xtensa"},
-    {0xabc7, "xtensa-old"}
+    {21, "ppc64"}, {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"},
+    {135, "score"}, {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"},
+    {188, "tile"}, {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"},
+    {94, "xtensa"}, {0xabc7, "xtensa-old"}
   };
   char *map = 0;
   off_t phoff, shoff;
@@ -302,20 +302,47 @@ static void do_regular_file(int fd, char *name)
     xprintf("Ogg data");
     // https://wiki.xiph.org/MIMETypesCodecs
     if (!memcmp(s+28, "CELT    ", 8)) xprintf(", celt audio");
-    if (!memcmp(s+28, "CMML    ", 8)) xprintf(", cmml text");
-    if (!memcmp(s+28, "BBCD\0", 5)) xprintf(", dirac video");
-    if (!memcmp(s+28, "\177FLAC", 5)) xprintf(", flac audio");
-    if (!memcmp(s+28, "\x8bJNG\r\n\x1a\n", 8)) xprintf(", jng video");
-    if (!memcmp(s+28, "\x80kate\0\0\0", 8)) xprintf(", kate text");
-    if (!memcmp(s+28, "OggMIDI\0", 8)) xprintf(", midi text");
-    if (!memcmp(s+28, "\x8aMNG\r\n\x1a\n", 8)) xprintf(", mng video");
-    if (!memcmp(s+28, "OpusHead", 8)) xprintf(", opus audio");
-    if (!memcmp(s+28, "PCM     ", 8)) xprintf(", pcm audio");
-    if (!memcmp(s+28, "\x89PNG\r\n\x1a\n", 8)) xprintf(", png video");
-    if (!memcmp(s+28, "Speex   ", 8)) xprintf(", speex audio");
-    if (!memcmp(s+28, "\x80theora", 7)) xprintf(", theora video");
-    if (!memcmp(s+28, "\x01vorbis", 7)) xprintf(", vorbis audio");
-    if (!memcmp(s+28, "YUV4MPEG", 8)) xprintf(", yuv4mpeg video");
+    else if (!memcmp(s+28, "CMML    ", 8)) xprintf(", cmml text");
+    else if (!memcmp(s+28, "BBCD\0", 5)) xprintf(", dirac video");
+    else if (!memcmp(s+28, "\177FLAC", 5)) xprintf(", flac audio");
+    else if (!memcmp(s+28, "\x8bJNG\r\n\x1a\n", 8)) xprintf(", jng video");
+    else if (!memcmp(s+28, "\x80kate\0\0\0", 8)) xprintf(", kate text");
+    else if (!memcmp(s+28, "OggMIDI\0", 8)) xprintf(", midi text");
+    else if (!memcmp(s+28, "\x8aMNG\r\n\x1a\n", 8)) xprintf(", mng video");
+    else if (!memcmp(s+28, "OpusHead", 8)) xprintf(", opus audio");
+    else if (!memcmp(s+28, "PCM     ", 8)) xprintf(", pcm audio");
+    else if (!memcmp(s+28, "\x89PNG\r\n\x1a\n", 8)) xprintf(", png video");
+    else if (!memcmp(s+28, "Speex   ", 8)) xprintf(", speex audio");
+    else if (!memcmp(s+28, "\x80theora", 7)) xprintf(", theora video");
+    else if (!memcmp(s+28, "\x01vorbis", 7)) xprintf(", vorbis audio");
+    else if (!memcmp(s+28, "YUV4MPEG", 8)) xprintf(", yuv4mpeg video");
+    xputc('\n');
+  } else if (len>32 && !memcmp(s, "RIF", 3) && !memcmp(s+8, "WAVEfmt ", 8)) {
+    // https://en.wikipedia.org/wiki/WAV
+    int le = (s[3] == 'F');
+    int format = le ? peek_le(s+20,2) : peek_be(s+20,2);
+    int channels = le ? peek_le(s+22,2) : peek_be(s+22,2);
+    int hz = le ? peek_le(s+24,4) : peek_be(s+24,4);
+    int bits = le ? peek_le(s+34,2) : peek_be(s+34,2);
+
+    xprintf("WAV audio, %s, ", le ? "LE" : "BE");
+    if (bits != 0) xprintf("%d-bit, ", bits);
+    if (channels==1||channels==2) xprintf("%s, ", channels==1?"mono":"stereo");
+    else xprintf("%d-channel, ", channels);
+    xprintf("%d Hz, ", hz);
+    // See https://tools.ietf.org/html/rfc2361, though there appear to be bugs
+    // in the RFC. This assumes wikipedia's example files are more correct.
+    if (format == 0x01) xprintf("PCM");
+    else if (format == 0x03) xprintf("IEEE float");
+    else if (format == 0x06) xprintf("A-law");
+    else if (format == 0x07) xprintf("µ-law");
+    else if (format == 0x11) xprintf("ADPCM");
+    else if (format == 0x22) xprintf("Truespeech");
+    else if (format == 0x31) xprintf("GSM");
+    else if (format == 0x55) xprintf("MP3");
+    else if (format == 0x70) xprintf("CELP");
+    else if (format == 0xfffe) xprintf("extensible");
+    else xprintf("unknown format %d", format);
     xputc('\n');
   } else if (len>12 && !memcmp(s, "\x00\x01\x00\x00", 4)) {
     xputs("TrueType font");
@@ -341,6 +368,12 @@ static void do_regular_file(int fd, char *name)
       xprintf("(%s) ", name?name:"unknown");
     }
     xprintf("%s\n", (peek_le(s+magic+4, 2)==0x14c)?"x86":"x86-64");
+
+    // https://en.wikipedia.org/wiki/BMP_file_format
+  } else if (len > 0x32 && !memcmp(s, "BM", 2) && !memcmp(s+6, "\0\0\0\0", 4)) {
+    int w = peek_le(s+0x12,4), h = peek_le(s+0x16,4), bpp = peek_le(s+0x1c,2);
+
+    xprintf("BMP image, %d x %d, %d bpp\n", w, h, bpp);
   } else {
     char *what = 0;
     int i, bytes;

@@ -7,20 +7,23 @@
  * netcat -L zombies
 
 USE_NETCAT(OLDTOY(nc, netcat, TOYFLAG_USR|TOYFLAG_BIN))
-USE_NETCAT(NEWTOY(netcat, USE_NETCAT_LISTEN("^tlL")"w#<1W#<1p#<1>65535s:q#<1f:"USE_NETCAT_LISTEN("[!tlL][!Lw]"), TOYFLAG_BIN))
+USE_NETCAT(NEWTOY(netcat, USE_NETCAT_LISTEN("^tlL")"w#<1W#<1p#<1>65535q#<1s:f:46u"USE_NETCAT_LISTEN("[!tlL][!Lw]")"[!46]", TOYFLAG_BIN))
 
 config NETCAT
   bool "netcat"
   default y
   help
-    usage: netcat [-u] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME}
+    usage: netcat [-46] [-u] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME}
 
-    -f	use FILENAME (ala /dev/ttyS0) instead of network
-    -p	local port number
-    -q	quit SECONDS after EOF on stdin, even if stdout hasn't closed yet
-    -s	local source address
+    -4	Force IPv4
+    -6	Force IPv6
+    -f	Use FILENAME (ala /dev/ttyS0) instead of network
+    -p	Local port number
+    -q	Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet
+    -s	Local source address
+    -u	Use UDP
     -w	SECONDS timeout to establish connection
-    -W	SECONDS timeout for idle connection
+    -W	SECONDS timeout for more data on an idle connection
 
     Use "stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho" with
     netcat -f to connect to a serial port.
@@ -32,9 +35,9 @@ config NETCAT_LISTEN
   help
     usage: netcat [-t] [-lL COMMAND...]
 
-    -l	listen for one incoming connection
-    -L	listen for multiple incoming connections (server mode)
-    -t	allocate tty (must come before -l or -L)
+    -l	Listen for one incoming connection
+    -L	Listen for multiple incoming connections (server mode)
+    -t	Allocate tty (must come before -l or -L)
 
     The command line after -l or -L is executed (as a child process) to handle
     each incoming connection. If blank -l waits for a connection and forwards
@@ -49,18 +52,14 @@ config NETCAT_LISTEN
 #include "toys.h"
 
 GLOBALS(
-  char *filename;        // -f read from filename instead of network
-  long quit_delay;       // -q Exit after EOF from stdin after # seconds.
-  char *source_address;  // -s Bind to a specific source address.
-  long port;             // -p Bind to a specific source port.
-  long idle;             // -W Wait # seconds for more data
-  long wait;             // -w Wait # seconds for a connection.
+  char *f, *s;
+  long q, p, W, w;
 )
 
 static void timeout(int signum)
 {
-  if (TT.wait) error_exit("Timeout");
-  // This should be xexit() but would need siglongjmp()...
+  if (TT.w) error_exit("Timeout");
+  // TODO This should be xexit() but would need siglongjmp()...
   exit(0);
 }
 
@@ -70,42 +69,18 @@ static void set_alarm(int seconds)
   alarm(seconds);
 }
 
-// Translate x.x.x.x numeric IPv4 address, or else DNS lookup an IPv4 name.
-static void lookup_name(char *name, uint32_t *result)
-{
-  struct hostent *hostbyname;
-
-  hostbyname = gethostbyname(name); // getaddrinfo
-  if (!hostbyname) error_exit("no host '%s'", name);
-  *result = *(uint32_t *)*hostbyname->h_addr_list;
-}
-
-// Worry about a fancy lookup later.
-static unsigned short lookup_port(char *str)
-{
-  struct servent *se;
-  int i = atoi(str);
-
-  if (i>0 && i<65536) return SWAP_BE16(i);
-
-  se = getservbyname(str, "tcp");
-  i = se ? se->s_port : 0;
-  endservent();
-
-  return i;
-}
-
 void netcat_main(void)
 {
-  struct sockaddr_in *address = (void *)toybuf;
-  int sockfd=-1, in1 = 0, in2 = 0, out1 = 1, out2 = 1;
+  int sockfd = -1, in1 = 0, in2 = 0, out1 = 1, out2 = 1;
+  int family = AF_UNSPEC;
+  int type = SOCK_STREAM;
   pid_t child;
 
   // Addjust idle and quit_delay to miliseconds or -1 for no timeout
-  TT.idle = TT.idle ? TT.idle*1000 : -1;
-  TT.quit_delay = TT.quit_delay ? TT.quit_delay*1000 : -1;
+  TT.W = TT.W ? TT.W*1000 : -1;
+  TT.q = TT.q ? TT.q*1000 : -1;
 
-  set_alarm(TT.wait);
+  set_alarm(TT.w);
 
   // The argument parsing logic can't make "<2" conditional on other
   // arguments like -f and -l, so do it by hand here.
@@ -113,45 +88,79 @@ void netcat_main(void)
       (!(toys.optflags&(FLAG_l|FLAG_L)) && toys.optc!=2))
         help_exit("bad argument count");
 
-  if (TT.filename) in1 = out2 = xopen(TT.filename, O_RDWR);
+  if (toys.optflags&FLAG_4)
+    family = AF_INET;
+  else if (toys.optflags&FLAG_6)
+    family = AF_INET6;
+
+  if (toys.optflags&FLAG_u)
+    type = SOCK_DGRAM;
+
+  if (TT.f) in1 = out2 = xopen(TT.f, O_RDWR);
   else {
     // Setup socket
-    sockfd = xsocket(AF_INET, SOCK_STREAM, 0);
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &out1, sizeof(out1));
-
-    address->sin_family = AF_INET;
-    if (TT.source_address || TT.port) {
-      address->sin_port = SWAP_BE16(TT.port);
-      if (TT.source_address)
-        lookup_name(TT.source_address, (uint32_t *)&(address->sin_addr));
-      if (bind(sockfd, (struct sockaddr *)address, sizeof(*address)))
-        perror_exit("bind");
-    }
-
-    // Dial out
-
     if (!(toys.optflags&(FLAG_L|FLAG_l))) {
-      // Figure out where to dial out to.
-      lookup_name(*toys.optargs, (uint32_t *)&(address->sin_addr));
-      address->sin_port = lookup_port(toys.optargs[1]);
-// TODO xconnect
-      if (connect(sockfd, (struct sockaddr *)address, sizeof(*address))<0)
-        perror_exit("connect");
+      struct addrinfo *addr = xgetaddrinfo(toys.optargs[0], toys.optargs[1],
+                                           family, type, 0, 0);
+      sockfd = xconnect(addr);
 
       // We have a connection. Disarm timeout.
       set_alarm(0);
 
       in1 = out2 = sockfd;
 
-      pollinate(in1, in2, out1, out2, TT.idle, TT.quit_delay);
+      pollinate(in1, in2, out1, out2, TT.W, TT.q);
     } else {
       // Listen for incoming connections
-      socklen_t len = sizeof(*address);
+      struct sockaddr* address = (void*)toybuf;
+      socklen_t len = sizeof(struct sockaddr_storage);
+
+      if (TT.s) {
+        char* port = toybuf;
+        struct addrinfo* bind_addr;
+
+        sprintf(port, "%ld", TT.p);
+        bind_addr = xgetaddrinfo(TT.s, port, family, type, 0, 0);
+        sockfd = xbind(bind_addr);
+      } else {
+        size_t bind_addrlen;
+
+        // If we weren't given an address with which to resolve which family to
+        // use, we have to choose.
+        if (family == AF_UNSPEC) family = AF_INET;
+
+        address->sa_family = family;
+
+        if (family == AF_INET6) {
+          struct sockaddr_in6* addr_in6 = (void*)address;
+          bind_addrlen = sizeof(*addr_in6);
+          addr_in6->sin6_port = SWAP_BE16(TT.p);
+          addr_in6->sin6_addr = in6addr_any;
+        } else {
+          struct sockaddr_in* addr_in = (void*)address;
+          bind_addrlen = sizeof(*addr_in);
+          addr_in->sin_port = SWAP_BE16(TT.p);
+          addr_in->sin_addr.s_addr = INADDR_ANY;
+        }
+
+        sockfd = xsocket(family, type, 0);
+        if (bind(sockfd, address, bind_addrlen))
+          perror_exit("bind");
+      }
 
       if (listen(sockfd, 5)) error_exit("listen");
-      if (!TT.port) {
-        getsockname(sockfd, (struct sockaddr *)address, &len);
-        printf("%d\n", SWAP_BE16(address->sin_port));
+      if (!TT.p) {
+        short port_be;
+
+        getsockname(sockfd, address, &len);
+        if (address->sa_family == AF_INET)
+          port_be = ((struct sockaddr_in*)address)->sin_port;
+        else if (address->sa_family == AF_INET6)
+          port_be = ((struct sockaddr_in6*)address)->sin6_port;
+        else
+          perror_exit("getsockname: bad family");
+
+        printf("%d\n", SWAP_BE16(port_be));
         fflush(stdout);
         // Return immediately if no -p and -Ll has arguments, so wrapper
         // script can use port number.
@@ -188,7 +197,7 @@ void netcat_main(void)
           xexec(toys.optargs);
         }
 
-        pollinate(in1, in2, out1, out2, TT.idle, TT.quit_delay);
+        pollinate(in1, in2, out1, out2, TT.W, TT.q);
         close(in1);
       } while (!(toys.optflags&FLAG_l));
     }

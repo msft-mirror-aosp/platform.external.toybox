@@ -141,6 +141,11 @@ char *xmprintf(char *format, ...)
   return ret;
 }
 
+void xflush(void)
+{
+  if (fflush(0) || ferror(stdout)) perror_exit("write");
+}
+
 void xprintf(char *format, ...)
 {
   va_list va;
@@ -148,23 +153,39 @@ void xprintf(char *format, ...)
 
   vprintf(format, va);
   va_end(va);
-  if (fflush(stdout) || ferror(stdout)) perror_exit("write");
+  xflush();
 }
 
+// Put string with length (does not append newline)
+void xputsl(char *s, int len)
+{
+  int out;
+
+  while (len != (out = fwrite(s, 1, len, stdout))) {
+    if (out<1) perror_exit("write");
+    len -= out;
+    s += out;
+  }
+  xflush();
+}
+
+// xputs with no newline
+void xputsn(char *s)
+{
+  xputsl(s, strlen(s));
+}
+
+// Write string to stdout with newline, flushing and checking for errors
 void xputs(char *s)
 {
-  if (EOF == puts(s) || fflush(stdout) || ferror(stdout)) perror_exit("write");
+  puts(s);
+  xflush();
 }
 
 void xputc(char c)
 {
-  if (EOF == fputc(c, stdout) || fflush(stdout) || ferror(stdout))
-    perror_exit("write");
-}
-
-void xflush(void)
-{
-  if (fflush(stdout) || ferror(stdout)) perror_exit("write");;
+  if (EOF == fputc(c, stdout)) perror_exit("write");
+  xflush();
 }
 
 // This is called through the XVFORK macro because parent/child of vfork
@@ -191,7 +212,7 @@ void xexec(char **argv)
 
   perror_msg("exec %s", argv[0]);
   toys.exitval = 127;
-  if (!CFG_TOYBOX_FORK) _exit(toys.exitval);
+  if (!toys.stacktop) _exit(toys.exitval);
   xexit();
 }
 
@@ -376,6 +397,11 @@ int notstdio(int fd)
   }
 
   return fd;
+}
+
+void xrename(char *from, char *to)
+{
+  if (rename(from, to)) perror_exit("rename %s -> %s", from, to);
 }
 
 int xtempfile(char *name, char **tempname)
@@ -603,7 +629,7 @@ error:
 
 void xchdir(char *path)
 {
-  if (chdir(path)) error_exit("chdir '%s'", path);
+  if (chdir(path)) perror_exit("chdir '%s'", path);
 }
 
 void xchroot(char *path)
@@ -789,34 +815,48 @@ double xstrtod(char *s)
 }
 
 // parse fractional seconds with optional s/m/h/d suffix
-long xparsetime(char *arg, long units, long *fraction)
+long xparsetime(char *arg, long zeroes, long *fraction)
 {
-  double d;
-  long l;
+  long l, fr = 0, mask = 1;
   char *end;
 
-  if (CFG_TOYBOX_FLOAT) d = strtod(arg, &end);
-  else l = strtoul(arg, &end, 10);
-
-  if (end == arg) error_exit("Not a number '%s'", arg);
-  arg = end;
-
-  // Parse suffix
-  if (*arg) {
-    int ismhd[]={1,60,3600,86400}, i = stridx("smhd", *arg);
-
-    if (i == -1 || *(arg+1)) error_exit("Unknown suffix '%s'", arg);
-    if (CFG_TOYBOX_FLOAT) d *= ismhd[i];
-    else l *= ismhd[i];
+  if (*arg != '.' && !isdigit(*arg)) error_exit("Not a number '%s'", arg);
+  l = strtoul(arg, &end, 10);
+  if (*end == '.') {
+    end++;
+    while (zeroes--) {
+      fr *= 10;
+      mask *= 10;
+      if (isdigit(*end)) fr += *end++-'0';
+    }
+    while (isdigit(*end)) end++;
   }
 
-  if (CFG_TOYBOX_FLOAT) {
-    l = (long)d;
-    if (fraction) *fraction = units*(d-l);
-  } else if (fraction) *fraction = 0;
+  // Parse suffix
+  if (*end) {
+    int ismhd[]={1,60,3600,86400}, i = stridx("smhd", *end);
+
+    if (i == -1 || *(end+1)) error_exit("Unknown suffix '%s'", end);
+    l *= ismhd[i];
+    fr *= ismhd[i];
+    l += fr/mask;
+    fr %= mask;
+  }
+  if (fraction) *fraction = fr;
 
   return l;
 }
+
+long long xparsemillitime(char *arg)
+{
+  long l, ll;
+
+  l = xparsetime(arg, 3, &ll);
+
+  return (l*1000LL)+ll;
+}
+
+
 
 // Compile a regular expression into a regex_t
 void xregcomp(regex_t *preg, char *regex, int cflags)
@@ -841,12 +881,18 @@ char *xtzset(char *new)
 }
 
 // Set a signal handler
-void xsignal(int signal, void *handler)
+void xsignal_flags(int signal, void *handler, int flags)
 {
   struct sigaction *sa = (void *)libbuf;
 
   memset(sa, 0, sizeof(struct sigaction));
   sa->sa_handler = handler;
+  sa->sa_flags = flags;
 
   if (sigaction(signal, sa, 0)) perror_exit("xsignal %d", signal);
+}
+
+void xsignal(int signal, void *handler)
+{
+  xsignal_flags(signal, handler, 0);
 }

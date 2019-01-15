@@ -28,8 +28,7 @@ config TIMEOUT
 #include "toys.h"
 
 GLOBALS(
-  char *s_signal;
-  char *k_timeout;
+  char *s, *k;
 
   int nextsig;
   pid_t pid;
@@ -43,8 +42,8 @@ static void handler(int i)
     fprintf(stderr, "timeout pid %d signal %d\n", TT.pid, TT.nextsig);
   kill(TT.pid, TT.nextsig);
   
-  if (TT.k_timeout) {
-    TT.k_timeout = 0;
+  if (TT.k) {
+    TT.k = 0;
     TT.nextsig = SIGKILL;
     xsignal(SIGALRM, handler);
     TT.itv.it_value = TT.ktv;
@@ -52,16 +51,25 @@ static void handler(int i)
   }
 }
 
+// timeval inexplicably makes up a new type for microseconds, despite timespec's
+// nanoseconds field (needing to store 1000* the range) using "long". Bravo.
+void xparsetimeval(char *s, struct timeval *tv)
+{
+  long ll;
+
+  tv->tv_sec = xparsetime(s, 6, &ll);
+  tv->tv_usec = ll;
+}
+
 void timeout_main(void)
 {
   // Parse early to get any errors out of the way.
-  TT.itv.it_value.tv_sec = xparsetime(*toys.optargs, 1000000, &TT.itv.it_value.tv_usec);
+  xparsetimeval(*toys.optargs, &TT.itv.it_value);
+  if (TT.k) xparsetimeval(TT.k, &TT.ktv);
 
-  if (TT.k_timeout)
-    TT.ktv.tv_sec = xparsetime(TT.k_timeout, 1000000, &TT.ktv.tv_usec);
   TT.nextsig = SIGTERM;
-  if (TT.s_signal && -1 == (TT.nextsig = sig_to_num(TT.s_signal)))
-    error_exit("bad -s: '%s'", TT.s_signal);
+  if (TT.s && -1 == (TT.nextsig = sig_to_num(TT.s)))
+    error_exit("bad -s: '%s'", TT.s);
 
   if (!(TT.pid = XVFORK())) xexec(toys.optargs+1);
   else {

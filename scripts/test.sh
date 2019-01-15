@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. scripts/runtest.sh
+
 TOPDIR="$PWD"
 FILES="$PWD"/tests/files
 
@@ -23,8 +25,8 @@ PATH="$PWD:$PATH"
 cd testdir
 export LC_COLLATE=C
 
-. "$TOPDIR"/scripts/runtest.sh
-[ -f "$TOPDIR/generated/config.h" ] && export OPTIONFLAGS=:$(echo $(sed -nr 's/^#define CFG_(.*) 1/\1/p' "$TOPDIR/generated/config.h") | sed 's/ /:/g')
+[ -f "$TOPDIR/generated/config.h" ] &&
+  export OPTIONFLAGS=:$(echo $(sed -nr 's/^#define CFG_(.*) 1/\1/p' "$TOPDIR/generated/config.h") | sed 's/ /:/g')
 
 do_test()
 {
@@ -53,6 +55,7 @@ then
 else
   for i in "$TOPDIR"/tests/*.test
   do
+    [ -z "$TEST_ALL" ] && [ ! -x "$i" ] && continue
     if [ -z "$TEST_HOST" ]
     then
       do_test "$i" 1

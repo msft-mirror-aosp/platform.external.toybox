@@ -28,22 +28,22 @@ config CP
     Copy files from SOURCE to DEST.  If more than one SOURCE, DEST must
     be a directory.
 
-    -D	create leading dirs under DEST (--parents)
-    -f	delete destination files we can't write to
-    -F	delete any existing destination file first (--remove-destination)
-    -i	interactive, prompt before overwriting existing DEST
-    -p	preserve timestamps, ownership, and mode
-    -R	recurse into subdirectories (DEST must be a directory)
+    -D	Create leading dirs under DEST (--parents)
+    -f	Delete destination files we can't write to
+    -F	Delete any existing destination file first (--remove-destination)
+    -i	Interactive, prompt before overwriting existing DEST
+    -p	Preserve timestamps, ownership, and mode
+    -R	Recurse into subdirectories (DEST must be a directory)
     -H	Follow symlinks listed on command line
     -L	Follow all symlinks
     -P	Do not follow symlinks [default]
-    -a	same as -dpr
-    -d	don't dereference symlinks
-    -l	hard link instead of copy
-    -n	no clobber (don't overwrite DEST)
-    -r	synonym for -R
-    -s	symlink instead of copy
-    -v	verbose
+    -a	Same as -dpr
+    -d	Don't dereference symlinks
+    -l	Hard link instead of copy
+    -n	No clobber (don't overwrite DEST)
+    -r	Synonym for -R
+    -s	Symlink instead of copy
+    -v	Verbose
 
 config CP_PRESERVE
   bool "cp --preserve support"
@@ -68,10 +68,10 @@ config MV
   help
     usage: mv [-fivn] SOURCE... DEST"
 
-    -f	force copy by deleting destination file
-    -i	interactive, prompt before overwriting existing DEST
-    -v	verbose
-    -n	no clobber (don't overwrite DEST)
+    -f	Force copy by deleting destination file
+    -i	Interactive, prompt before overwriting existing DEST
+    -v	Verbose
+    -n	No clobber (don't overwrite DEST)
 
 config INSTALL
   bool "install"
@@ -97,12 +97,11 @@ config INSTALL
 
 GLOBALS(
   union {
+    // install's options
     struct {
-      // install's options
-      char *group;
-      char *user;
-      char *mode;
+      char *g, *o, *m;
     } i;
+    // cp's options
     struct {
       char *preserve;
     } c;
@@ -370,13 +369,12 @@ void cp_main(void)
   if ((toys.optc>1 || (toys.optflags&FLAG_D)) && !destdir)
     error_exit("'%s' not directory", destname);
 
-  if (toys.optflags & (FLAG_a|FLAG_p)) {
+  if (toys.optflags & (FLAG_a|FLAG_p))
     TT.pflags = _CP_mode|_CP_ownership|_CP_timestamps;
-    umask(0);
-  }
+
   // Not using comma_args() (yet?) because interpeting as letters.
   if (CFG_CP_PRESERVE && (toys.optflags & FLAG_preserve)) {
-    char *pre = xstrdup(TT.c.preserve), *s;
+    char *pre = xstrdup(TT.c.preserve ? TT.c.preserve : "mot"), *s;
 
     if (comma_scan(pre, "all", 1)) TT.pflags = ~0;
     for (i=0; i<ARRAY_LEN(cp_preserve); i++)
@@ -384,7 +382,7 @@ void cp_main(void)
     if (*pre) {
 
       // Try to interpret as letters, commas won't set anything this doesn't.
-      for (s = TT.c.preserve; *s; s++) {
+      for (s = pre; *s; s++) {
         for (i=0; i<ARRAY_LEN(cp_preserve); i++)
           if (*s == *cp_preserve[i].name) break;
         if (i == ARRAY_LEN(cp_preserve)) {
@@ -397,6 +395,7 @@ void cp_main(void)
     }
     free(pre);
   }
+  if (TT.pflags & _CP_mode) umask(0);
   if (!TT.callback) TT.callback = cp_node;
 
   // Loop through sources
@@ -469,10 +468,9 @@ static inline int cp_flag_v(void) { return FLAG_v; };
 
 static int install_node(struct dirtree *try)
 {
-  try->st.st_mode = (TT.i.mode)
-    ? string_to_mode(TT.i.mode, try->st.st_mode) : 0755;
-  if (TT.i.group) try->st.st_gid = TT.gid;
-  if (TT.i.user) try->st.st_uid = TT.uid;
+  try->st.st_mode = TT.i.m ? string_to_mode(TT.i.m, try->st.st_mode) : 0755;
+  if (TT.i.g) try->st.st_gid = TT.gid;
+  if (TT.i.o) try->st.st_uid = TT.uid;
 
   // Always returns 0 because no -r
   cp_node(try);
@@ -489,9 +487,14 @@ void install_main(void)
   char **ss;
   int flags = toys.optflags;
 
+  TT.uid = TT.i.o ? xgetuid(TT.i.o) : -1;
+  TT.gid = TT.i.g ? xgetgid(TT.i.g) : -1;
+
   if (flags & FLAG_d) {
     for (ss = toys.optargs; *ss; ss++) {
       if (mkpathat(AT_FDCWD, *ss, 0777, 3)) perror_msg_raw(*ss);
+      if (flags & (FLAG_g|FLAG_o))
+        if (lchown(*ss, TT.uid, TT.gid)) perror_msg("chown '%s'", *ss);
       if (flags & FLAG_v) printf("%s\n", *ss);
     }
 
@@ -510,9 +513,6 @@ void install_main(void)
   toys.optflags = cp_flag_F();
   if (flags & FLAG_v) toys.optflags |= cp_flag_v();
   if (flags & (FLAG_p|FLAG_o|FLAG_g)) toys.optflags |= cp_flag_p();
-
-  if (TT.i.user) TT.uid = xgetuid(TT.i.user);
-  if (TT.i.group) TT.gid = xgetgid(TT.i.group);
 
   TT.callback = install_node;
   cp_main();

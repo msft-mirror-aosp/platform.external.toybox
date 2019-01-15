@@ -586,24 +586,32 @@ int64_t peek_be(void *ptr, unsigned size)
 
 int64_t peek(void *ptr, unsigned size)
 {
-  return IS_BIG_ENDIAN ? peek_be(ptr, size) : peek_le(ptr, size);
+  return (IS_BIG_ENDIAN ? peek_be : peek_le)(ptr, size);
 }
 
-void poke(void *ptr, uint64_t val, int size)
+void poke_le(void *ptr, long long val, unsigned size)
 {
-  if (size & 8) {
-    volatile uint64_t *p = (uint64_t *)ptr;
-    *p = val;
-  } else if (size & 4) {
-    volatile int *p = (int *)ptr;
-    *p = val;
-  } else if (size & 2) {
-    volatile short *p = (short *)ptr;
-    *p = val;
-  } else {
-    volatile char *p = (char *)ptr;
-    *p = val;
+  char *c = ptr;
+
+  while (size--) {
+    *c++ = val&255;
+    val >>= 8;
   }
+}
+
+void poke_be(void *ptr, long long val, unsigned size)
+{
+  char *c = ptr + size;
+
+  while (size--) {
+    *--c = val&255;
+    val >>=8;
+  }
+}
+
+void poke(void *ptr, long long val, unsigned size)
+{
+  (IS_BIG_ENDIAN ? poke_be : poke_le)(ptr, val, size);
 }
 
 // Iterate through an array of files, opening each one and calling a function
@@ -648,7 +656,7 @@ void loopfiles(char **argv, void (*function)(int fd, char *name))
 static void (*do_lines_bridge)(char **pline, long len);
 static void loopfile_lines_bridge(int fd, char *name)
 {
-  do_lines(fd, do_lines_bridge);
+  do_lines(fd, '\n', do_lines_bridge);
 }
 
 void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
@@ -747,7 +755,7 @@ void replace_tempfile(int fdin, int fdout, char **tempname)
     xclose(fdin);
   }
   xclose(fdout);
-  rename(*tempname, temp);
+  xrename(*tempname, temp);
   tempfile2zap = (char *)1;
   free(*tempname);
   free(temp);
@@ -854,7 +862,9 @@ void sigatexit(void *handler)
   int i;
 
   for (i=0; signames[i].num != SIGCHLD; i++)
-    signal(signames[i].num, handler ? exit_signal : SIG_DFL);
+    if (signames[i].num != SIGKILL)
+      xsignal(signames[i].num, handler ? exit_signal : SIG_DFL);
+
   if (handler) {
     al = xmalloc(sizeof(struct arg_list));
     al->next = toys.xexit;
@@ -1189,17 +1199,6 @@ char *next_printf(char *s, char **start)
   return 0;
 }
 
-// Posix inexplicably hasn't got this, so find str in line.
-char *strnstr(char *line, char *str)
-{
-  long len = strlen(str);
-  char *s;
-
-  for (s = line; *s; s++) if (!strncasecmp(s, str, len)) break;
-
-  return *s ? s : 0;
-}
-
 int dev_minor(int dev)
 {
   return ((dev&0xfff00000)>>12)|(dev&0xff);
@@ -1357,7 +1356,7 @@ char *getgroupname(gid_t gid)
 // the line pointer if they want to keep it, or 1 to terminate processing,
 // otherwise line is freed. Passed file descriptor is closed at the end.
 // At EOF calls function(0, 0)
-void do_lines(int fd, void (*call)(char **pline, long len))
+void do_lines(int fd, char delim, void (*call)(char **pline, long len))
 {
   FILE *fp = fd ? xfdopen(fd, "r") : stdin;
 
@@ -1365,7 +1364,7 @@ void do_lines(int fd, void (*call)(char **pline, long len))
     char *line = 0;
     ssize_t len;
 
-    len = getline(&line, (void *)&len, fp);
+    len = getdelim(&line, (void *)&len, delim, fp);
     if (len > 0) {
       call(&line, len);
       if (line == (void *)1) break;
@@ -1402,8 +1401,11 @@ long long millitime(void)
 // Formats `ts` in ISO format ("2018-06-28 15:08:58.846386216 -0700").
 char *format_iso_time(char *buf, size_t len, struct timespec *ts)
 {
-  strftime(buf, len, "%F %T", localtime(&(ts->tv_sec)));
-  sprintf(buf+strlen(buf), ".%09ld ", ts->tv_nsec);
-  strftime(buf+strlen(buf), len-strlen(buf), "%z", localtime(&(ts->tv_sec)));
+  char *s = buf;
+
+  s += strftime(s, len, "%F %T", localtime(&(ts->tv_sec)));
+  s += sprintf(s, ".%09ld ", ts->tv_nsec);
+  s += strftime(s, len-strlen(buf), "%z", localtime(&(ts->tv_sec)));
+
   return buf;
 }

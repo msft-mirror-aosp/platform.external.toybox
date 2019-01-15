@@ -7,12 +7,14 @@ export LC_ALL=C
 set -o pipefail
 source ./configure
 
+[ ! -z "$CROSS_COMPILE" ] && [ ! -e "$CROSS_COMPILE"cc ] &&
+  echo "missing ${CROSS_COMPILE}cc" && exit 1
+
 [ -z "$KCONFIG_CONFIG" ] && KCONFIG_CONFIG=.config
 [ -z "$OUTNAME" ] && OUTNAME=toybox
 UNSTRIPPED="generated/unstripped/$(basename "$OUTNAME")"
 
-# Since each cc invocation is short, launch half again as many processes
-# as we have processors so they don't exit faster than we can start them.
+# Try to keep one more cc invocation going than we have processors
 [ -z "$CPUS" ] && CPUS=$(($(nproc)+1))
 
 if [ -z "$SED" ]
@@ -87,18 +89,20 @@ genbuildsh()
 
   echo "#!/bin/sh"
   echo
+  echo "PATH='$PATH'"
+  echo
   echo "BUILD='$BUILD'"
   echo
-  echo "FILES='$LIBFILES $TOYFILES'"
-  echo
   echo "LINK='$LINK'"
+  echo
+  echo "FILES='$LIBFILES $TOYFILES'"
   echo
   echo
   echo '$BUILD $FILES $LINK'
 }
 
-if ! cmp -s <(genbuildsh | head -n 3) \
-          <(head -n 3 generated/build.sh 2>/dev/null)
+if ! cmp -s <(genbuildsh 2>/dev/null | head -n 6 ; echo LINK="'"$LDOPTIMIZE $LDFLAGS) \
+          <(head -n 7 generated/build.sh 2>/dev/null | sed '7s/ -o .*//')
 then
   echo -n "Library probe"
 
@@ -108,10 +112,10 @@ then
   # for it.
 
   > generated/optlibs.dat
-  for i in util crypt m resolv selinux smack attr rt crypto z log
+  for i in util crypt m resolv selinux smack attr rt crypto z log iconv
   do
     echo "int main(int argc, char *argv[]) {return 0;}" | \
-    ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -o generated/libprobe -Wl,--as-needed -l$i > /dev/null 2>/dev/null &&
+    ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -o generated/libprobe $LDASNEEDED -l$i > /dev/null 2>/dev/null &&
     echo -l$i >> generated/optlibs.dat
     echo -n .
   done
@@ -121,7 +125,7 @@ fi
 
 # LINK needs optlibs.dat, above
 
-LINK="$(echo $LDOPTIMIZE $LDFLAGS -o "$UNSTRIPPED" -Wl,--as-needed $(cat generated/optlibs.dat))"
+LINK="$(echo $LDOPTIMIZE $LDFLAGS -o "$UNSTRIPPED" $LDASNEEDED $(cat generated/optlibs.dat))"
 genbuildsh > generated/build.sh && chmod +x generated/build.sh || exit 1
 
 #TODO: "make $SED && make" doesn't regenerate config.h because diff .config
@@ -261,42 +265,6 @@ then
   generated/config2help Config.in $KCONFIG_CONFIG > generated/help.h || exit 1
 fi
 
-mksysconf()
-{
-  echo "int ${1}_vals[] = {" &&
-
-  # Extract names, remove blank lines, filter, replace unknown #defines
-  # with UNKNOWN
-  sed -n "/char [*]${1}_names[[]/"',/^}/s/[^"]*"\([^"]*\) *",*/\1\n/pg' \
-    toys/posix/getconf.c | grep -v '^$' | $2 |
-    sed -e "$DEFINES" -e "t;d;a UNKNOWN" | xargs | tr ' ' ',' &&
-  echo '};'
-}
-
-if ! [ generated/getconf.h -nt toys/posix/getconf.c ]
-then
-  echo generated/getconf.h
-
-  # Dump #define list for limits.h and unistd.h, create sed expression to
-  # match known defines
-  DEFINES="$(echo -e '#include <limits.h>\n#include <unistd.h>' | \
-    gcc -E -dM - | \
-    sed -n 's@^#define[ \t][ \t]*\([^ \t(]*\)[ \t].*@s/^\1$/\&/@p' )"
-
-  # Extract limit names, compare against limits.h #defines, replace unknown
-  # ones with UNKNOWN
-
-  {
-    mksysconf sysconf \
-      sed\ 's/^_POSIX2/2/;s/^PTHREAD/THREAD/;s/^_POSIX_//;s/^_XOPEN_/XOPEN_/;s/^/_SC_/' &&
-    mksysconf confstr sed\ 's/.*/_CS_&/' &&
-    mksysconf limit cat
-  } > generated/getconf.h
-
-  unset HEADERS
-fi
-
-
 [ ! -z "$NOBUILD" ] && exit 0
 
 echo -n "Compile toybox"
@@ -369,8 +337,10 @@ do_loudly $BUILD $LNKFILES $LINK || exit 1
 if [ ! -z "$NOSTRIP" ] ||
   ! do_loudly ${CROSS_COMPILE}${STRIP} "$UNSTRIPPED" -o "$OUTNAME"
 then
-  echo "strip failed, using unstripped" && cp "$UNSTRIPPED" "$OUTNAME" ||
-  exit 1
+  echo "strip failed, using unstripped" &&
+  rm -f "$OUTNAME" &&
+  cp "$UNSTRIPPED" "$OUTNAME" ||
+    exit 1
 fi
 
 # gcc 4.4's strip command is buggy, and doesn't set the executable bit on
