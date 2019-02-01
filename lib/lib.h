@@ -310,6 +310,7 @@ int xbind(struct addrinfo *ai);
 int xpoll(struct pollfd *fds, int nfds, int timeout);
 int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_timeout);
 char *ntop(struct sockaddr *sa);
+void xsendto(int sockfd, void *buf, size_t len, struct sockaddr *dest);
 
 // password.c
 int get_salt(char *salt, char * algo);
@@ -359,12 +360,12 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name));
 pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
 #define XVFORK() xvforkwrap(vfork())
 
-// Wrapper to make xfuncs() return (via longjmp) instead of exiting.
+// Wrapper to make xfuncs() return (via siglongjmp) instead of exiting.
 // Assigns true/false "did it exit" value to first argument.
-#define WOULD_EXIT(y, x) do { jmp_buf _noexit; \
+#define WOULD_EXIT(y, x) do { sigjmp_buf _noexit; \
   int _noexit_res; \
   toys.rebound = &_noexit; \
-  _noexit_res = setjmp(_noexit); \
+  _noexit_res = sigsetjmp(_noexit, 1); \
   if (!_noexit_res) do {x;} while(0); \
   toys.rebound = 0; \
   y = _noexit_res; \

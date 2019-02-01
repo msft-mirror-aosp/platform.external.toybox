@@ -259,7 +259,7 @@ struct hexedit_data {
 // toys/other/hwclock.c
 
 struct hwclock_data {
-  char *fname;
+  char *f;
 
   int utc;
 };
@@ -759,6 +759,12 @@ struct sh_data {
   char *command;
 
   long lineno;
+};
+
+// toys/pending/sntp.c
+
+struct sntp_data {
+  char *p, *m;
 };
 
 // toys/pending/stty.c
@@ -1320,7 +1326,7 @@ struct wc_data {
 // toys/posix/xargs.c
 
 struct xargs_data {
-  long s, n, L;
+  long s, n;
   char *E, *I;
 
   long entries, bytes;
@@ -1415,6 +1421,7 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
+	struct sntp_data sntp;
 	struct stty_data stty;
 	struct sulogin_data sulogin;
 	struct syslogd_data syslogd;
