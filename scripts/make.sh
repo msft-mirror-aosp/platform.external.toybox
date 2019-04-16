@@ -5,11 +5,7 @@
 export LANG=c
 export LC_ALL=C
 set -o pipefail
-source ./configure
 source scripts/portability.sh
-
-[ ! -z "$CROSS_COMPILE" ] && [ ! -e "$CROSS_COMPILE"cc ] &&
-  echo "missing ${CROSS_COMPILE}cc" && exit 1
 
 [ -z "$KCONFIG_CONFIG" ] && KCONFIG_CONFIG=.config
 [ -z "$OUTNAME" ] && OUTNAME=toybox
@@ -264,7 +260,7 @@ fi
 
 [ ! -z "$NOBUILD" ] && exit 0
 
-echo -n "Compile toybox"
+echo -n "Compile $OUTNAME"
 [ ! -z "$V" ] && echo
 DOTPROG=.
 

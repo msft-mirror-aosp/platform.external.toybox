@@ -181,6 +181,8 @@ void xregcomp(regex_t *preg, char *rexec, int cflags);
 char *xtzset(char *new);
 void xsignal_flags(int signal, void *handler, int flags);
 void xsignal(int signal, void *handler);
+time_t xvali_date(struct tm *tm, char *str);
+void xparsedate(char *str, time_t *t, unsigned *nano, int endian);
 
 // lib.c
 void verror_msg(char *msg, int err, va_list va);
@@ -204,7 +206,9 @@ int mkpath(char *dir);
 struct string_list **splitpath(char *path, struct string_list **list);
 char *readfileat(int dirfd, char *name, char *buf, off_t *len);
 char *readfile(char *name, char *buf, off_t len);
-void msleep(long miliseconds);
+void msleep(long milliseconds);
+void nanomove(struct timespec *ts, long long offset);
+long long nanodiff(struct timespec *old, struct timespec *new);
 int highest_bit(unsigned long l);
 int64_t peek_le(void *ptr, unsigned size);
 int64_t peek_be(void *ptr, unsigned size);
@@ -230,6 +234,9 @@ void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name));
 void loopfiles(char **argv, void (*function)(int fd, char *name));
 void loopfiles_lines(char **argv, void (*function)(char **pline, long len));
+long long sendfile_len(int in, int out, long long len);
+long long xsendfile_len(int in, int out, long long len);
+void xsendfile_pad(int in, int out, long long len);
 long long xsendfile(int in, int out);
 int wfchmodat(int rc, char *name, mode_t mode);
 int copy_tempfile(int fdin, char *name, char **tempname);
@@ -257,6 +264,8 @@ void do_lines(int fd, char delim, void (*call)(char **pline, long len));
 long environ_bytes();
 long long millitime(void);
 char *format_iso_time(char *buf, size_t len, struct timespec *ts);
+void reset_env(struct passwd *p, int clear);
+void loggit(int priority, char *format, ...);
 
 #define HR_SPACE 1 // Space between number and units
 #define HR_B     2 // Use "B" for single byte units
@@ -290,10 +299,10 @@ int draw_trim(char *str, int padto, int width);
 int tty_fd(void);
 int terminal_size(unsigned *xx, unsigned *yy);
 int terminal_probesize(unsigned *xx, unsigned *yy);
-int scan_key_getsize(char *scratch, int miliwait, unsigned *xx, unsigned *yy);
+int scan_key_getsize(char *scratch, int timeout_ms, unsigned *xx, unsigned *yy);
 int set_terminal(int fd, int raw, int speed, struct termios *old);
 void xset_terminal(int fd, int raw, int speed, struct termios *old);
-int scan_key(char *scratch, int miliwait);
+int scan_key(char *scratch, int timeout_ms);
 void tty_esc(char *s);
 void tty_jump(int x, int y);
 void tty_reset(void);
@@ -301,6 +310,13 @@ void tty_sigreset(int i);
 void start_redraw(unsigned *width, unsigned *height);
 
 // net.c
+
+union socksaddr {
+  struct sockaddr s;
+  struct sockaddr_in in;
+  struct sockaddr_in6 in6;
+};
+
 int xsocket(int domain, int type, int protocol);
 void xsetsockopt(int fd, int level, int opt, void *val, socklen_t len);
 struct addrinfo *xgetaddrinfo(char *host, char *port, int family, int socktype,
@@ -311,6 +327,7 @@ int xpoll(struct pollfd *fds, int nfds, int timeout);
 int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_timeout);
 char *ntop(struct sockaddr *sa);
 void xsendto(int sockfd, void *buf, size_t len, struct sockaddr *dest);
+int xrecvwait(int fd, char *buf, int len, union socksaddr *sa, int timeout);
 
 // password.c
 int get_salt(char *salt, char * algo);
@@ -354,7 +371,7 @@ mode_t string_to_mode(char *mode_str, mode_t base);
 void mode_to_string(mode_t mode, char *buf);
 char *getdirname(char *name);
 char *getbasename(char *name);
-int fileunderdir(char *file, char *dir);
+char *fileunderdir(char *file, char *dir);
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name));
 
 pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);

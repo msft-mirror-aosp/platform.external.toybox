@@ -56,7 +56,7 @@ config SED
     Backslashes may be used to escape the delimiter if it occurs in the
     regex, and for the usual printf escapes (\abcefnrtv and octal, hex,
     and unicode). An empty regex repeats the previous one. ADDRESS regexes
-    (above) require the first delimeter to be escaped with a backslash when
+    (above) require the first delimiter to be escaped with a backslash when
     it isn't a forward slash (to distinguish it from the COMMANDs below).
 
     Sed mostly operates on individual lines one at a time. It reads each line,
@@ -528,15 +528,18 @@ static void sed_line(char **pline, long plen)
                 rswap[mlen-1] = new[off];
 
               continue;
-            } else if (match[cc].rm_so == -1) error_exit("no s//\\%d/", cc);
+            } else if (cc > reg->re_nsub) error_exit("no s//\\%d/", cc);
           } else if (new[off] != '&') {
             rswap[mlen++] = new[off];
 
             continue;
           }
 
-          ll = match[cc].rm_eo-match[cc].rm_so;
-          memcpy(rswap+mlen, rline+match[cc].rm_so, ll);
+          if (match[cc].rm_so == -1) ll = 0; // Empty match.
+          else {
+            ll = match[cc].rm_eo-match[cc].rm_so;
+            memcpy(rswap+mlen, rline+match[cc].rm_so, ll);
+          }
           mlen += ll;
         }
 
@@ -597,7 +600,7 @@ writenow:
       }
     } else if (c=='=') {
       sprintf(toybuf, "%ld", TT.count);
-      emit(toybuf, strlen(toybuf), 1);
+      if (emit(toybuf, strlen(toybuf), 1)) break;
     }
 
     command = command->next;

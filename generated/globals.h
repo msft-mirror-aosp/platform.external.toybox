@@ -189,7 +189,7 @@ struct ping_data {
 
 struct sntp_data {
   long r;
-  char *p, *m;
+  char *p, *m, *M;
 };
 
 // toys/net/tunctl.c
@@ -282,8 +282,7 @@ struct ionice_data {
 // toys/other/login.c
 
 struct login_data {
-  char *hostname;
-  char *username;
+  char *h, *f;
 
   int login_timeout, login_fail_timeout;
 };
@@ -291,9 +290,8 @@ struct login_data {
 // toys/other/losetup.c
 
 struct losetup_data {
-  char *jfile;
-  long offset;
-  long size;
+  char *j;
+  long o, S;
 
   int openflags;
   dev_t jdev;
@@ -805,15 +803,34 @@ struct syslogd_data {
 // toys/pending/tar.c
 
 struct tar_data {
-  char *fname;
-  char *dir;
-  struct arg_list *inc_file;
-  struct arg_list *exc_file;
-  char *tocmd;
-  struct arg_list *exc;
+  char *f, *C;
+  struct arg_list *T, *X;
+  char *to_command, *owner, *group, *mtime;
+  struct arg_list *exclude;
 
-  struct arg_list *inc, *pass;
-  void *inodes, *handle;
+  struct double_list *incl, *excl, *seen;
+  struct string_list *dirs;
+  char *cwd;
+  int fd, ouid, ggid, hlc, warn, adev, aino;
+  time_t mtt;
+
+  // hardlinks seen so far (hlc many)
+  struct {
+    char *arg;
+    ino_t ino;
+    dev_t dev;
+  } *hlx;
+
+  // Parsed information about a tar header.
+  struct tar_header {
+    char *name, *link_target, *uname, *gname;
+    long long size;
+    uid_t uid;
+    gid_t gid;
+    mode_t mode;
+    time_t mtime;
+    dev_t device;
+  } hdr;
 };
 
 // toys/pending/tcpsvd.c
@@ -927,8 +944,11 @@ struct useradd_data {
 // toys/pending/vi.c
 
 struct vi_data {
-  struct linestack *ls;
-  char *statline;
+    int cur_col;
+    int cur_row;
+    unsigned screen_height;
+    unsigned screen_width;
+    int vi_mode;
 };
 
 // toys/pending/wget.c

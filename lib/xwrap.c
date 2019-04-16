@@ -54,8 +54,7 @@ void xexit(void)
 
     free(al);
   }
-  if (fflush(NULL) || ferror(stdout))
-    if (!toys.exitval) perror_msg("write");
+  if (fflush(0) || ferror(stdout)) if (!toys.exitval) perror_msg("write");
   _xexit();
 }
 
@@ -96,10 +95,9 @@ void *xrealloc(void *ptr, size_t size)
 // Die unless we can allocate a copy of this many bytes of string.
 char *xstrndup(char *s, size_t n)
 {
-  char *ret = strndup(s, ++n);
+  char *ret = strndup(s, n);
 
   if (!ret) error_exit("xstrndup");
-  ret[--n] = 0;
 
   return ret;
 }
@@ -143,7 +141,7 @@ char *xmprintf(char *format, ...)
 
 void xflush(void)
 {
-  if (fflush(0) || ferror(stdout)) perror_exit("write");
+  if (fflush(stdout) || ferror(stdout)) perror_exit("write");
 }
 
 void xprintf(char *format, ...)
@@ -211,8 +209,8 @@ void xexec(char **argv)
     toy_exec(argv);
   execvp(argv[0], argv);
 
+  toys.exitval = 126+(errno == ENOENT);
   perror_msg("exec %s", argv[0]);
-  toys.exitval = 127;
   if (!toys.stacktop) _exit(toys.exitval);
   xexit();
 }
@@ -220,41 +218,53 @@ void xexec(char **argv)
 // Spawn child process, capturing stdin/stdout.
 // argv[]: command to exec. If null, child re-runs original program with
 //         toys.stacktop zeroed.
-// pipes[2]: stdin, stdout of new process, only allocated if zero on way in,
-//           pass NULL to skip pipe allocation entirely.
+// pipes[2]: Filehandle to move to stdin/stdout of new process.
+//           If -1, replace with pipe handle connected to stdin/stdout.
+//           NULL treated as {0, 1}, I.E. leave stdin/stdout as is
 // return: pid of child process
 pid_t xpopen_both(char **argv, int *pipes)
 {
   int cestnepasun[4], pid;
 
-  // Make the pipes? Note this won't set either pipe to 0 because if fds are
-  // allocated in order and if fd0 was free it would go to cestnepasun[0]
-  if (pipes) {
-    for (pid = 0; pid < 2; pid++) {
-      if (pipes[pid] != 0) continue;
-      if (pipe(cestnepasun+(2*pid))) perror_exit("pipe");
-      pipes[pid] = cestnepasun[pid+1];
-    }
+  // Make the pipes?
+  memset(cestnepasun, 0, sizeof(cestnepasun));
+  if (pipes) for (pid = 0; pid < 2; pid++) {
+    if (pipes[pid] != -1) continue;
+    if (pipe(cestnepasun+(2*pid))) perror_exit("pipe");
   }
 
-  // Child process.
   if (!(pid = CFG_TOYBOX_FORK ? xfork() : XVFORK())) {
-    // Dance of the stdin/stdout redirection.
+    // Child process: Dance of the stdin/stdout redirection.
+    // cestnepasun[1]->cestnepasun[0] and cestnepasun[2]->cestnepasun[1]
     if (pipes) {
       // if we had no stdin/out, pipe handles could overlap, so test for it
       // and free up potentially overlapping pipe handles before reuse
-      if (pipes[1] != -1) close(cestnepasun[2]);
-      if (pipes[0] != -1) {
-        close(cestnepasun[1]);
-        if (cestnepasun[0]) {
-          dup2(cestnepasun[0], 0);
-          close(cestnepasun[0]);
-        }
+
+      // in child, close read end of output pipe, and return write end as out
+      if (cestnepasun[2]) {
+        close(cestnepasun[2]);
+        pipes[1] = cestnepasun[3];
       }
-      if (pipes[1] != -1) {
-        dup2(cestnepasun[3], 1);
-        dup2(cestnepasun[3], 2);
-        if (cestnepasun[3] > 2 || !cestnepasun[3]) close(cestnepasun[3]);
+
+      // in child, close write end of input pipe, and return input end as out.
+      if (cestnepasun[1]) {
+        close(cestnepasun[1]);
+        pipes[0] = cestnepasun[0];
+      }
+
+      // If swapping stdin/stdout, need to move a filehandle to temp
+      if (!pipes[1]) pipes[1] = dup(0);
+
+      // Are we redirecting stdin?
+      if (pipes[0]) {
+        dup2(pipes[0], 0);
+        close(pipes[0]);
+      }
+
+      // Are we redirecting stdout?
+      if (pipes[1] != 1) {
+        dup2(pipes[1], 1);
+        close(pipes[1]);
       }
     }
     if (argv) xexec(argv);
@@ -280,11 +290,18 @@ pid_t xpopen_both(char **argv, int *pipes)
     }
   }
 
-  // Parent process
+  // Parent process: vfork had a shared environment, clean up.
   if (!CFG_TOYBOX_FORK) **toys.argv &= 0x7f;
+
   if (pipes) {
-    if (pipes[0] != -1) close(cestnepasun[0]);
-    if (pipes[1] != -1) close(cestnepasun[3]);
+    if (cestnepasun[1]) {
+      pipes[0] = cestnepasun[1];
+      close(cestnepasun[0]);
+    }
+    if (cestnepasun[2]) {
+      pipes[1] = cestnepasun[2];
+      close(cestnepasun[3]);
+    }
   }
 
   return pid;
@@ -315,8 +332,8 @@ pid_t xpopen(char **argv, int *pipe, int isstdout)
 {
   int pipes[2], pid;
 
-  pipes[!isstdout] = -1;
-  pipes[!!isstdout] = 0;
+  pipes[0] = isstdout ? 0 : -1;
+  pipes[1] = isstdout ? -1 : 1;
   pid = xpopen_both(argv, pipes);
   *pipe = pid ? pipes[!!isstdout] : -1;
 
@@ -504,12 +521,13 @@ void xstat(char *path, struct stat *st)
   if(stat(path, st)) perror_exit("Can't stat %s", path);
 }
 
-// Cannonicalize path, even to file with one or more missing components at end.
-// if exact, require last path component to exist
+// Canonicalize path, even to file with one or more missing components at end.
+// Returns allocated string for pathname or NULL if doesn't exist
+// exact = 1 file must exist, 0 dir must exist, -1 show theoretical location
 char *xabspath(char *path, int exact)
 {
   struct string_list *todo, *done = 0;
-  int try = 9999, dirfd = open("/", 0), missing = 0;
+  int try = 9999, dirfd = open("/", O_PATH), missing = 0;
   char *ret;
 
   // If this isn't an absolute path, start with cwd.
@@ -542,7 +560,7 @@ char *xabspath(char *path, int exact)
 
       if (missing) missing--;
       else {
-        if (-1 == (x = openat(dirfd, "..", 0))) goto error;
+        if (-1 == (x = openat(dirfd, "..", O_PATH))) goto error;
         close(dirfd);
         dirfd = x;
       }
@@ -566,7 +584,7 @@ char *xabspath(char *path, int exact)
       }
       if (errno != EINVAL && (exact || todo)) goto error;
 
-      fd = openat(dirfd, new->str, 0);
+      fd = openat(dirfd, new->str, O_PATH);
       if (fd == -1 && (exact || todo || errno != ENOENT)) goto error;
       close(dirfd);
       dirfd = fd;
@@ -579,7 +597,7 @@ char *xabspath(char *path, int exact)
       llist_traverse(done, free);
       done=0;
       close(dirfd);
-      dirfd = open("/", 0);
+      dirfd = open("/", O_PATH);
     }
     free(new);
 
@@ -599,7 +617,7 @@ char *xabspath(char *path, int exact)
 
   try = 2;
   while (done) {
-    struct string_list *temp = llist_pop(&done);;
+    struct string_list *temp = llist_pop(&done);
 
     if (todo) try++;
     try += strlen(temp->str);
@@ -784,22 +802,57 @@ void xpidfile(char *name)
   close(fd);
 }
 
-// Copy the rest of in to out and close both files.
-
-long long xsendfile(int in, int out)
+// Return bytes copied from in to out. If bytes <0 copy all of in to out.
+long long sendfile_len(int in, int out, long long bytes)
 {
   long long total = 0;
   long len;
 
   if (in<0) return 0;
   for (;;) {
-    len = xread(in, libbuf, sizeof(libbuf));
+    if (bytes == total) break;
+    len = bytes-total;
+    if (bytes<0 || len>sizeof(libbuf)) len = sizeof(libbuf);
+
+    len = xread(in, libbuf, len);
     if (len<1) break;
     xwrite(out, libbuf, len);
     total += len;
   }
 
   return total;
+}
+
+// error_exit if we couldn't copy all bytes
+long long xsendfile_len(int in, int out, long long bytes)
+{
+  long long len = sendfile_len(in, out, bytes);
+
+  if (bytes != -1 && bytes != len) error_exit("short file");
+
+  return len;
+}
+
+// warn and pad with zeroes if we couldn't copy all bytes
+void xsendfile_pad(int in, int out, long long len)
+{
+  len -= xsendfile_len(in, out, len);
+  if (len) {
+    perror_msg("short read");
+    memset(libbuf, 0, sizeof(libbuf));
+    while (len) {
+      int i = len>sizeof(libbuf) ? sizeof(libbuf) : len;
+
+      xwrite(out, libbuf, i);
+      len -= i;
+    }
+  }
+}
+
+// copy all of in to out
+long long xsendfile(int in, int out)
+{
+  return xsendfile_len(in, out, -1);
 }
 
 double xstrtod(char *s)
@@ -896,4 +949,92 @@ void xsignal_flags(int signal, void *handler, int flags)
 void xsignal(int signal, void *handler)
 {
   xsignal_flags(signal, handler, 0);
+}
+
+
+time_t xvali_date(struct tm *tm, char *str)
+{
+  time_t t;
+
+  if (tm && (unsigned)tm->tm_sec<=60 && (unsigned)tm->tm_min<=59
+     && (unsigned)tm->tm_hour<=23 && tm->tm_mday && (unsigned)tm->tm_mday<=31
+     && (unsigned)tm->tm_mon<=11 && (t = mktime(tm)) != -1) return t;
+
+  error_exit("bad date %s", str);
+}
+
+// Parse date string (relative to current *t). Sets time_t and nanoseconds.
+void xparsedate(char *str, time_t *t, unsigned *nano, int endian)
+{
+  struct tm tm;
+  time_t now = *t;
+  int len = 0, i = 0;
+  // Formats with seconds come first. Posix can't agree on whether 12 digits
+  // has year before (touch -t) or year after (date), so support both.
+  char *s = str, *p, *oldtz = 0, *formats[] = {"%Y-%m-%d %T", "%Y-%m-%dT%T",
+    "%H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%H:%M", "%m%d%H%M",
+    endian ? "%m%d%H%M%y" : "%y%m%d%H%M",
+    endian ? "%m%d%H%M%C%y" : "%C%y%m%d%H%M"};
+
+  *nano = 0;
+
+  // Parse @UNIXTIME[.FRACTION]
+  if (*str == '@') {
+    long long ll;
+
+    // Collect seconds and nanoseconds.
+    // &ll is not just t because we can't guarantee time_t is 64 bit (yet).
+    sscanf(s, "@%lld%n", &ll, &len);
+    if (s[len]=='.') {
+      s += len+1;
+      for (len = 0; len<9; len++) {
+        *nano *= 10;
+        if (isdigit(*s)) *nano += *s++-'0';
+      }
+    }
+    *t = ll;
+    if (!s[len]) return;
+    xvali_date(0, str);
+  }
+
+  // Trailing Z means UTC timezone, don't expect libc to know this.
+  // (Trimming it off here means it won't show up in error messages.)
+  if ((i = strlen(str)) && toupper(str[i-1])=='Z') {
+    str[--i] = 0;
+    oldtz = getenv("TZ");
+    if (oldtz) oldtz = xstrdup(oldtz);
+    setenv("TZ", "UTC0", 1);
+  }
+
+  // Try each format
+  for (i = 0; i<ARRAY_LEN(formats); i++) {
+    localtime_r(&now, &tm);
+    tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+    tm.tm_isdst = -endian;
+
+    if ((p = strptime(s, formats[i], &tm))) {
+      if (*p == '.') {
+        p++;
+        // If format didn't already specify seconds, grab seconds
+        if (i>2) {
+          len = 0;
+          sscanf(p, "%2u%n", &tm.tm_sec, &len);
+          p += len;
+        }
+        // nanoseconds
+        for (len = 0; len<9; len++) {
+          *nano *= 10;
+          if (isdigit(*p)) *nano += *p++-'0';
+        }
+      }
+
+      if (!*p) break;
+    }
+  }
+
+  // Sanity check field ranges
+  *t = xvali_date((i!=ARRAY_LEN(formats)) ? &tm : 0, str);
+
+  if (oldtz) setenv("TZ", oldtz, 1);
+  free(oldtz);
 }

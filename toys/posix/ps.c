@@ -385,8 +385,10 @@ struct typography {
   {"STIME", "Start time (ISO 8601)", 5, SLOT_starttime},
   {"F", "Flags 1=FORKNOEXEC 4=SUPERPRIV", 1, XX|SLOT_flags},
   {"S", "Process state:\n"
-   "\t  R (running) S (sleeping) D (device I/O) T (stopped)  t (traced)\n"
-   "\t  Z (zombie)  X (deader)   x (dead)       K (wakekill) W (waking)",
+   "\t  R (running) S (sleeping) D (device I/O) T (stopped)  t (trace stop)\n"
+   "\t  X (dead)    Z (zombie)   P (parked)     I (idle)\n"
+   "\t  Also between Linux 2.6.33 and 3.13:\n"
+   "\t  x (dead)    K (wakekill) W (waking)\n",
    -1, XX},
   {"STAT", "Process state (S) plus:\n"
    "\t  < high priority          N low priority L locked memory\n"
@@ -716,9 +718,12 @@ static int get_ps(struct dirtree *new)
   memset(slot, 0, sizeof(tb->slot));
   slot[SLOT_tid] = *slot = atol(new->name);
   if (TT.threadparent && TT.threadparent->extra) {
-    *slot = *(((struct procpid *)TT.threadparent->extra)->slot);
-    // Parent also shows up as a thread, discard duplicate
-    if (*slot == slot[SLOT_tid]) return 0;
+    struct procpid *tb2 = (struct procpid *)TT.threadparent->extra;
+
+    *slot = *tb2->slot;
+    // Parent also shows up as a thread, but we need to reread task/stat fields
+    // to get non-collated info for just parent thread (vs whole process).
+    if (*slot == slot[SLOT_tid]) slot = tb2->slot;
   }
   fd = dirtree_parentfd(new);
 
@@ -740,7 +745,7 @@ static int get_ps(struct dirtree *new)
   // All remaining fields should be numeric, parse them into slot[] array
   // (skipping first 3 stat fields and first slot[], both were handled above)
   // yes this means the alignment's off: stat[4] becomes slot[1]
-  for (j = SLOT_ppid; j<SLOT_count; j++)
+  for (j = SLOT_ppid; j<SLOT_upticks; j++)
     if (1>sscanf(s += i, " %lld%n", slot+j, &i)) break;
 
   // Now we've read the data, move status and name right after slot[] array,
@@ -793,6 +798,9 @@ static int get_ps(struct dirtree *new)
     slot[SLOT_iobytes] = slot[SLOT_rchar]+slot[SLOT_wchar]+slot[SLOT_swap];
     slot[SLOT_diobytes] = slot[SLOT_rbytes]+slot[SLOT_wbytes]+slot[SLOT_swap];
   }
+
+  // If we were updating thread parent with its own task info, we're done.
+  if (slot != tb->slot) return 0;
 
   // We now know enough to skip processes we don't care about.
   if (TT.match_process && !TT.match_process(slot)) return 0;
@@ -992,6 +1000,7 @@ static int get_threads(struct dirtree *new)
 
   TT.threadparent = new;
   if (!get_ps(new)) {
+    // it exited out from under us
     TT.threadparent = 0;
 
     return 0;
@@ -1008,7 +1017,8 @@ static int get_threads(struct dirtree *new)
   tb = (void *)new->extra;
   tb->slot[SLOT_tcount] = kcount;
 
-  // Fill out tid and thread count for each entry in group
+  // Fill out tid and thread count for each entry in group (if it didn't exit
+  // out from under us again; asynchronous reads of unlocked data are fun!)
   if (new->child) for (dt = new->child->child; dt; dt = dt->next) {
     tb = (void *)dt->extra;
     tb->slot[SLOT_pid] = pid;
@@ -1423,12 +1433,18 @@ static int header_line(int line, int rev)
 {
   if (!line) return 0;
 
-  if (FLAG(b)) rev = 0;
-
-  printf("%s%*.*s%s%s\n", rev ? "\033[7m" : "", -TT.width*!!FLAG(b), TT.width,
-    toybuf, rev ? "\033[0m" : "", FLAG(b) ? "" : "\r");
+  if (FLAG(b)) puts(toybuf);
+  else {
+    printf("%s%-*.*s%s\r\n", rev?"\033[7m":"", rev?TT.width:0, TT.width, toybuf,
+      rev?"\033[0m":"");
+  }
 
   return line-1;
+}
+
+static void top_cursor_cleanup(void)
+{
+  tty_esc("?25h");
 }
 
 static void top_common(
@@ -1442,13 +1458,18 @@ static void top_common(
   } plist[2], *plold, *plnew, old, new, mix;
   char scratch[16], *pos, *cpufields[] = {"user", "nice", "sys", "idle",
     "iow", "irq", "sirq", "host"};
- 
   unsigned tock = 0;
   int i, lines, topoff = 0, done = 0;
   char stdout_buf[BUFSIZ];
 
-  // Avoid flicker in interactive mode.
-  if (!FLAG(b)) setbuf(stdout, stdout_buf);
+  if (!TT.fields) perror_exit("no -o");
+
+  // Avoid flicker and hide the cursor in interactive mode.
+  if (!FLAG(b)) {
+    setbuf(stdout, stdout_buf);
+    sigatexit(top_cursor_cleanup);
+    tty_esc("?25l");
+  }
 
   toys.signal = SIGWINCH;
   TT.bits = get_headers(TT.fields, toybuf, sizeof(toybuf));
@@ -1535,18 +1556,25 @@ static void top_common(
         // Display "top" header.
         if (*toys.which->name == 't') {
           struct ofields field;
+          char *hr0 = toybuf+sizeof(toybuf)-32, *hr1 = hr0-32, *hr2 = hr1-32,
+            *hr3 = hr2-32;
           long long ll, up = 0;
           long run[6];
           int j;
 
           // Count running, sleeping, stopped, zombie processes.
+          // The kernel has more states (and different sets in different
+          // versions), so we need to map them. (R)unning and (Z)ombie are
+          // easy enough, and since "stopped" is rare (just T and t as of
+          // Linux 4.20), we assume everything else is "sleeping".
           field.which = PS_S;
           memset(run, 0, sizeof(run));
           for (i = 0; i<mix.count; i++)
-            run[1+stridx("RSTZ", *string_field(mix.tb[i], &field))]++;
+            run[1+stridx("RTtZ", *string_field(mix.tb[i], &field))]++;
           sprintf(toybuf,
-            "Tasks: %d total,%4ld running,%4ld sleeping,%4ld stopped,"
-            "%4ld zombie", mix.count, run[1], run[2], run[3], run[4]);
+            "%ss: %d total, %3ld running, %3ld sleeping, %3ld stopped, "
+            "%3ld zombie", FLAG(H)?"Thread":"Task", mix.count, run[1], run[0],
+            run[2]+run[3], run[4]);
           lines = header_line(lines, 0);
 
           if (readfile("/proc/meminfo", toybuf, sizeof(toybuf))) {
@@ -1555,13 +1583,21 @@ static void top_common(
                     "\nBuffers:","\nCached:","\nSwapTotal:","\nSwapFree:"}[i]);
               run[i] = pos ? atol(pos) : 0;
             }
-            sprintf(toybuf,
-             "Mem:%10ldk total,%9ldk used,%9ldk free,%9ldk buffers",
-              run[0], run[0]-run[1], run[1], run[2]);
+
+            human_readable(hr0, 1024*run[0], 0);
+            human_readable(hr1, 1024*(run[0]-run[1]), 0);
+            human_readable(hr2, 1024*run[1], 0);
+            human_readable(hr3, 1024*run[2], 0);
+            sprintf(toybuf, "  Mem: %9s total, %9s used, %9s free, %9s buffers",
+              hr0, hr1, hr2, hr3);
             lines = header_line(lines, 0);
-            sprintf(toybuf,
-              "Swap:%9ldk total,%9ldk used,%9ldk free,%9ldk cached",
-              run[4], run[4]-run[5], run[5], run[3]);
+
+            human_readable(hr0, 1024*run[4], 0);
+            human_readable(hr1, 1024*(run[4]-run[5]), 0);
+            human_readable(hr2, 1024*run[5], 0);
+            human_readable(hr3, 1024*run[3], 0);
+            sprintf(toybuf, " Swap: %9s total, %9s used, %9s free, %9s cached",
+              hr0, hr1, hr2, hr3);
             lines = header_line(lines, 0);
           }
 
@@ -1616,6 +1652,7 @@ static void top_common(
             pos[-1] = '[';
           if (!isspace(was) && isspace(is) && i==TT.sortpos+1) *pos = ']';
         }
+        if (FLAG(b)) while (isspace(*(pos-1))) --pos;
         *pos = 0;
         lines = header_line(lines, 1);
       }
@@ -1647,7 +1684,7 @@ static void top_common(
         msleep(timeout-now);
         // Make an obvious gap between datasets.
         xputs("\n\n");
-        continue;
+        break;
       } else fflush(stdout);
 
       i = scan_key_getsize(scratch, timeout-now, &TT.width, &TT.height);
@@ -1660,7 +1697,7 @@ static void top_common(
 
       // Flush unknown escape sequences.
       if (i==27) while (0<scan_key_getsize(scratch, 0, &TT.width, &TT.height));
-      else if (i==' ') {
+      else if (i=='\r' || i==' ') {
         timeout = 0;
         break;
       } else if (toupper(i)=='R')
@@ -1722,7 +1759,7 @@ static void top_setup(char *defo, char *defk)
 
 void top_main(void)
 {
-  sprintf(toybuf, "PID,USER,%s%%CPU,%%MEM,TIME+,%s",
+  sprintf(toybuf, "%cID,USER,%s%%CPU,%%MEM,TIME+,%s", FLAG(H) ? 'T' : 'P',
     TT.top.O ? "" : "PR,NI,VIRT,RES,SHR,S,",
     FLAG(H) ? "CMD:15=THREAD,NAME=PROCESS" : "ARGS");
   if (!TT.top.s) TT.top.s = TT.top.O ? 3 : 9;

@@ -66,7 +66,7 @@ config MV
   bool "mv"
   default y
   help
-    usage: mv [-fivn] SOURCE... DEST"
+    usage: mv [-fivn] SOURCE... DEST
 
     -f	Force copy by deleting destination file
     -i	Interactive, prompt before overwriting existing DEST
@@ -409,12 +409,15 @@ void cp_main(void)
       char *s = (toys.optflags&FLAG_D) ? getdirname(src) : getbasename(src);
 
       TT.destname = xmprintf("%s/%s", destname, s);
-      if (toys.optflags&FLAG_D) {
+      if (FLAG(D)) {
         free(s);
-        if (!fileunderdir(TT.destname, destname)) {
+        if (!(s = fileunderdir(TT.destname, destname))) {
           error_msg("%s not under %s", TT.destname, destname);
           continue;
-        } else mkpath(TT.destname);
+        }
+        // TODO: .. follows abspath, not links...
+        free(s);
+        mkpath(TT.destname);
       }
     } else TT.destname = destname;
 
@@ -494,7 +497,7 @@ void install_main(void)
 
   if (flags & FLAG_d) {
     for (ss = toys.optargs; *ss; ss++) {
-      if (mkpathat(AT_FDCWD, *ss, 0777, 3)) perror_msg_raw(*ss);
+      if (mkpathat(AT_FDCWD, *ss, 0777, MKPATHAT_MKLAST | MKPATHAT_MAKE)) perror_msg_raw(*ss);
       if (flags & (FLAG_g|FLAG_o))
         if (lchown(*ss, TT.uid, TT.gid)) perror_msg("chown '%s'", *ss);
       if (flags & FLAG_v) printf("%s\n", *ss);
@@ -505,7 +508,7 @@ void install_main(void)
 
   if (toys.optflags & FLAG_D) {
     TT.destname = toys.optargs[toys.optc-1];
-    if (mkpathat(AT_FDCWD, TT.destname, 0, 2))
+    if (mkpathat(AT_FDCWD, TT.destname, 0, MKPATHAT_MAKE))
       perror_exit("-D '%s'", TT.destname);
     if (toys.optc == 1) return;
   }

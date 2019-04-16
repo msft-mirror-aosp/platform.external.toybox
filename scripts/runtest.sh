@@ -66,6 +66,25 @@ optional()
   SKIP=1
 }
 
+skipnot()
+{
+  if [ -z "$VERBOSE" ]
+  then
+    eval "$@" 2>/dev/null
+  else
+    eval "$@"
+  fi
+  [ $? -eq 0 ] || SKIPNEXT=1
+}
+
+toyonly()
+{
+  IS_TOYBOX="$("$C" --version 2>/dev/null)"
+  [ "${IS_TOYBOX/toybox/}" == "$IS_TOYBOX" ] && SKIPNEXT=1
+
+  "$@"
+}
+
 wrong_args()
 {
   if [ $# -ne 5 ]
@@ -86,9 +105,10 @@ testing()
 
   [ -n "$DEBUG" ] && set -x
 
-  if [ -n "$SKIP" ] || ( [ -n "$SKIP_HOST" ] && [ -n "$TEST_HOST" ])
+  if [ -n "$SKIP" -o -n "$SKIP_HOST" -a -n "$TEST_HOST" -o -n "$SKIPNEXT" ]
   then
     [ ! -z "$VERBOSE" ] && echo "$SHOWSKIP: $NAME"
+    unset SKIPNEXT
     return 0
   fi
 
