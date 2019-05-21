@@ -10,7 +10,7 @@
 * echo hello | grep -f </dev/null
 *
 
-USE_GREP(NEWTOY(grep, "(color):;S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
+USE_GREP(NEWTOY(grep, "(line-buffered)(color):;S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
 USE_EGREP(OLDTOY(egrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
 USE_FGREP(OLDTOY(fgrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
 
@@ -173,14 +173,13 @@ static void do_grep(int fd, char *name)
 
         for (seek = TT.e; seek; seek = seek->next) {
           if (FLAG(x)) {
-            if ((FLAG(i) ? strcasecmp : strcmp)(seek->arg, line)) s = line;
+            if (!(FLAG(i) ? strcasecmp : strcmp)(seek->arg, line)) s = line;
           } else if (!*seek->arg) {
             seek = &fseek;
             fseek.arg = s = line;
-            break;
-          }
-          if (FLAG(i)) s = strcasestr(line, seek->arg);
+          } else if (FLAG(i)) s = strcasestr(line, seek->arg);
           else s = strstr(line, seek->arg);
+
           if (s) break;
         }
 

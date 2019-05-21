@@ -18,24 +18,28 @@
  * Extract into dir same as filename, --restrict? "Tarball is splodey"
  *
 
-USE_TAR(NEWTOY(tar, "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)j(bzip2)z(gzip)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):[!txc][!jz]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(sparse)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
-  default n
+  default y
   help
-    usage: tar [-cxtfvohmjkO] [-XT FILE] [-f TARFILE] [-C DIR]
+    usage: tar [-cxt] [-fvohmjkO] [-XTCf NAME] [FILES]
 
-    Create, extract, or list files in a .tar (or compressed t?z) file. 
+    Create, extract, or list files in a .tar (or compressed t?z) file.
 
     Options:
-    c  Create                x  Extract               t  Test
-    f  Name of TARFILE       C  Change to DIR first   v  Verbose: show filenames
+    c  Create                x  Extract               t  Test (list)
+    f  tar FILE (default -)  C  Change to DIR first   v  Verbose display
     o  Ignore owner          h  Follow symlinks       m  Ignore mtime
-    j  bzip2 compression     z  gzip compression
+    J  xz compression        j  bzip2 compression     z  gzip compression
     O  Extract to stdout     X  exclude names in FILE T  include names in FILE
-    --exclude=FILE File pattern(s) to exclude
-    --restrict  All archive contents must extract under a single subdirctory.
+    --exclude   FILENAME to exclude           --full-time show seconds with -tv
+    --mtime     Use TIME for file timestamps  --sparse  Record sparse files
+    --owner     Set file owner to NAME        --group   Set file group to NAME
+    --restrict       All archive contents must extract under one subdirctory
+    --numeric-owner  Save/use/display uid and gid, not user/group name
+    --no-recursion   Don't store directory contents
 */
 
 #define FOR_tar
@@ -50,7 +54,8 @@ GLOBALS(
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd;
-  int fd, ouid, ggid, hlc, warn, adev, aino;
+  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen;
+  long long *sparse;
   time_t mtt;
 
   // hardlinks seen so far (hlc many)
@@ -136,7 +141,7 @@ static void write_longname(char *name, char type)
   strcpy(tmp.gname, "root");
 
   // Calculate checksum. Since 512*255 = 0377000 in octal, this can never
-  // use more than 6 digits. The last byte is ' ' or historical reasons.
+  // use more than 6 digits. The last byte is ' ' for historical reasons.
   itoo(tmp.chksum, sizeof(tmp.chksum)-1, cksum(&tmp));
   tmp.chksum[7] = ' ';
 
@@ -183,7 +188,7 @@ static int add_to_tar(struct dirtree *node)
   struct passwd *pw = pw;
   struct group *gr = gr;
   int i, fd =-1;
-  char *c, *p, *name, *lnk = lnk, *hname;
+  char *name, *lnk, *hname;
 
   if (!dirtree_notdotdot(node)) return 0;
   if (TT.adev == st->st_dev && TT.aino == st->st_ino) {
@@ -195,10 +200,10 @@ static int add_to_tar(struct dirtree *node)
   name = dirtree_path(node, &i);
 
   // exclusion defaults to --no-anchored and --wildcards-match-slash
-  for (p = name; *p;) {
-    if (filter(TT.excl, p)) goto done;
-    while (*p && *p!='/') p++;
-    while (*p=='/') p++;
+  for (lnk = name; *lnk;) {
+    if (filter(TT.excl, lnk)) goto done;
+    while (*lnk && *lnk!='/') lnk++;
+    while (*lnk=='/') lnk++;
   }
 
   // Consume the 1 extra byte alocated in dirtree_path()
@@ -206,12 +211,12 @@ static int add_to_tar(struct dirtree *node)
 
   // remove leading / and any .. entries from saved name
   for (hname = name; *hname == '/'; hname++);
-  for (c = hname;;) {
-    if (!(c = strstr(c, ".."))) break;
-    if (c == hname || c[-1] == '/') {
-      if (!c[2]) goto done;
-      if (c[2]=='/') c = hname = c+3;
-    } else c+= 2;
+  for (lnk = hname;;) {
+    if (!(lnk = strstr(lnk, ".."))) break;
+    if (lnk == hname || lnk[-1] == '/') {
+      if (!lnk[2]) goto done;
+      if (lnk[2]=='/') lnk = hname = lnk+3;
+    } else lnk+= 2;
   }
   if (!*hname) goto done;
 
@@ -296,66 +301,94 @@ static int add_to_tar(struct dirtree *node)
       strncpy(hdr.gname, TT.group ? TT.group : gr->gr_name, sizeof(hdr.gname));
   }
 
+  TT.sparselen = 0;
+  if (hdr.type == '0') {
+    // Before we write the header, make sure we can read the file
+    if ((fd = open(name, O_RDONLY)) < 0) {
+      perror_msg("can't open '%s'", name);
+
+      return 0;
+    }
+    if (FLAG(sparse)) {
+      long long lo, ld = 0, len = 0;
+
+      // Enumerate the extents
+      while ((lo = lseek(fd, ld, SEEK_HOLE)) != -1) {
+        if (!(TT.sparselen&511))
+          TT.sparse = xrealloc(TT.sparse, (TT.sparselen+514)*sizeof(long long));
+        if (ld != lo) {
+          TT.sparse[TT.sparselen++] = ld;
+          len += TT.sparse[TT.sparselen++] = lo-ld;
+        }
+        if (lo == st->st_size) {
+          if (TT.sparselen<=2) TT.sparselen = 0;
+          else {
+            // Gratuitous extra entry for compatibility with other versions
+            TT.sparse[TT.sparselen++] = lo;
+            TT.sparse[TT.sparselen++] = 0;
+          }
+          break;
+        }
+        if ((ld = lseek(fd, lo, SEEK_DATA)) < lo) ld = st->st_size;
+      }
+
+      // If there were extents, change type to S record
+      if (TT.sparselen) {
+        hdr.type = 'S';
+        lnk = (char *)&hdr;
+        for (i = 0; i<TT.sparselen && i<8; i++)
+          itoo(lnk+386+12*i, 12, TT.sparse[i]);
+
+        // Record if there's overflow records, change length to sparse length,
+        // record apparent length
+        if (TT.sparselen>8) lnk[482] = 1;
+        itoo(lnk+483, 12, st->st_size);
+        ITOO(hdr.size, len);
+      }
+      lseek(fd, 0, SEEK_SET);
+    }
+  }
+
   itoo(hdr.chksum, sizeof(hdr.chksum)-1, cksum(&hdr));
   hdr.chksum[7] = ' ';
 
-  if (FLAG(v)) printf("%s\n", hname);
+  if (FLAG(v)) dprintf(TT.fd ? 2 : 1, "%s\n", hname);
 
   // Write header and data to archive
   xwrite(TT.fd, &hdr, 512);
-  if (hdr.type == '0') {
-    if ((fd = open(name, O_RDONLY)) < 0) perror_msg("can't open '%s'", name);
-    else {
-      xsendfile_pad(fd, TT.fd, st->st_size);
-      if (st->st_size%512) writeall(TT.fd, toybuf, (512-(st->st_size%512)));
-      close(fd);
+  if (TT.sparselen>8) {
+    char buf[512];
+
+    // write extent overflow blocks
+    for (i=8;;i++) {
+      int j = (i-8)%42;
+
+      if (!j || i==TT.sparselen) {
+        if (i!=8) {
+          if (i!=TT.sparselen) buf[504] = 1;
+          xwrite(TT.fd, buf, 512);
+        }
+        if (i==TT.sparselen) break;
+        memset(buf, 0, sizeof(buf));
+      }
+      itoo(buf+12*j, 12, TT.sparse[i]);
     }
+  }
+  TT.sparselen >>= 1;
+  if (hdr.type == '0' || hdr.type == 'S') {
+    if (hdr.type == '0') xsendfile_pad(fd, TT.fd, st->st_size);
+    else for (i = 0; i<TT.sparselen; i++) {
+      if (TT.sparse[i*2] != lseek(fd, TT.sparse[i*2], SEEK_SET))
+        perror_msg("%s: seek %lld", name, TT.sparse[i*2]);
+      xsendfile_pad(fd, TT.fd, TT.sparse[i*2+1]);
+    }
+    if (st->st_size%512) writeall(TT.fd, toybuf, (512-(st->st_size%512)));
+    close(fd);
   }
 done:
   free(name);
 
   return (DIRTREE_RECURSE|(FLAG(h)?DIRTREE_SYMFOLLOW:0))*!FLAG(no_recursion);
-}
-
-// Does anybody actually use this?
-static void extract_to_command(void)
-{
-  int pipefd[2], status = 0;
-  pid_t cpid;
-
-  if (!S_ISREG(TT.hdr.mode)) return; //only regular files are supported.
-
-  xpipe(pipefd);
-  if (!(cpid = xfork())) {    // Child reads from pipe
-    char buf[64], *argv[4] = {"sh", "-c", TT.to_command, NULL};
-
-    setenv("TAR_FILETYPE", "f", 1);
-    sprintf(buf, "%0o", TT.hdr.mode);
-    setenv("TAR_MODE", buf, 1);
-    sprintf(buf, "%lld", (long long)TT.hdr.size);
-    setenv("TAR_SIZE", buf, 1);
-    setenv("TAR_FILENAME", TT.hdr.name, 1);
-    setenv("TAR_UNAME", TT.hdr.uname, 1);
-    setenv("TAR_GNAME", TT.hdr.gname, 1);
-    sprintf(buf, "%0llo", (long long)TT.hdr.mtime);
-    setenv("TAR_MTIME", buf, 1);
-    sprintf(buf, "%0o", TT.hdr.uid);
-    setenv("TAR_UID", buf, 1);
-    sprintf(buf, "%0o", TT.hdr.gid);
-    setenv("TAR_GID", buf, 1);
-
-    xclose(pipefd[1]); // Close unused write
-    dup2(pipefd[0], 0);
-    signal(SIGPIPE, SIG_DFL);
-    xexec(argv);
-  } else {
-    xclose(pipefd[0]);  // Close unused read end
-    xsendfile_len(TT.fd, pipefd[1], TT.hdr.size);
-    xclose(pipefd[1]);
-    waitpid(cpid, &status, 0);
-    if (WIFSIGNALED(status))
-      xprintf("tar : %d: child returned %d\n", cpid, WTERMSIG(status));
-  }
 }
 
 static void wsettime(char *s, long long sec)
@@ -404,6 +437,43 @@ static int dirflush(char *name)
   return 0;
 }
 
+// write data to file
+static void sendfile_sparse(int fd)
+{
+  long long len, used = 0, sent;
+  int i = 0, j;
+
+  do {
+    if (TT.sparselen) {
+      if (!TT.sparse[i*2+1]) continue;
+      // Seek past holes or fill output with zeroes.
+      if (-1 == lseek(fd, len = TT.sparse[i*2], SEEK_SET)) {
+        sent = 0;
+        while (len) {
+          // first/last 512 bytes used, rest left zeroes
+          j = (len>3072) ? 3072 : len;
+          if (j != writeall(fd, toybuf+512, j)) goto error;
+          len -= j;
+        }
+      }
+      len = TT.sparse[i*2+1];
+      if (len+used>TT.hdr.size) error_exit("sparse overflow");
+    } else len = TT.hdr.size;
+
+    len -= sendfile_len(TT.fd, fd, len, &sent);
+    used += sent;
+    if (len) {
+error:
+      if (fd!=1) perror_msg(0);
+      skippy(TT.hdr.size-used);
+
+      break;
+    }
+  } while (++i<TT.sparselen);
+
+  close(fd);
+}
+
 static void extract_to_disk(void)
 {
   char *name = TT.hdr.name;
@@ -432,10 +502,8 @@ static void extract_to_disk(void)
     } else {
       int fd = xcreate(name, O_WRONLY|O_CREAT|(FLAG(overwrite)?O_TRUNC:O_EXCL),
         WARN_ONLY|(ala & 07777));
-      if (fd != -1) {
-        xsendfile_len(TT.fd, fd, TT.hdr.size);
-        close(fd);
-      }
+      if (fd != -1) sendfile_sparse(fd);
+      else skippy(TT.hdr.size);
     }
   } else if (S_ISDIR(ala)) {
     if ((mkdir(name, 0700) == -1) && errno != EEXIST)
@@ -445,7 +513,6 @@ static void extract_to_disk(void)
       return perror_msg("can't link '%s' -> '%s'", name, TT.hdr.link_target);
   } else if (mknod(name, ala, TT.hdr.device))
     return perror_msg("can't create '%s'", name);
-
 
   // Set ownership
   if (!FLAG(o) && !geteuid()) {
@@ -466,7 +533,6 @@ static void extract_to_disk(void)
     if (lchown(name, u, g)) perror_msg("chown %d:%d '%s'", u, g, name);;
   }
 
-  // || !FLAG(no_same_permissions))
   if (!S_ISLNK(ala)) chmod(TT.hdr.name, FLAG(p) ? ala : ala&0777);
 
   // Apply mtime.
@@ -521,7 +587,7 @@ static void unpack_tar(struct tar_hdr *first)
     TT.hdr.size = OTOI(tar.size);
 
     // If this header isn't writing something to the filesystem
-    if (tar.type<'0' || tar.type>'7') {
+    if ((tar.type<'0' || tar.type>'7') && tar.type!='S') {
 
       // Long name extension header?
       if (tar.type == 'K') alloread(&TT.hdr.link_target, TT.hdr.size);
@@ -552,16 +618,47 @@ static void unpack_tar(struct tar_hdr *first)
       continue;
     }
 
+    // Handle sparse file type
+    if (tar.type == 'S') {
+      char sparse[512];
+      int max = 8;
+
+      // Load 4 pairs of offset/len from S block, plus 21 pairs from each
+      // continuation block, list says where to seek/write sparse file contents
+      TT.sparselen = 0;
+      s = 386+(char *)&tar;
+      *sparse = i = 0;
+
+      for (;;) {
+        if (!(TT.sparselen&511))
+          TT.sparse = xrealloc(TT.sparse, (TT.sparselen+512)*sizeof(long long));
+
+        // If out of data in block check continue flag, stop or load next block
+        if (++i>max || !*s) {
+          if (!(*sparse ? sparse[504] : ((char *)&tar)[482])) break;
+          xreadall(TT.fd, s = sparse, 512);
+          max = 41;
+          i = 0;
+        }
+        // Load next entry
+        TT.sparse[TT.sparselen++] = otoi(s, 12);
+        s += 12;
+      }
+
+      // Odd number of entries (from corrupted tar) would be dropped here
+      TT.sparselen /= 2;
+    } else TT.sparselen = 0;
+
     // At this point, we have something to output. Convert metadata.
     TT.hdr.mode = OTOI(tar.mode);
-    TT.hdr.mode |= (char []){8,8,10,2,6,4,1,8}[tar.type-'0']<<12;
+    if (tar.type == 'S') TT.hdr.mode |= 0x8000;
+    else TT.hdr.mode |= (char []){8,8,10,2,6,4,1,8}[tar.type-'0']<<12;
     TT.hdr.uid = OTOI(tar.uid);
     TT.hdr.gid = OTOI(tar.gid);
     TT.hdr.mtime = OTOI(tar.mtime);
     maj = OTOI(tar.major);
     min = OTOI(tar.minor);
     TT.hdr.device = dev_makedev(maj, min);
-
     TT.hdr.uname = xstrndup(TT.owner ? TT.owner : tar.uname, sizeof(tar.uname));
     TT.hdr.gname = xstrndup(TT.group ? TT.group : tar.gname, sizeof(tar.gname));
 
@@ -581,7 +678,7 @@ static void unpack_tar(struct tar_hdr *first)
       TT.hdr.link_target = xstrndup(tar.link, sizeof(tar.link));
     if (!TT.hdr.name) {
       // Glue prefix and name fields together with / if necessary
-      i = strnlen(tar.prefix, sizeof(tar.prefix));
+      i = (tar.type=='S') ? 0 : strnlen(tar.prefix, sizeof(tar.prefix));
       TT.hdr.name = xmprintf("%.*s%s%.*s", i, tar.prefix,
         (i && tar.prefix[i-1] != '/') ? "/" : "",
         (int)sizeof(tar.name), tar.name);
@@ -639,9 +736,28 @@ static void unpack_tar(struct tar_hdr *first)
       skippy(TT.hdr.size);
     } else {
       if (FLAG(v)) printf("%s\n", TT.hdr.name);
-      if (FLAG(O)) xsendfile_len(TT.fd, 1, TT.hdr.size);
-      else if (FLAG(to_command)) extract_to_command();
-      else extract_to_disk();
+      if (FLAG(O)) sendfile_sparse(1);
+      else if (FLAG(to_command)) {
+        if (S_ISREG(TT.hdr.mode)) {
+          int fd, pid;
+
+          xsetenv("TAR_FILETYPE", "f");
+          xsetenv(xmprintf("TAR_MODE=%o", TT.hdr.mode), 0);
+          xsetenv(xmprintf("TAR_SIZE=%lld", TT.hdr.size), 0);
+          xsetenv("TAR_FILENAME", TT.hdr.name);
+          xsetenv("TAR_UNAME", TT.hdr.uname);
+          xsetenv("TAR_GNAME", TT.hdr.gname);
+          xsetenv(xmprintf("TAR_MTIME=%llo", (long long)TT.hdr.mtime), 0);
+          xsetenv(xmprintf("TAR_UID=%o", TT.hdr.uid), 0);
+          xsetenv(xmprintf("TAR_GID=%o", TT.hdr.gid), 0);
+
+          pid = xpopen((char *[]){"sh", "-c", TT.to_command, NULL}, &fd, 0);
+          // todo: short write exits tar here, other skips data.
+          sendfile_sparse(fd);
+          fd = xpclose_both(pid, 0);
+          if (fd) error_msg("%d: Child returned %d", pid, fd);
+        }
+      } else extract_to_disk();
     }
 
     free(TT.hdr.name);
@@ -670,6 +786,11 @@ static void do_XT(char **pline, long len)
   if (pline) trim2list(TT.X ? &TT.excl : &TT.incl, *pline);
 }
 
+static char *compression_tool()
+{
+  return FLAG(z) ? "gzip" : (FLAG(J) ? "xz" : "bzip2");
+}
+
 void tar_main(void)
 {
   char *s, **args = toys.optargs;
@@ -682,7 +803,7 @@ void tar_main(void)
   if (!geteuid()) toys.optflags |= FLAG_p;
   if (TT.owner) TT.ouid = xgetuid(TT.owner);
   if (TT.group) TT.ggid = xgetgid(TT.group);
-  if (TT.mtime) xparsedate(TT.mtime, &TT.mtt, (void *)&s, 1); 
+  if (TT.mtime) xparsedate(TT.mtime, &TT.mtt, (void *)&s, 1);
 
   // Collect file list.
   for (; TT.exclude; TT.exclude = TT.exclude->next)
@@ -724,12 +845,14 @@ void tar_main(void)
     struct tar_hdr *hdr = 0;
 
     // autodetect compression type when not specified
-    if (!FLAG(j)&&!FLAG(z)) {
+    if (!(FLAG(j)||FLAG(z)||FLAG(J))) {
       len = xread(TT.fd, hdr = (void *)(toybuf+sizeof(toybuf)-512), 512);
       if (len!=512 || strncmp("ustar", hdr->magic, 5)) {
         // detect gzip and bzip signatures
         if (SWAP_BE16(*(short *)hdr)==0x1f8b) toys.optflags |= FLAG_z;
         else if (!memcmp(hdr->name, "BZh", 3)) toys.optflags |= FLAG_j;
+        else if (peek_be(hdr->name, 7) == 0xfd377a585a0000)
+          toys.optflags |= FLAG_J;
         else error_exit("Not tar");
 
         // if we can seek back we don't need to loop and copy data
@@ -737,11 +860,10 @@ void tar_main(void)
       }
     }
 
-    if (FLAG(j)||FLAG(z)) {
+    if (FLAG(j)||FLAG(z)||FLAG(J)) {
       int pipefd[2] = {hdr ? -1 : TT.fd, -1}, i, pid;
 
-      xpopen_both((char *[]){FLAG(z)?"gunzip":"bunzip2", "-cf", "-", NULL},
-        pipefd);
+      xpopen_both((char *[]){compression_tool(), "-dc", NULL}, pipefd);
 
       if (!hdr) {
         // If we could seek, child gzip inherited fd and we read its output
@@ -780,6 +902,10 @@ void tar_main(void)
 
     unpack_tar(hdr);
     dirflush(0);
+
+    // Each time a TT.incl entry is seen it's moved to the end of the list,
+    // with TT.seen pointing to first seen list entry. Anything between
+    // TT.incl and TT.seen wasn't encountered in archive..
     if (TT.seen != TT.incl) {
       if (!TT.seen) TT.seen = TT.incl;
       while (TT.incl != TT.seen) {
@@ -797,14 +923,16 @@ void tar_main(void)
       char *tbz[] = {".tbz", ".tbz2", ".tar.bz", ".tar.bz2"};
       if (strend(TT.f, ".tgz") || strend(TT.f, ".tar.gz"))
         toys.optflags |= FLAG_z;
+      if (strend(TT.f, ".txz") || strend(TT.f, ".tar.xz"))
+        toys.optflags |= FLAG_J;
       else for (len = 0; len<ARRAY_LEN(tbz); len++)
         if (strend(TT.f, tbz[len])) toys.optflags |= FLAG_j;
     }
 
-    if (FLAG(j)||FLAG(z)) {
+    if (FLAG(j)||FLAG(z)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){FLAG(z)?"gzip":"bzip2", "-f", NULL}, pipefd);
+      xpopen_both((char *[]){compression_tool(), "-f", NULL}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }

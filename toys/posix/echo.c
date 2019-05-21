@@ -9,18 +9,19 @@
  * We also honor -- to _stop_ option parsing (bash doesn't, we go with
  * consistency over compatibility here).
 
-USE_ECHO(NEWTOY(echo, "^?en", TOYFLAG_BIN))
+USE_ECHO(NEWTOY(echo, "^?Een[-eE]", TOYFLAG_BIN))
 
 config ECHO
   bool "echo"
   default y
   help
-    usage: echo [-ne] [args...]
+    usage: echo [-neE] [args...]
 
     Write each argument to stdout, with one space between each, followed
     by a newline.
 
     -n	No trailing newline
+    -E	Print escape sequences literally (default)
     -e	Process the following escape sequences:
     	\\	Backslash
     	\0NNN	Octal values (1 to 3 digits)
@@ -65,7 +66,7 @@ void echo_main(void)
         int slash = *(c++), n = unescape(slash);
 
         if (n) out = n;
-        else if (slash=='c') goto done;
+        else if (slash=='c') return;
         else if (slash=='0') {
           out = 0;
           while (*c>='0' && *c<='7' && n++<3) out = (out*8)+*(c++)-'0';
@@ -90,6 +91,4 @@ void echo_main(void)
 
   // Output "\n" if no -n
   if (!(toys.optflags&FLAG_n)) putchar('\n');
-done:
-  xflush();
 }
