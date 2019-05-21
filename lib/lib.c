@@ -1136,17 +1136,17 @@ match:
   closedir(dp);
 }
 
-// display first few digits of number with power of two units
-int human_readable(char *buf, unsigned long long num, int style)
+// display first "dgt" many digits of number plus unit (kilo-exabytes)
+int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
 {
   unsigned long long snap = 0;
   int len, unit, divisor = (style&HR_1000) ? 1000 : 1024;
 
   // Divide rounding up until we have 3 or fewer digits. Since the part we
   // print is decimal, the test is 999 even when we divide by 1024.
-  // We can't run out of units because 2<<64 is 18 exabytes.
-  // test 5675 is 5.5k not 5.6k.
-  for (unit = 0; num > 999; unit++) num = ((snap = num)+(divisor/2))/divisor;
+  // We can't run out of units because 1<<64 is 18 exabytes.
+  for (unit = 0; snprintf(0, 0, "%llu", num)>dgt; unit++)
+    num = ((snap = num)+(divisor/2))/divisor;
   len = sprintf(buf, "%llu", num);
   if (unit && len == 1) {
     // Redo rounding for 1.2M case, this works with and without HR_1000.
@@ -1166,6 +1166,12 @@ int human_readable(char *buf, unsigned long long num, int style)
   buf[len] = 0;
 
   return len;
+}
+
+// Give 3 digit estimate + units ala 999M or 1.7T
+int human_readable(char *buf, unsigned long long num, int style)
+{
+  return human_readable_long(buf, num, 3, style);
 }
 
 // The qsort man page says you can use alphasort, the posix committee
@@ -1306,7 +1312,7 @@ int readlinkat0(int dirfd, char *path, char *buf, int len)
   if (!len) return 0;
 
   len = readlinkat(dirfd, path, buf, len-1);
-  if (len<1) return 0;
+  if (len<0) len = 0;
   buf[len] = 0;
 
   return len;
@@ -1317,39 +1323,16 @@ int readlink0(char *path, char *buf, int len)
   return readlinkat0(AT_FDCWD, path, buf, len);
 }
 
-// Do regex matching handling embedded NUL bytes in string (hence extra len
-// argument). Note that neither the pattern nor the match can currently include
-// NUL bytes (even with wildcards) and string must be null terminated at
-// string[len]. But this can find a match after the first NUL.
+// Do regex matching with len argument to handle embedded NUL bytes in string
 int regexec0(regex_t *preg, char *string, long len, int nmatch,
-  regmatch_t pmatch[], int eflags)
+  regmatch_t *pmatch, int eflags)
 {
-  char *s = string;
+  regmatch_t backup;
 
-  for (;;) {
-    long ll = 0;
-    int rc;
-
-    while (len && !*s) {
-      s++;
-      len--;
-    }
-    while (s[ll] && ll<len) ll++;
-
-    rc = regexec(preg, s, nmatch, pmatch, eflags);
-    if (!rc) {
-      for (rc = 0; rc<nmatch && pmatch[rc].rm_so!=-1; rc++) {
-        pmatch[rc].rm_so += s-string;
-        pmatch[rc].rm_eo += s-string;
-      }
-
-      return 0;
-    }
-    if (ll==len) return rc;
-
-    s += ll;
-    len -= ll;
-  }
+  if (!nmatch) pmatch = &backup;
+  pmatch->rm_so = 0;
+  pmatch->rm_eo = len;
+  return regexec(preg, string, nmatch, pmatch, eflags|REG_STARTEND);
 }
 
 // Return user name or string representation of number, returned buffer
@@ -1398,19 +1381,6 @@ void do_lines(int fd, char delim, void (*call)(char **pline, long len))
   if (fd) fclose(fp);
 }
 
-// Returns the number of bytes taken by the environment variables. For use
-// when calculating the maximum bytes of environment+argument data that can
-// be passed to exec for find(1) and xargs(1).
-long environ_bytes()
-{
-  long bytes = sizeof(char *);
-  char **ev;
-
-  for (ev = environ; *ev; ev++) bytes += sizeof(char *) + strlen(*ev) + 1;
-
-  return bytes;
-}
-
 // Return unix time in milliseconds
 long long millitime(void)
 {
@@ -1430,40 +1400,6 @@ char *format_iso_time(char *buf, size_t len, struct timespec *ts)
   s += strftime(s, len-strlen(buf), "%z", localtime(&(ts->tv_sec)));
 
   return buf;
-}
-
-// reset environment for a user, optionally clearing most of it
-void reset_env(struct passwd *p, int clear)
-{
-  int i;
-
-  if (clear) {
-    char *s, *stuff[] = {"TERM", "DISPLAY", "COLORTERM", "XAUTHORITY"};
-
-    for (i=0; i<ARRAY_LEN(stuff); i++)
-      stuff[i] = (s = getenv(stuff[i])) ? xmprintf("%s=%s", stuff[i], s) : 0;
-    clearenv();
-    for (i=0; i < ARRAY_LEN(stuff); i++) if (stuff[i]) putenv(stuff[i]);
-    if (chdir(p->pw_dir)) {
-      perror_msg("chdir %s", p->pw_dir);
-      xchdir("/");
-    }
-  } else {
-    char **ev1, **ev2;
-
-    // remove LD_*, IFS, ENV, and BASH_ENV from environment
-    for (ev1 = ev2 = environ;;) {
-      while (*ev2 && (strstart(ev2, "LD_") || strstart(ev2, "IFS=") ||
-        strstart(ev2, "ENV=") || strstart(ev2, "BASH_ENV="))) ev2++;
-      if (!(*ev1++ = *ev2++)) break;
-    }
-  }
-
-  setenv("PATH", _PATH_DEFPATH, 1);
-  setenv("HOME", p->pw_dir, 1);
-  setenv("SHELL", p->pw_shell, 1);
-  setenv("USER", p->pw_name, 1);
-  setenv("LOGNAME", p->pw_name, 1);
 }
 
 // Syslog with the openlog/closelog, autodetecting daemon status via no tty

@@ -6,6 +6,9 @@
 
 // For musl
 #define _ALL_SOURCE
+#ifndef REG_STARTEND
+#define REG_STARTEND 0
+#endif
 
 #ifdef __APPLE__
 // macOS 10.13 doesn't have the POSIX 2008 direct access to timespec in
@@ -122,8 +125,6 @@ char *strcasestr(const char *haystack, const char *needle);
 #define bswap_16(x) OSSwapInt16(x)
 #define bswap_32(x) OSSwapInt32(x)
 #define bswap_64(x) OSSwapInt64(x)
-
-int clearenv(void);
 
 #elif defined(__FreeBSD__)
 
@@ -274,9 +275,9 @@ static inline int __system_property_set(const char *key, const char *value)
 }
 #endif
 
-// libcutils is in AOSP but not Android NDK r18
+// libprocessgroup is an Android platform library not included in the NDK.
 #if defined(__BIONIC__) && !defined(__ANDROID_NDK__)
-#include <cutils/sched_policy.h>
+#include <processgroup/sched_policy.h>
 #else
 static inline int get_sched_policy(int tid, void *policy) {return 0;}
 static inline char *get_sched_policy_name(int policy) {return "unknown";}
