@@ -45,6 +45,7 @@ void llist_free_double(void *node);
 void llist_traverse(void *list, void (*using)(void *node));
 void *llist_pop(void *list);  // actually void **list
 void *dlist_pop(void *list);  // actually struct double_list **list
+void *dlist_lpop(void *list); // also struct double_list **list
 void dlist_add_nomalloc(struct double_list **list, struct double_list *new);
 struct double_list *dlist_add(struct double_list **list, char *data);
 void *dlist_terminate(void *list);
@@ -76,6 +77,8 @@ void get_optflags(void);
 #define DIRTREE_BREADTH     32
 // skip non-numeric entries
 #define DIRTREE_PROC        64
+// Return files we can't stat
+#define DIRTREE_STATLESS    128
 // Don't look at any more files in this directory.
 #define DIRTREE_ABORT      256
 
@@ -84,9 +87,9 @@ void get_optflags(void);
 struct dirtree {
   struct dirtree *next, *parent, *child;
   long extra; // place for user to store their stuff (can be pointer)
-  struct stat st;
   char *symlink;
   int dirfd;
+  struct stat st;
   char again;
   char name[];
 };
@@ -229,6 +232,7 @@ char *chomp(char *s);
 int unescape(char c);
 char *strend(char *str, char *suffix);
 int strstart(char **a, char *b);
+int strcasestart(char **a, char *b);
 off_t fdlength(int fd);
 void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name));
@@ -265,6 +269,8 @@ long long millitime(void);
 char *format_iso_time(char *buf, size_t len, struct timespec *ts);
 void reset_env(struct passwd *p, int clear);
 void loggit(int priority, char *format, ...);
+unsigned tar_cksum(void *data);
+int is_tar_header(void *pkt);
 
 #define HR_SPACE 1 // Space between number and units
 #define HR_B     2 // Use "B" for single byte units
@@ -342,8 +348,10 @@ int xsocket(int domain, int type, int protocol);
 void xsetsockopt(int fd, int level, int opt, void *val, socklen_t len);
 struct addrinfo *xgetaddrinfo(char *host, char *port, int family, int socktype,
   int protocol, int flags);
-int xconnect(struct addrinfo *ai);
-int xbind(struct addrinfo *ai);
+void xbind(int fd, const struct sockaddr *sa, socklen_t len);
+void xconnect(int fd, const struct sockaddr *sa, socklen_t len);
+int xconnectany(struct addrinfo *ai);
+int xbindany(struct addrinfo *ai);
 int xpoll(struct pollfd *fds, int nfds, int timeout);
 int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_timeout);
 char *ntop(struct sockaddr *sa);
@@ -360,6 +368,7 @@ void comma_collate(char **old, char *new);
 char *comma_iterate(char **list, int *len);
 int comma_scan(char *optlist, char *opt, int clean);
 int comma_scanall(char *optlist, char *scanlist);
+int comma_remove(char *optlist, char *opt);
 
 // deflate.c
 
@@ -385,15 +394,15 @@ struct mtab_list *xgetmountlist(char *path);
 void generic_signal(int signal);
 void exit_signal(int signal);
 void sigatexit(void *handler);
-int sig_to_num(char *pidstr);
-char *num_to_sig(int sig);
+void list_signals();
 
 mode_t string_to_mode(char *mode_str, mode_t base);
 void mode_to_string(mode_t mode, char *buf);
 char *getdirname(char *name);
 char *getbasename(char *name);
 char *fileunderdir(char *file, char *dir);
-void names_to_pid(char **names, int (*callback)(pid_t pid, char *name));
+void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
+    int scripts);
 
 pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
 #define XVFORK() xvforkwrap(vfork())

@@ -72,8 +72,6 @@ cc_defaults {
         "toys/android/runcon.c",
         "toys/android/sendevent.c",
         "toys/android/setenforce.c",
-        "toys/android/setprop.c",
-        "toys/android/start.c",
         "toys/lsb/dmesg.c",
         "toys/lsb/gzip.c",
         "toys/lsb/hostname.c",
@@ -291,11 +289,13 @@ cc_defaults {
                 "dos2unix",
                 "du",
                 "echo",
+                "egrep",
                 "env",
                 "expand",
                 "expr",
                 "fallocate",
                 "false",
+                "fgrep",
                 "file",
                 "find",
                 "flock",
@@ -304,6 +304,7 @@ cc_defaults {
                 "fsync",
                 "getconf",
                 "getenforce",
+                "grep",
                 "groups",
                 "gunzip",
                 "gzip",
@@ -378,7 +379,6 @@ cc_defaults {
                 "sendevent",
                 "seq",
                 "setenforce",
-                "setprop",
                 "setsid",
                 "sha1sum",
                 "sha224sum",
@@ -388,9 +388,7 @@ cc_defaults {
                 "sleep",
                 "sort",
                 "split",
-                "start",
                 "stat",
-                "stop",
                 "strings",
                 "stty",
                 "swapoff",
@@ -434,6 +432,7 @@ cc_defaults {
             ],
 
             shared_libs: [
+                "libcutils",
                 "liblog",
                 "libprocessgroup",
             ],
@@ -469,3 +468,22 @@ cc_binary {
     defaults: ["toybox-defaults"],
     vendor: true,
 }
+
+//###########################################
+// Running the toybox tests
+//###########################################
+
+sh_test {
+    name: "toybox-tests",
+    src: "run-tests-on-android.sh",
+    filename: "run-tests-on-android.sh",
+    test_suites: ["general-tests"],
+    host_supported: true,
+    device_supported: false,
+    test_config: "toybox-tests.xml",
+    data: [
+        "tests/**/*",
+        "scripts/runtest.sh",
+    ],
+}
+

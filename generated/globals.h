@@ -1,11 +1,3 @@
-// toys/android/getprop.c
-
-struct getprop_data {
-  size_t size;
-  char **nv; // name/value pairs: even=name, odd=value
-  struct selabel_handle *handle;
-};
-
 // toys/android/log.c
 
 struct log_data {
@@ -308,6 +300,7 @@ struct losetup_data {
   int openflags;
   dev_t jdev;
   ino_t jino;
+  char *dir;
 };
 
 // toys/other/lspci.c
@@ -351,6 +344,7 @@ struct modinfo_data {
   char *F, *k, *b;
 
   long mod;
+  int count;
 };
 
 // toys/other/nsenter.c
@@ -485,7 +479,7 @@ struct bootchartd_data {
   int proc_accounting;
   int is_login;
 
-  void *head;
+  pid_t cur_pid;
 };
 
 // toys/pending/brctl.c
@@ -526,6 +520,7 @@ struct dd_data {
     long sz, count;
     unsigned long long offset;
   } in, out;
+  unsigned conv, iflag, oflag;
 };;
 
 // toys/pending/dhcp.c
@@ -779,6 +774,30 @@ struct sh_data {
   char *command;
 
   long lineno;
+
+  // parse scratch space
+  struct double_list *parse;
+
+  // Running jobs.
+  struct sh_job {
+    struct sh_job *next, *prev;
+    unsigned jobno;
+
+    // Every pipeline has at least one set of arguments or it's Not A Thing
+    struct sh_arg {
+      char **v;
+      unsigned long c;
+    } pipeline;
+
+    // null terminated array of running processes in pipeline
+    struct sh_process {
+      struct string_list *delete; // expanded strings
+      int pid, exit;   // status? Stopped? Exited?
+      char *end;
+      struct sh_arg arg;
+    } *procs, *proc;
+  } *jobs, *job;
+  unsigned jobcnt;
 };
 
 // toys/pending/stty.c
@@ -1074,13 +1093,14 @@ struct find_data {
   int topdir, xdev, depth;
   time_t now;
   long max_bytes;
+  char *start;
 };
 
 // toys/posix/grep.c
 
 struct grep_data {
   long m, A, B, C;
-  struct arg_list *f, *e, *M, *S;
+  struct arg_list *f, *e, *M, *S, *exclude_dir;
   char *color;
 
   char *purple, *cyan, *red, *green, *grey;
@@ -1290,7 +1310,8 @@ struct strings_data {
 struct tail_data {
   long n, c;
 
-  int file_no, ffd, *files;
+  int file_no, last_fd;
+  struct xnotify *not;
 };
 
 // toys/posix/tar.c
@@ -1298,7 +1319,7 @@ struct tail_data {
 struct tar_data {
   char *f, *C;
   struct arg_list *T, *X;
-  char *to_command, *owner, *group, *mtime;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1376,7 +1397,6 @@ struct xargs_data {
 };
 
 extern union global_union {
-	struct getprop_data getprop;
 	struct log_data log;
 	struct demo_number_data demo_number;
 	struct hello_data hello;

@@ -18,13 +18,13 @@
  * Extract into dir same as filename, --restrict? "Tarball is splodey"
  *
 
-USE_TAR(NEWTOY(tar, "&(sparse)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
   default y
   help
-    usage: tar [-cxt] [-fvohmjkO] [-XTCf NAME] [FILES]
+    usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILES]
 
     Create, extract, or list files in a .tar (or compressed t?z) file.
 
@@ -34,9 +34,11 @@ config TAR
     o  Ignore owner          h  Follow symlinks       m  Ignore mtime
     J  xz compression        j  bzip2 compression     z  gzip compression
     O  Extract to stdout     X  exclude names in FILE T  include names in FILE
-    --exclude   FILENAME to exclude           --full-time show seconds with -tv
-    --mtime     Use TIME for file timestamps  --sparse  Record sparse files
-    --owner     Set file owner to NAME        --group   Set file group to NAME
+
+    --exclude        FILENAME to exclude    --full-time   Show seconds with -tv
+    --mode MODE      Adjust modes           --mtime TIME  Override timestamps
+    --owner NAME     Set file owner to NAME --group NAME  Set file group to NAME
+    --sparse         Record sparse files
     --restrict       All archive contents must extract under one subdirctory
     --numeric-owner  Save/use/display uid and gid, not user/group name
     --no-recursion   Don't store directory contents
@@ -48,7 +50,7 @@ config TAR
 GLOBALS(
   char *f, *C;
   struct arg_list *T, *X;
-  char *to_command, *owner, *group, *mtime;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -111,16 +113,6 @@ static unsigned long long otoi(char *str, unsigned len)
 }
 #define OTOI(x) otoi(x, sizeof(x))
 
-// Calculate packet checksum, with cksum field treated as 8 spaces
-static unsigned cksum(void *data)
-{
-  unsigned i, cksum = 8*' ';
-
-  for (i = 0; i<500; i += (i==147) ? 9 : 1) cksum += ((char *)data)[i];
-
-  return cksum;
-}
-
 static void write_longname(char *name, char type)
 {
   struct tar_hdr tmp;
@@ -142,7 +134,7 @@ static void write_longname(char *name, char type)
 
   // Calculate checksum. Since 512*255 = 0377000 in octal, this can never
   // use more than 6 digits. The last byte is ' ' for historical reasons.
-  itoo(tmp.chksum, sizeof(tmp.chksum)-1, cksum(&tmp));
+  itoo(tmp.chksum, sizeof(tmp.chksum)-1, tar_cksum(&tmp));
   tmp.chksum[7] = ' ';
 
   // write header and name, padded with NUL to block size
@@ -228,6 +220,7 @@ static int add_to_tar(struct dirtree *node)
 
   if (TT.owner) st->st_uid = TT.ouid;
   if (TT.group) st->st_gid = TT.ggid;
+  if (TT.mode) st->st_mode = string_to_mode(TT.mode, st->st_mode);
   if (TT.mtime) st->st_mtime = TT.mtt;
 
   memset(&hdr, 0, sizeof(hdr));
@@ -309,7 +302,7 @@ static int add_to_tar(struct dirtree *node)
 
       return 0;
     }
-    if (FLAG(sparse)) {
+    if (FLAG(S)) {
       long long lo, ld = 0, len = 0;
 
       // Enumerate the extents
@@ -349,7 +342,7 @@ static int add_to_tar(struct dirtree *node)
     }
   }
 
-  itoo(hdr.chksum, sizeof(hdr.chksum)-1, cksum(&hdr));
+  itoo(hdr.chksum, sizeof(hdr.chksum)-1, tar_cksum(&hdr));
   hdr.chksum[7] = ' ';
 
   if (FLAG(v)) dprintf(TT.fd ? 2 : 1, "%s\n", hname);
@@ -552,7 +545,7 @@ static void extract_to_disk(void)
   }
 }
 
-static void unpack_tar(struct tar_hdr *first)
+static void unpack_tar(char *first)
 {
   struct double_list *walk, *delete;
   struct tar_hdr tar;
@@ -581,14 +574,14 @@ static void unpack_tar(struct tar_hdr *first)
     // ensure null temination even of pathological packets
     tar.padd[0] = and = 0;
 
-    // Is this a valid Unix Standard TAR header?
-    if (memcmp(tar.magic, "ustar", 5)) error_exit("bad header");
-    if (cksum(&tar) != OTOI(tar.chksum)) error_exit("bad cksum");
+    // Is this a valid TAR header?
+    if (!is_tar_header(&tar)) error_exit("bad header");
     TT.hdr.size = OTOI(tar.size);
 
     // If this header isn't writing something to the filesystem
-    if ((tar.type<'0' || tar.type>'7') && tar.type!='S') {
-
+    if ((tar.type<'0' || tar.type>'7') && tar.type!='S'
+        && (*tar.magic && tar.type))
+    {
       // Long name extension header?
       if (tar.type == 'K') alloread(&TT.hdr.link_target, TT.hdr.size);
       else if (tar.type == 'L') alloread(&TT.hdr.name, TT.hdr.size);
@@ -652,6 +645,7 @@ static void unpack_tar(struct tar_hdr *first)
     // At this point, we have something to output. Convert metadata.
     TT.hdr.mode = OTOI(tar.mode);
     if (tar.type == 'S') TT.hdr.mode |= 0x8000;
+    else if (!tar.type) TT.hdr.mode = 8<<12;
     else TT.hdr.mode |= (char []){8,8,10,2,6,4,1,8}[tar.type-'0']<<12;
     TT.hdr.uid = OTOI(tar.uid);
     TT.hdr.gid = OTOI(tar.gid);
@@ -786,14 +780,10 @@ static void do_XT(char **pline, long len)
   if (pline) trim2list(TT.X ? &TT.excl : &TT.incl, *pline);
 }
 
-static char *compression_tool()
-{
-  return FLAG(z) ? "gzip" : (FLAG(J) ? "xz" : "bzip2");
-}
-
 void tar_main(void)
 {
-  char *s, **args = toys.optargs;
+  char *s, **args = toys.optargs,
+    *archiver = FLAG(z) ? "gzip" : (FLAG(J) ? "xz" : "bzip2");
   int len = 0;
 
   // Needed when extracting to command
@@ -830,7 +820,7 @@ void tar_main(void)
   TT.cwd = xabspath(s = xgetcwd(), 1);
   free(s);
 
-  // Remember archive inode
+  // Remember archive inode so we don't overwrite it or add it to itself
   {
     struct stat st;
 
@@ -842,17 +832,16 @@ void tar_main(void)
 
   // Are we reading?
   if (FLAG(x)||FLAG(t)) {
-    struct tar_hdr *hdr = 0;
+    char *hdr = 0;
 
     // autodetect compression type when not specified
     if (!(FLAG(j)||FLAG(z)||FLAG(J))) {
-      len = xread(TT.fd, hdr = (void *)(toybuf+sizeof(toybuf)-512), 512);
-      if (len!=512 || strncmp("ustar", hdr->magic, 5)) {
+      len = xread(TT.fd, hdr = toybuf+sizeof(toybuf)-512, 512);
+      if (len!=512 || !is_tar_header(hdr)) {
         // detect gzip and bzip signatures
         if (SWAP_BE16(*(short *)hdr)==0x1f8b) toys.optflags |= FLAG_z;
-        else if (!memcmp(hdr->name, "BZh", 3)) toys.optflags |= FLAG_j;
-        else if (peek_be(hdr->name, 7) == 0xfd377a585a0000)
-          toys.optflags |= FLAG_J;
+        else if (!memcmp(hdr, "BZh", 3)) toys.optflags |= FLAG_j;
+        else if (peek_be(hdr, 7) == 0xfd377a585a0000) toys.optflags |= FLAG_J;
         else error_exit("Not tar");
 
         // if we can seek back we don't need to loop and copy data
@@ -862,8 +851,13 @@ void tar_main(void)
 
     if (FLAG(j)||FLAG(z)||FLAG(J)) {
       int pipefd[2] = {hdr ? -1 : TT.fd, -1}, i, pid;
+      struct string_list *zcat = find_in_path(getenv("PATH"),
+        FLAG(j) ? "bzcat" : FLAG(J) ? "xz" : "zcat");
 
-      xpopen_both((char *[]){compression_tool(), "-dc", NULL}, pipefd);
+      // Toybox provides more decompressors than compressors, so try them first
+      xpopen_both(zcat ? (char *[]){zcat->str, 0} :
+        (char *[]){archiver, "-dc", 0}, pipefd);
+      if (CFG_TOYBOX_FREE) llist_traverse(zcat, free);
 
       if (!hdr) {
         // If we could seek, child gzip inherited fd and we read its output
@@ -932,7 +926,7 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){compression_tool(), "-f", NULL}, pipefd);
+      xpopen_both((char *[]){archiver, "-f", 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }
