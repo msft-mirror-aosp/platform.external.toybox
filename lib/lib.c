@@ -454,6 +454,16 @@ int strstart(char **a, char *b)
   return i;
 }
 
+// If *a starts with b, advance *a past it and return 1, else return 0;
+int strcasestart(char **a, char *b)
+{
+  int len = strlen(b), i = !strncasecmp(*a, b, len);
+
+  if (i) *a += len;
+
+  return i;
+}
+
 // Return how long the file at fd is, if there's any way to determine it.
 off_t fdlength(int fd)
 {
@@ -684,7 +694,8 @@ static void loopfile_lines_bridge(int fd, char *name)
 void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
 {
   do_lines_bridge = function;
-  loopfiles(argv, loopfile_lines_bridge);
+  // No O_CLOEXEC because we need to call fclose.
+  loopfiles_rw(argv, O_RDONLY|WARN_ONLY, 0, loopfile_lines_bridge);
 }
 
 // Slow, but small.
@@ -832,32 +843,6 @@ int yesno(int def)
   return def;
 }
 
-struct signame {
-  int num;
-  char *name;
-};
-
-// Signals required by POSIX 2008:
-// http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-
-#define SIGNIFY(x) {SIG##x, #x}
-
-static struct signame signames[] = {
-  SIGNIFY(ABRT), SIGNIFY(ALRM), SIGNIFY(BUS),
-  SIGNIFY(FPE), SIGNIFY(HUP), SIGNIFY(ILL), SIGNIFY(INT), SIGNIFY(KILL),
-  SIGNIFY(PIPE), SIGNIFY(QUIT), SIGNIFY(SEGV), SIGNIFY(TERM),
-  SIGNIFY(USR1), SIGNIFY(USR2), SIGNIFY(SYS), SIGNIFY(TRAP),
-  SIGNIFY(VTALRM), SIGNIFY(XCPU), SIGNIFY(XFSZ),
-
-  // Start of non-terminal signals
-
-  SIGNIFY(CHLD), SIGNIFY(CONT), SIGNIFY(STOP), SIGNIFY(TSTP),
-  SIGNIFY(TTIN), SIGNIFY(TTOU), SIGNIFY(URG)
-};
-
-// not in posix: SIGNIFY(STKFLT), SIGNIFY(WINCH), SIGNIFY(IO), SIGNIFY(PWR)
-// obsolete: SIGNIFY(PROF) SIGNIFY(POLL)
-
 // Handler that sets toys.signal, and writes to toys.signalfd if set
 void generic_signal(int sig)
 {
@@ -880,15 +865,11 @@ void exit_signal(int sig)
 // adds the handlers to a list, to be called in order.
 void sigatexit(void *handler)
 {
-  struct arg_list *al;
-  int i;
-
-  for (i=0; signames[i].num != SIGCHLD; i++)
-    if (signames[i].num != SIGKILL)
-      xsignal(signames[i].num, handler ? exit_signal : SIG_DFL);
+  xsignal_all_killers(handler ? exit_signal : SIG_DFL);
 
   if (handler) {
-    al = xmalloc(sizeof(struct arg_list));
+    struct arg_list *al = xmalloc(sizeof(struct arg_list));
+
     al->next = toys.xexit;
     al->arg = handler;
     toys.xexit = al;
@@ -898,33 +879,19 @@ void sigatexit(void *handler)
   }
 }
 
-// Convert name to signal number.  If name == NULL print names.
-int sig_to_num(char *pidstr)
+// Output a nicely formatted 80-column table of all the signals.
+void list_signals()
 {
-  int i;
+  int i = 0, count = 0;
+  char *name;
 
-  if (pidstr) {
-    char *s;
-
-    i = estrtol(pidstr, &s, 10);
-    if (!errno && !*s) return i;
-
-    if (!strncasecmp(pidstr, "sig", 3)) pidstr+=3;
+  for (; i<=NSIG; i++) {
+    if ((name = num_to_sig(i))) {
+      printf("%2d) SIG%-9s", i, name);
+      if (++count % 5 == 0) putchar('\n');
+    }
   }
-  for (i=0; i<ARRAY_LEN(signames); i++)
-    if (!pidstr) xputs(signames[i].name);
-    else if (!strcasecmp(pidstr, signames[i].name)) return signames[i].num;
-
-  return -1;
-}
-
-char *num_to_sig(int sig)
-{
-  int i;
-
-  for (i=0; i<ARRAY_LEN(signames); i++)
-    if (signames[i].num == sig) return signames[i].name;
-  return NULL;
+  putchar('\n');
 }
 
 // premute mode bits based on posix mode strings.
@@ -1046,7 +1013,7 @@ char *getdirname(char *name)
 {
   char *s = xstrdup(name), *ss = strrchr(s, '/');
 
-  while (*ss && *ss == '/' && s != ss) *ss-- = 0;
+  while (ss && *ss && *ss == '/' && s != ss) *ss-- = 0;
 
   return s;
 }
@@ -1075,7 +1042,8 @@ char *fileunderdir(char *file, char *dir)
 }
 
 // Execute a callback for each PID that matches a process name from a list.
-void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
+void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
+    int scripts)
 {
   DIR *dp;
   struct dirent *entry;
@@ -1084,18 +1052,20 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
 
   while ((entry = readdir(dp))) {
     unsigned u = atoi(entry->d_name);
-    char *cmd = 0, *comm, **cur;
+    char *cmd = 0, *comm = 0, **cur;
     off_t len;
 
     if (!u) continue;
 
     // Comm is original name of executable (argv[0] could be #! interpreter)
     // but it's limited to 15 characters
-    sprintf(libbuf, "/proc/%u/comm", u);
-    len = sizeof(libbuf);
-    if (!(comm = readfileat(AT_FDCWD, libbuf, libbuf, &len)) || !len)
-      continue;
-    if (libbuf[len-1] == '\n') libbuf[--len] = 0;
+    if (scripts) {
+      sprintf(libbuf, "/proc/%u/comm", u);
+      len = sizeof(libbuf);
+      if (!(comm = readfileat(AT_FDCWD, libbuf, libbuf, &len)) || !len)
+        continue;
+      if (libbuf[len-1] == '\n') libbuf[--len] = 0;
+    }
 
     for (cur = names; *cur; cur++) {
       struct stat st1, st2;
@@ -1105,7 +1075,7 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
       // Fast path: only matching a filename (no path) that fits in comm.
       // `len` must be 14 or less because with a full 15 bytes we don't
       // know whether the name fit or was truncated.
-      if (len<=14 && bb==*cur && !strcmp(comm, bb)) goto match;
+      if (scripts && len<=14 && bb==*cur && !strcmp(comm, bb)) goto match;
 
       // If we have a path to existing file only match if same inode
       if (bb!=*cur && !stat(*cur, &st1)) {
@@ -1127,7 +1097,7 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
         cmd[len] = 0;
       }
       if (!strcmp(bb, getbasename(cmd))) goto match;
-      if (bb!=*cur && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
+      if (scripts && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
       continue;
 match:
       if (callback(u, *cur)) break;
@@ -1415,4 +1385,27 @@ void loggit(int priority, char *format, ...)
   vsyslog(priority, format, va);
   va_end(va);
   closelog();
+}
+
+// Calculate tar packet checksum, with cksum field treated as 8 spaces
+unsigned tar_cksum(void *data)
+{
+  unsigned i, cksum = 8*' ';
+
+  for (i = 0; i<500; i += (i==147) ? 9 : 1) cksum += ((char *)data)[i];
+
+  return cksum;
+}
+
+// is this a valid tar header?
+int is_tar_header(void *pkt)
+{
+  char *p = pkt;
+  int i = 0;
+
+  if (p[257] && memcmp("ustar", p+257, 5)) return 0;
+  if (p[148] != '0') return 0;
+  sscanf(p+148, "%8o", &i);
+
+  return i && tar_cksum(pkt) == i;
 }

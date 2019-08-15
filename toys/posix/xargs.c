@@ -5,10 +5,11 @@
  * See http://opengroup.org/onlinepubs/9699919799/utilities/xargs.html
  *
  * TODO: Rich's whitespace objection, env size isn't fixed anymore.
- * TODO: -x	Exit if can't fit everything in one command
+ * TODO: -I	Insert mode
  * TODO: -L	Max number of lines of input per command
+ * TODO: -x	Exit if can't fit everything in one command
 
-USE_XARGS(NEWTOY(xargs, "^I:E:ptrn#<1s#0[!0E]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_XARGS(NEWTOY(xargs, "^E:ptrn#<1s#0[!0E]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config XARGS
   bool "xargs"
@@ -42,7 +43,7 @@ config XARGS_PEDANTIC
 
 GLOBALS(
   long s, n;
-  char *E, *I;
+  char *E;
 
   long entries, bytes;
   char delim;
@@ -76,7 +77,8 @@ static char *handle_entries(char *data, char **entry)
       if (!*s) break;
       save = s;
 
-      TT.bytes += sizeof(char *);
+      // We ought to add sizeof(char *) to TT.bytes to be correct, but we don't
+      // for bug compatibility with busybox 1.30.1 and findutils 4.7.0.
 
       for (;;) {
         if (++TT.bytes >= TT.s && TT.s) return save;
@@ -159,7 +161,7 @@ void xargs_main(void)
       data = handle_entries(data, NULL);
       if (!data) continue;
       if (data == (char *)2) done++;
-      if ((long)data <= 2) data = 0;
+      if ((unsigned long)data <= 2) data = 0;
       else data = xstrdup(data);
 
       break;

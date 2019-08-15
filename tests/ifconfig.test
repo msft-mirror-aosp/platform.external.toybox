@@ -35,6 +35,8 @@ modprobe dummy 2>/dev/null
 if ! ifconfig dummy0 up 2>/dev/null
 then
   echo "$SHOWSKIP: ifconfig dummy0 up failed"
+  return 2>/dev/null
+  exit
 fi
 
 # Test Description: Disable the dummy0 interface
@@ -123,16 +125,18 @@ testing "dummy0 arp down" \
 # Test Description: Call the pointopoint option with no argument
 # Results Expected: After calling ifconfig dummy0, there is one line with the
 #                   NOARP and UP flags
-testing "dummy0 pointopoint" \
-"ifconfig dummy0 pointopoint && ifconfig dummy0 | grep -i NOARP | grep -i UP | wc -l" \
-"1\n" "" ""
+# TODO: http://lists.landley.net/pipermail/toybox-landley.net/2014-November/003795.html
+#testing "dummy0 pointopoint" \
+#"ifconfig dummy0 pointopoint && ifconfig dummy0 | grep -i NOARP | grep -i UP | wc -l" \
+#"1\n" "" ""
 
 # Test Description: Test the pointopoint option and set the ipaddress
 # Results Expected: After calling ifconfig dummy0, there is one line with the
 #                   word inet and the selected ip address
-testing "dummy0 pointopoint 127.0.0.2" \
-"ifconfig dummy0 pointopoint 127.0.0.2 && ifconfig dummy0 | grep -i inet | grep -i 127\.0\.0\.2 | wc -l" \
-"1\n" "" ""
+# TODO: http://lists.landley.net/pipermail/toybox-landley.net/2014-November/003795.html
+#testing "dummy0 pointopoint 127.0.0.2" \
+#"ifconfig dummy0 pointopoint 127.0.0.2 && ifconfig dummy0 | grep -i inet | grep -i 127\.0\.0\.2 | wc -l" \
+#"1\n" "" ""
 
 ####### Flags you can set on an interface (or -remove by prefixing with -): ###############
 
