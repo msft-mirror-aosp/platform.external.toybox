@@ -36,6 +36,7 @@ config FIND
     -type [bcdflps]  type is (block, char, dir, file, symlink, pipe, socket)
     -true            always true               -false      always false
     -context PATTERN security context
+    -newerXY FILE    X=acm time > FILE's Y=acm time (Y=t: FILE is literal time)
 
     Numbers N may be prefixed by a - (less than) or + (greater than). Units for
     -Xtime are d (days, default), h (hours), m (minutes), or s (seconds).
@@ -211,10 +212,19 @@ static int do_find(struct dirtree *new)
   struct double_list *argdata = TT.argdata;
   char *s, **ss;
 
-  recurse = DIRTREE_COMEAGAIN|(DIRTREE_SYMFOLLOW*!!(toys.optflags&FLAG_L));
+  recurse = DIRTREE_STATLESS|DIRTREE_COMEAGAIN|
+    (DIRTREE_SYMFOLLOW*!!(toys.optflags&FLAG_L));
 
   // skip . and .. below topdir, handle -xdev and -depth
   if (new) {
+    // Handle stat failures first.
+    if (new->again&2) {
+      if (!new->parent || errno != ENOENT) {
+        perror_msg("'%s'", s = dirtree_path(new, 0));
+        free(s);
+      }
+      return 0;
+    }
     if (new->parent) {
       if (!dirtree_notdotdot(new)) return 0;
       if (TT.xdev && new->st.st_dev != new->parent->st.st_dev) recurse = 0;
@@ -359,7 +369,8 @@ static int do_find(struct dirtree *new)
         }
 
         if (check) {
-          test = !fnmatch(arg, name, FNM_PATHNAME*(!is_path));
+          test = !fnmatch(arg, is_path ? name : basename(name),
+            FNM_PATHNAME*(!is_path));
           if (i) free(name);
         }
         free(path);
@@ -431,8 +442,10 @@ static int do_find(struct dirtree *new)
           }
         }
       } else if (!strcmp(s, "user") || !strcmp(s, "group")
-              || !strcmp(s, "newer"))
+              || strstart(&s, "newer"))
       {
+        int macoff[] = {offsetof(struct stat, st_mtim),
+          offsetof(struct stat, st_atim), offsetof(struct stat, st_ctim)};
         struct {
           void *next, *prev;
           union {
@@ -447,14 +460,23 @@ static int do_find(struct dirtree *new)
             udl = xmalloc(sizeof(*udl));
             dlist_add_nomalloc(&TT.argdata, (void *)udl);
 
-            if (*s == 'u') udl->u.uid = xgetuid(ss[1]);
-            else if (*s == 'g') udl->u.gid = xgetgid(ss[1]);
-            else {
-              struct stat st;
+            if (s != 1+*ss) {
+              if (*s && (s[2] || !strchr("Bmac", *s) || !strchr("tBmac", s[1])))
+                goto error;
+              if (!*s || s[1]!='t') {
+                struct stat st;
 
-              xstat(ss[1], &st);
-              udl->u.tm = st.st_mtim;
-            }
+                xstat(ss[1], &st);
+                udl->u.tm = *(struct timespec *)(((char *)&st)
+                  + macoff[!*s ? 0 : stridx("ac", s[1])+1]);
+              } else if (s[1] == 't') {
+                unsigned nano;
+
+                xparsedate(ss[1], &(udl->u.tm.tv_sec), &nano, 1);
+                udl->u.tm.tv_nsec = nano;
+              }
+            } else if (*s == 'u') udl->u.uid = xgetuid(ss[1]);
+            else udl->u.gid = xgetgid(ss[1]);
           }
         } else {
           udl = (void *)llist_pop(&argdata);
@@ -462,9 +484,13 @@ static int do_find(struct dirtree *new)
             if (*s == 'u') test = new->st.st_uid == udl->u.uid;
             else if (*s == 'g') test = new->st.st_gid == udl->u.gid;
             else {
-              test = new->st.st_mtim.tv_sec > udl->u.tm.tv_sec;
-              if (new->st.st_mtim.tv_sec == udl->u.tm.tv_sec)
-                test = new->st.st_mtim.tv_nsec > udl->u.tm.tv_nsec;
+              struct timespec *tm = (void *)(((char *)&new->st)
+                + macoff[!s[5] ? 0 : stridx("ac", s[5])+1]);
+
+              if (s[5] == 'B') test = 0;
+              else test = (tm->tv_sec == udl->u.tm.tv_sec)
+                ? tm->tv_nsec > udl->u.tm.tv_nsec
+                : tm->tv_sec > udl->u.tm.tv_sec;
             }
           }
         }
@@ -559,7 +585,15 @@ static int do_find(struct dirtree *new)
         if (check) for (fmt = ss[1]; *fmt; fmt++) {
           // Print the parts that aren't escapes
           if (*fmt == '\\') {
-            if (!(ch = unescape(*++fmt))) error_exit("bad \\%c", *fmt);
+            int slash = *++fmt, n = unescape(slash);
+
+            if (n) ch = n;
+            else if (slash=='c') break;
+            else if (slash=='0') {
+              ch = 0;
+              while (*fmt>='0' && *fmt<='7' && n++<3) ch=(ch*8)+*(fmt++)-'0';
+              --fmt;
+            } else error_exit("bad \\%c", *fmt);
             putchar(ch);
           } else if (*fmt != '%') putchar(*fmt);
           else if (*++fmt == '%') putchar('%');
@@ -669,7 +703,8 @@ void find_main(void)
 
   // Loop through paths
   for (i = 0; i < len; i++)
-    dirtree_flagread(ss[i], DIRTREE_SYMFOLLOW*!!(toys.optflags&(FLAG_H|FLAG_L)),
+    dirtree_flagread(ss[i],
+      DIRTREE_STATLESS|(DIRTREE_SYMFOLLOW*!!(toys.optflags&(FLAG_H|FLAG_L))),
       do_find);
 
   execdir(0, 1);

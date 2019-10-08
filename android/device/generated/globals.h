@@ -92,7 +92,7 @@ struct mknod_data {
 // toys/lsb/mktemp.c
 
 struct mktemp_data {
-  char *p;
+  char *p, *tmpdir;
 };
 
 // toys/lsb/mount.c
@@ -218,6 +218,12 @@ struct base64_data {
   unsigned total;
 };
 
+// toys/other/blkid.c
+
+struct blkid_data {
+  struct arg_list *s;
+};
+
 // toys/other/blockdev.c
 
 struct blockdev_data {
@@ -316,7 +322,7 @@ struct lspci_data {
 // toys/other/makedevs.c
 
 struct makedevs_data {
-  char *fname;
+  char *d;
 };
 
 // toys/other/mix.c
@@ -953,6 +959,9 @@ struct useradd_data {
 struct vi_data {
     int cur_col;
     int cur_row;
+    int scr_row;
+    int drawn_row;
+    int drawn_col;
     unsigned screen_height;
     unsigned screen_width;
     int vi_mode;
@@ -961,6 +970,9 @@ struct vi_data {
     int vi_mov_flag;
     int modified;
     char vi_reg;
+    char *last_search;
+    int tabstop;
+    int list;
 };
 
 // toys/pending/wget.c
@@ -1144,6 +1156,12 @@ struct kill_data {
   struct arg_list *o;
 };
 
+// toys/posix/ln.c
+
+struct ln_data {
+  char *t;
+};
+
 // toys/posix/logger.c
 
 struct logger_data {
@@ -1220,7 +1238,7 @@ struct paste_data {
 
 struct patch_data {
   char *i, *d;
-  long p;
+  long p, g;
 
   struct double_list *current_hunk;
   long oldline, oldlen, newline, newlen;
@@ -1295,6 +1313,7 @@ struct sort_data {
   void *key_list;
   int linecount;
   char **lines;
+  char *name;
 };
 
 // toys/posix/split.c
@@ -1346,7 +1365,7 @@ struct tar_data {
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size;
+    long long size, ssize;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -1401,6 +1420,7 @@ struct xargs_data {
 
   long entries, bytes;
   char delim;
+  FILE *tty;
 };
 
 extern union global_union {
@@ -1431,6 +1451,7 @@ extern union global_union {
 	struct tunctl_data tunctl;
 	struct acpi_data acpi;
 	struct base64_data base64;
+	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
 	struct dos2unix_data dos2unix;
@@ -1527,6 +1548,7 @@ extern union global_union {
 	struct iconv_data iconv;
 	struct id_data id;
 	struct kill_data kill;
+	struct ln_data ln;
 	struct logger_data logger;
 	struct ls_data ls;
 	struct mkdir_data mkdir;

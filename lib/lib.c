@@ -699,8 +699,7 @@ void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
 }
 
 // Slow, but small.
-
-char *get_rawline(int fd, long *plen, char end)
+char *get_line(int fd)
 {
   char c, *buf = NULL;
   long len = 0;
@@ -708,20 +707,12 @@ char *get_rawline(int fd, long *plen, char end)
   for (;;) {
     if (1>read(fd, &c, 1)) break;
     if (!(len & 63)) buf=xrealloc(buf, len+65);
-    if ((buf[len++]=c) == end) break;
+    if ((buf[len++]=c) == '\n') break;
   }
-  if (buf) buf[len]=0;
-  if (plen) *plen = len;
-
-  return buf;
-}
-
-char *get_line(int fd)
-{
-  long len;
-  char *buf = get_rawline(fd, &len, '\n');
-
-  if (buf && buf[--len]=='\n') buf[len]=0;
+  if (buf) {
+    buf[len]=0;
+    if (buf[--len]=='\n') buf[len]=0;
+  }
 
   return buf;
 }
@@ -828,11 +819,16 @@ void base64_init(char *p)
 
 int yesno(int def)
 {
+  return fyesno(stdin, def);
+}
+
+int fyesno(FILE *in, int def)
+{
   char buf;
 
   fprintf(stderr, " (%c/%c):", def ? 'Y' : 'y', def ? 'n' : 'N');
   fflush(stderr);
-  while (fread(&buf, 1, 1, stdin)) {
+  while (fread(&buf, 1, 1, in)) {
     int new;
 
     // The letter changes the value, the newline (or space) returns it.
@@ -1404,7 +1400,7 @@ int is_tar_header(void *pkt)
   int i = 0;
 
   if (p[257] && memcmp("ustar", p+257, 5)) return 0;
-  if (p[148] != '0') return 0;
+  if (p[148] != '0' && p[148] != ' ') return 0;
   sscanf(p+148, "%8o", &i);
 
   return i && tar_cksum(pkt) == i;
