@@ -15,7 +15,6 @@
  * Toybox will never implement the "pax" command as a matter of policy.
  *
  * Why --exclude pattern but no --include? tar cvzf a.tgz dir --include '*.txt'
- * Extract into dir same as filename, --restrict? "Tarball is splodey"
  *
 
 USE_TAR(NEWTOY(tar, "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
@@ -70,7 +69,7 @@ GLOBALS(
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size;
+    long long size, ssize;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -105,6 +104,7 @@ static unsigned long long otoi(char *str, unsigned len)
   // When tar value too big or octal, use binary encoding with high bit set
   if (128&*str) while (--len) val = (val<<8)+*++str;
   else {
+    while (len && *str == ' ') str++;
     while (len && *str>='0' && *str<='7') val = val*8+*str++-'0', len--;
     if (len && *str && *str != ' ') error_exit("bad header");
   }
@@ -313,20 +313,13 @@ static int add_to_tar(struct dirtree *node)
           TT.sparse[TT.sparselen++] = ld;
           len += TT.sparse[TT.sparselen++] = lo-ld;
         }
-        if (lo == st->st_size) {
-          if (TT.sparselen<=2) TT.sparselen = 0;
-          else {
-            // Gratuitous extra entry for compatibility with other versions
-            TT.sparse[TT.sparselen++] = lo;
-            TT.sparse[TT.sparselen++] = 0;
-          }
-          break;
-        }
-        if ((ld = lseek(fd, lo, SEEK_DATA)) < lo) ld = st->st_size;
+        if (lo == st->st_size || (ld = lseek(fd, lo, SEEK_DATA)) < lo) break;
       }
 
       // If there were extents, change type to S record
-      if (TT.sparselen) {
+      if (TT.sparselen>2) {
+        TT.sparse[TT.sparselen++] = st->st_size;
+        TT.sparse[TT.sparselen++] = 0;
         hdr.type = 'S';
         lnk = (char *)&hdr;
         for (i = 0; i<TT.sparselen && i<8; i++)
@@ -337,7 +330,7 @@ static int add_to_tar(struct dirtree *node)
         if (TT.sparselen>8) lnk[482] = 1;
         itoo(lnk+483, 12, st->st_size);
         ITOO(hdr.size, len);
-      }
+      } else TT.sparselen = 0;
       lseek(fd, 0, SEEK_SET);
     }
   }
@@ -438,7 +431,6 @@ static void sendfile_sparse(int fd)
 
   do {
     if (TT.sparselen) {
-      if (!TT.sparse[i*2+1]) continue;
       // Seek past holes or fill output with zeroes.
       if (-1 == lseek(fd, len = TT.sparse[i*2], SEEK_SET)) {
         sent = 0;
@@ -448,8 +440,11 @@ static void sendfile_sparse(int fd)
           if (j != writeall(fd, toybuf+512, j)) goto error;
           len -= j;
         }
+      } else {
+        sent = len;
+        if (!(len = TT.sparse[i*2+1]) && ftruncate(fd, sent+len))
+          perror_msg("ftruncate");
       }
-      len = TT.sparse[i*2+1];
       if (len+used>TT.hdr.size) error_exit("sparse overflow");
     } else len = TT.hdr.size;
 
@@ -640,12 +635,16 @@ static void unpack_tar(char *first)
 
       // Odd number of entries (from corrupted tar) would be dropped here
       TT.sparselen /= 2;
-    } else TT.sparselen = 0;
+      if (TT.sparselen)
+        TT.hdr.ssize = TT.sparse[2*TT.sparselen-1]+TT.sparse[2*TT.sparselen-2];
+    } else {
+      TT.sparselen = 0;
+      TT.hdr.ssize = TT.hdr.size;
+    }
 
     // At this point, we have something to output. Convert metadata.
-    TT.hdr.mode = OTOI(tar.mode);
-    if (tar.type == 'S') TT.hdr.mode |= 0x8000;
-    else if (!tar.type) TT.hdr.mode = 8<<12;
+    TT.hdr.mode = OTOI(tar.mode)&0xfff;
+    if (tar.type == 'S' || !tar.type) TT.hdr.mode |= 0x8000;
     else TT.hdr.mode |= (char []){8,8,10,2,6,4,1,8}[tar.type-'0']<<12;
     TT.hdr.uid = OTOI(tar.uid);
     TT.hdr.gid = OTOI(tar.gid);
@@ -685,8 +684,9 @@ static void unpack_tar(char *first)
     }
 
     // Non-regular files don't have contents stored in archive.
-    if ((TT.hdr.link_target && *TT.hdr.link_target) || !S_ISREG(TT.hdr.mode))
-      TT.hdr.size = 0;
+    if ((TT.hdr.link_target && *TT.hdr.link_target)
+      || (tar.type && !S_ISREG(TT.hdr.mode)))
+        TT.hdr.size = 0;
 
     // Files are seen even if excluded, so check them here.
     // TT.seen points to first seen entry in TT.incl, or NULL if none yet.
@@ -719,7 +719,7 @@ static void unpack_tar(char *first)
         printf(" %s/%s ", *TT.hdr.uname ? TT.hdr.uname : perm,
           *TT.hdr.gname ? TT.hdr.gname : gname);
         if (tar.type=='3' || tar.type=='4') printf("%u,%u", maj, min);
-        else printf("%9lld", (long long)TT.hdr.size);
+        else printf("%9lld", TT.hdr.ssize);
         sprintf(perm, ":%02d", lc->tm_sec);
         printf("  %d-%02d-%02d %02d:%02d%s ", 1900+lc->tm_year, 1+lc->tm_mon,
           lc->tm_mday, lc->tm_hour, lc->tm_min, FLAG(full_time) ? perm : "");
@@ -737,7 +737,7 @@ static void unpack_tar(char *first)
 
           xsetenv("TAR_FILETYPE", "f");
           xsetenv(xmprintf("TAR_MODE=%o", TT.hdr.mode), 0);
-          xsetenv(xmprintf("TAR_SIZE=%lld", TT.hdr.size), 0);
+          xsetenv(xmprintf("TAR_SIZE=%lld", TT.hdr.ssize), 0);
           xsetenv("TAR_FILENAME", TT.hdr.name);
           xsetenv("TAR_UNAME", TT.hdr.uname);
           xsetenv("TAR_GNAME", TT.hdr.gname);
@@ -852,7 +852,7 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(J)) {
       int pipefd[2] = {hdr ? -1 : TT.fd, -1}, i, pid;
       struct string_list *zcat = find_in_path(getenv("PATH"),
-        FLAG(j) ? "bzcat" : FLAG(J) ? "xz" : "zcat");
+        FLAG(j) ? "bzcat" : FLAG(J) ? "xzcat" : "zcat");
 
       // Toybox provides more decompressors than compressors, so try them first
       xpopen_both(zcat ? (char *[]){zcat->str, 0} :

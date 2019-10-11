@@ -31,6 +31,8 @@ testing "with -k" "$IN && ls -k; $OUT" "dir1\ndir2\nfile1.txt\nfile2.txt\n" "" "
 testing "with -m" "$IN && ls -m; $OUT" "dir1, dir2, file1.txt, file2.txt\n" "" ""
 testing "with -F" "$IN && ls -F; $OUT" "dir1/\ndir2/\nfile1.txt\nfile2.txt\n" "" ""
 testing "with -dk *" "$IN && ls -dk *; $OUT" "dir1\ndir2\nfile1.txt\nfile2.txt\n" "" ""
+testing "with -Z" "$IN && ls -Z file1.txt | egrep -q '^[^ ]+ file1.txt' || echo fail; $OUT" "" "" ""
+testing "with -lZ" "$IN && ls --full-time -lZ file1.txt | egrep -q '^-[rwx-]+ +[0-9]+ +[^ ]+ +[^ ]+ +[^ ]+ +[0-9]+ [0-9][0-9][0-9][0-9]-[0-9][0-9]-.* file1.txt' || echo fail; $OUT" "" "" ""
 
 ln -s file1.txt lstest/slink
 testing "-l symlink" \
@@ -49,6 +51,9 @@ testing "nested recursively" "$IN && ls -R; $OUT" \
 rm -rf lstest/* && touch lstest/file1.txt && INODE=`stat -c %i lstest/file1.txt`
 testing "with -i" "$IN && ls -i 2>/dev/null; $OUT" "$INODE file1.txt\n" "" ""
 unset INODE
+
+testing "missing" "$IN && ls does-not-exist 2>err ; grep -q 'ls:.*missing.*: No
+such file' err || echo missing error; $OUT" "" "" ""
 
 # Removing test dir for cleanup purpose
 rm -rf lstest

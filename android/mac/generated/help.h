@@ -122,7 +122,9 @@
 
 #define HELP_netstat "usage: netstat [-pWrxwutneal]\n\nDisplay networking information. Default is netstat -tuwx\n\n-r	Routing table\n-a	All sockets (not just connected)\n-l	Listening server sockets\n-t	TCP sockets\n-u	UDP sockets\n-w	Raw sockets\n-x	Unix sockets\n-e	Extended info\n-n	Don't resolve names\n-W	Wide display\n-p	Show PID/program name of sockets"
 
-#define HELP_netcat "usage: netcat [-46Ut] [-lL COMMAND...] [-u] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME}\n\nForward stdin/stdout to a file or network connection.\n\n-4	Force IPv4\n-6	Force IPv6\n-L	Listen for multiple incoming connections (server mode)\n-U	Use a UNIX domain socket\n-W	SECONDS timeout for more data on an idle connection\n-f	Use FILENAME (ala /dev/ttyS0) instead of network\n-l	Listen for one incoming connection\n-p	Local port number\n-q	Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet\n-s	Local source address\n-t	Allocate tty (must come before -l or -L)\n-u	Use UDP\n-w	SECONDS timeout to establish connection\n\nUse \"stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho\" with\nnetcat -f to connect to a serial port.\n\nThe command line after -l or -L is executed (as a child process) to handle\neach incoming connection. If blank -l waits for a connection and forwards\nit to stdin/stdout. If no -p specified, -l prints port it bound to and\nbackgrounds itself (returning immediately).\n\nFor a quick-and-dirty server, try something like:\nnetcat -s 127.0.0.1 -p 1234 -tL /bin/bash -l"
+#define HELP_netcat_listen "usage: netcat [-t] [-lL COMMAND...]\n\n-l	Listen for one incoming connection\n-L	Listen for multiple incoming connections (server mode)\n-t	Allocate tty (must come before -l or -L)\n\nThe command line after -l or -L is executed (as a child process) to handle\neach incoming connection. If blank -l waits for a connection and forwards\nit to stdin/stdout. If no -p specified, -l prints port it bound to and\nbackgrounds itself (returning immediately).\n\nFor a quick-and-dirty server, try something like:\nnetcat -s 127.0.0.1 -p 1234 -tL /bin/bash -l"
+
+#define HELP_netcat "usage: netcat [-46U] [-u] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME}\n\nForward stdin/stdout to a file or network connection.\n\n-4	Force IPv4\n-6	Force IPv6\n-f	Use FILENAME (ala /dev/ttyS0) instead of network\n-p	Local port number\n-q	Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet\n-s	Local source address\n-u	Use UDP\n-U	Use a UNIX domain socket\n-w	SECONDS timeout to establish connection\n-W	SECONDS timeout for more data on an idle connection\n\nUse \"stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho\" with\nnetcat -f to connect to a serial port."
 
 #define HELP_microcom "usage: microcom [-s SPEED] [-X] DEVICE\n\nSimple serial console.\n\n-s	Set baud rate to SPEED\n-X	Ignore ^@ (send break) and ^] (exit)"
 
@@ -260,7 +262,9 @@
 
 #define HELP_hexedit "usage: hexedit FILENAME\n\nHexadecimal file editor. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows        Move left/right/up/down by one line/column\nPg Up/Pg Dn   Move up/down by one page\n0-9, a-f      Change current half-byte to hexadecimal value\nu             Undo\nq/^c/^d/<esc> Quit"
 
-#define HELP_help "usage: help [-ah] [command]\n\nShow usage information for toybox commands.\nRun \"toybox\" with no arguments for a list of available commands.\n\n-h	HTML output\n-a	All commands"
+#define HELP_help_extras "usage: help [-ah]\n\n-a	All commands\n-h	HTML output"
+
+#define HELP_help "usage: help [command]\n\nShow usage information for toybox commands.\nRun \"toybox\" with no arguments for a list of available commands."
 
 #define HELP_fsync "usage: fsync [-d] [FILE...]\n\nSynchronize a file's in-core state with storage device.\n\n-d	Avoid syncing metadata"
 
@@ -510,7 +514,9 @@
 
 #define HELP_nice "usage: nice [-n PRIORITY] COMMAND [ARG...]\n\nRun a command line at an increased or decreased scheduling priority.\n\nHigher numbers make a program yield more CPU time, from -20 (highest\npriority) to 19 (lowest).  By default processes inherit their parent's\nniceness (usually 0).  By default this command adds 10 to the parent's\npriority.  Only root can set a negative niceness level."
 
-#define HELP_mkfifo "usage: mkfifo [-Z CONTEXT] [NAME...]\n\nCreate FIFOs (named pipes).\n\n-Z	Security context"
+#define HELP_mkfifo_z "usage: mkfifo [-Z CONTEXT]\n\n-Z	Security context"
+
+#define HELP_mkfifo "usage: mkfifo [NAME...]\n\nCreate FIFOs (named pipes)."
 
 #define HELP_mkdir_z "usage: [-Z context]\n\n-Z	Set security context"
 
@@ -534,7 +540,9 @@
 
 #define HELP_groups "usage: groups [user]\n\nPrint the groups a user is in."
 
-#define HELP_id "usage: id [-GZgnru] [USER...]\n\nPrint user and group ID.\n-G	Show only the group IDs\n-Z	Show only security context\n-g	Show only the effective group ID\n-n	Print names instead of numeric IDs (to be used with -Ggu)\n-r	Show real ID instead of effective ID\n-u	Show only the effective user ID"
+#define HELP_id_z "usage: id [-Z]\n\n-Z	Show only security context"
+
+#define HELP_id "usage: id [-nGgru] [USER...]\n\nPrint user and group ID.\n\n-n	Print names instead of numeric IDs (to be used with -Ggu)\n-G	Show only the group IDs\n-g	Show only the effective group ID\n-r	Show real ID instead of effective ID\n-u	Show only the effective user ID"
 
 #define HELP_iconv "usage: iconv [-f FROM] [-t TO] [FILE...]\n\nConvert character encoding of files.\n\n-c	Omit invalid chars\n-f	Convert from (default utf8)\n-t	Convert to   (default utf8)"
 

@@ -819,11 +819,16 @@ void base64_init(char *p)
 
 int yesno(int def)
 {
+  return fyesno(stdin, def);
+}
+
+int fyesno(FILE *in, int def)
+{
   char buf;
 
   fprintf(stderr, " (%c/%c):", def ? 'Y' : 'y', def ? 'n' : 'N');
   fflush(stderr);
-  while (fread(&buf, 1, 1, stdin)) {
+  while (fread(&buf, 1, 1, in)) {
     int new;
 
     // The letter changes the value, the newline (or space) returns it.
@@ -1395,7 +1400,7 @@ int is_tar_header(void *pkt)
   int i = 0;
 
   if (p[257] && memcmp("ustar", p+257, 5)) return 0;
-  if (p[148] != '0') return 0;
+  if (p[148] != '0' && p[148] != ' ') return 0;
   sscanf(p+148, "%8o", &i);
 
   return i && tar_cksum(pkt) == i;

@@ -15,7 +15,7 @@ set -o pipefail
 source scripts/portability.sh
 
 [ -z "$KCONFIG_CONFIG" ] && KCONFIG_CONFIG=.config
-[ -z "$OUTNAME" ] && OUTNAME=toybox
+[ -z "$OUTNAME" ] && OUTNAME=toybox"${TARGET:+-$TARGET}"
 UNSTRIPPED="generated/unstripped/$(basename "$OUTNAME")"
 
 # Try to keep one more cc invocation going than we have processors
@@ -339,7 +339,7 @@ do_loudly $BUILD $LNKFILES $LINK || exit 1
 if [ ! -z "$NOSTRIP" ] ||
   ! do_loudly ${CROSS_COMPILE}${STRIP} "$UNSTRIPPED" -o "$OUTNAME"
 then
-  echo "strip failed, using unstripped" &&
+  [ -z "$NOSTRIP" ] && echo "strip failed, using unstripped"
   rm -f "$OUTNAME" &&
   cp "$UNSTRIPPED" "$OUTNAME" ||
     exit 1
