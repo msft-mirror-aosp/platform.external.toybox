@@ -193,7 +193,7 @@ struct ping_data {
 // toys/net/sntp.c
 
 struct sntp_data {
-  long r;
+  long r, t;
   char *p, *m, *M;
 };
 
@@ -1415,7 +1415,7 @@ struct wc_data {
 // toys/posix/xargs.c
 
 struct xargs_data {
-  long s, n;
+  long s, n, P;
   char *E;
 
   long entries, bytes;

@@ -9,7 +9,7 @@
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.1"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.2"TOYBOX_VENDOR
 #endif
 
 // Populate toy_list[].
@@ -193,7 +193,7 @@ void toybox_main(void)
       struct toy_list *tl= toy_find(basename(libbuf));
 
       if (tl == toy_list) unknown(basename(toys.argv[1]));
-      else toy_exec_which(tl, toys.argv);
+      else toy_exec_which(tl, toys.argv+1);
     }
   }
 
