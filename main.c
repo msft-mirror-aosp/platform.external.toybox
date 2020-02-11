@@ -5,13 +5,6 @@
 
 #include "toys.h"
 
-#ifndef TOYBOX_VERSION
-#ifndef TOYBOX_VENDOR
-#define TOYBOX_VENDOR ""
-#endif
-#define TOYBOX_VERSION "0.8.1"TOYBOX_VENDOR
-#endif
-
 // Populate toy_list[].
 
 #undef NEWTOY
@@ -82,16 +75,14 @@ static void toy_singleinit(struct toy_list *which, char *argv[])
 {
   toys.which = which;
   toys.argv = argv;
-
-  if (CFG_TOYBOX_I18N) setlocale(LC_CTYPE, "C.UTF-8");
-  setlinebuf(stdout);
+  toys.toycount = ARRAY_LEN(toy_list);
 
   // Parse --help and --version for (almost) all commands
   if (CFG_TOYBOX_HELP_DASHDASH && !(which->flags & TOYFLAG_NOHELP) && argv[1]) {
     if (!strcmp(argv[1], "--help")) {
       if (CFG_TOYBOX && toys.which == toy_list && toys.argv[2])
         if (!(toys.which = toy_find(toys.argv[2]))) unknown(toys.argv[2]);
-      show_help(stdout);
+      show_help(stdout, 1);
       xexit();
     }
 
@@ -106,10 +97,17 @@ static void toy_singleinit(struct toy_list *which, char *argv[])
     toys.optargs = argv+1;
     for (toys.optc = 0; toys.optargs[toys.optc]; toys.optc++);
   }
-  toys.old_umask = umask(0);
-  if (!(which->flags & TOYFLAG_UMASK)) umask(toys.old_umask);
-  toys.signalfd--;
-  toys.toycount = ARRAY_LEN(toy_list);
+
+  if (!(which->flags & TOYFLAG_NOFORK)) {
+    toys.old_umask = umask(0);
+    if (!(which->flags & TOYFLAG_UMASK)) umask(toys.old_umask);
+    if (CFG_TOYBOX_I18N) {
+      // Deliberately try C.UTF-8 before the user's locale to work around users
+      // that choose non-UTF-8 locales. macOS doesn't support C.UTF-8 though.
+      if (!setlocale(LC_CTYPE, "C.UTF-8")) setlocale(LC_CTYPE, "");
+    }
+    setlinebuf(stdout);
+  }
 }
 
 // Full init needed by multiplexer or reentrant calls, calls singleinit at end
@@ -193,7 +191,7 @@ void toybox_main(void)
       struct toy_list *tl= toy_find(basename(libbuf));
 
       if (tl == toy_list) unknown(basename(toys.argv[1]));
-      else toy_exec_which(tl, toys.argv);
+      else toy_exec_which(tl, toys.argv+1);
     }
   }
 

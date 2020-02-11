@@ -107,7 +107,7 @@ struct dirtree *dirtree_read(char *path, int (*callback)(struct dirtree *node));
 
 // help.c
 
-void show_help(FILE *out);
+void show_help(FILE *out, int full);
 
 // Tell xopen and friends to print warnings but return -1 as necessary
 // The largest O_BLAH flag so far is arch/alpha's O_PATH at 0x800000 so
@@ -134,6 +134,7 @@ void xputs(char *s);
 void xputc(char c);
 void xflush(int flush);
 void xexec(char **argv);
+pid_t xpopen_setup(char **argv, int *pipes, void (*callback)(void));
 pid_t xpopen_both(char **argv, int *pipes);
 int xwaitpid(pid_t pid);
 int xpclose_both(pid_t pid, int *pipes);
@@ -255,9 +256,6 @@ int qstrcmp(const void *a, const void *b);
 void create_uuid(char *uuid);
 char *show_uuid(char *uuid);
 char *next_printf(char *s, char **start);
-int dev_minor(int dev);
-int dev_major(int dev);
-int dev_makedev(int major, int minor);
 struct passwd *bufgetpwuid(uid_t uid);
 struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
@@ -273,6 +271,7 @@ void reset_env(struct passwd *p, int clear);
 void loggit(int priority, char *format, ...);
 unsigned tar_cksum(void *data);
 int is_tar_header(void *pkt);
+char *elf_arch_name(int type);
 
 #define HR_SPACE 1 // Space between number and units
 #define HR_B     2 // Use "B" for single byte units
@@ -400,9 +399,9 @@ void list_signals();
 
 mode_t string_to_mode(char *mode_str, mode_t base);
 void mode_to_string(mode_t mode, char *buf);
-char *getdirname(char *name);
 char *getbasename(char *name);
 char *fileunderdir(char *file, char *dir);
+char *relative_path(char *from, char *to);
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
     int scripts);
 

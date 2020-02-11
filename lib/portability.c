@@ -396,6 +396,23 @@ int mknodat(int dirfd, const char *path, mode_t mode, dev_t dev)
   if (fchdir(old_dirfd) == -1) perror_exit("mknodat couldn't return");
   return result;
 }
+
+// As of 10.15, macOS offers an fcntl F_PREALLOCATE rather than fallocate()
+// or posix_fallocate() calls.
+int posix_fallocate(int fd, off_t offset, off_t length)
+{
+  int e = errno, result;
+  fstore_t f;
+
+  f.fst_flags = F_ALLOCATEALL;
+  f.fst_posmode = F_PEOFPOSMODE;
+  f.fst_offset = offset;
+  f.fst_length = length;
+  if (fcntl(fd, F_PREALLOCATE, &f) == -1) result = errno;
+  else result = ftruncate(fd, length);
+  errno = e;
+  return result;
+}
 #endif
 
 // Signals required by POSIX 2008:
@@ -497,4 +514,64 @@ char *num_to_sig(int sig)
 #endif
 
   return NULL;
+}
+
+int dev_minor(int dev)
+{
+#if defined(__linux__)
+  return ((dev&0xfff00000)>>12)|(dev&0xff);
+#elif defined(__APPLE__)
+  return dev&0xffffff;
+#else
+#error
+#endif
+}
+
+int dev_major(int dev)
+{
+#if defined(__linux__)
+  return (dev&0xfff00)>>8;
+#elif defined(__APPLE__)
+  return (dev>>24)&0xff;
+#else
+#error
+#endif
+}
+
+int dev_makedev(int major, int minor)
+{
+#if defined(__linux__)
+  return (minor&0xff)|((major&0xfff)<<8)|((minor&0xfff00)<<12);
+#elif defined(__APPLE__)
+  return (minor&0xffffff)|((major&0xff)<<24);
+#else
+#error
+#endif
+}
+
+char *fs_type_name(struct statfs *statfs)
+{
+#if defined(__APPLE__)
+  // macOS has an `f_type` field, but assigns values dynamically as filesystems
+  // are registered. They do give you the name directly though, so use that.
+  return statfs->f_fstypename;
+#else
+  char *s = NULL;
+  struct {unsigned num; char *name;} nn[] = {
+    {0xADFF, "affs"}, {0x5346544e, "ntfs"}, {0x1Cd1, "devpts"},
+    {0x137D, "ext"}, {0xEF51, "ext2"}, {0xEF53, "ext3"},
+    {0x1BADFACE, "bfs"}, {0x9123683E, "btrfs"}, {0x28cd3d45, "cramfs"},
+    {0x3153464a, "jfs"}, {0x7275, "romfs"}, {0x01021994, "tmpfs"},
+    {0x3434, "nilfs"}, {0x6969, "nfs"}, {0x9fa0, "proc"},
+    {0x534F434B, "sockfs"}, {0x62656572, "sysfs"}, {0x517B, "smb"},
+    {0x4d44, "msdos"}, {0x4006, "fat"}, {0x43415d53, "smackfs"},
+    {0x73717368, "squashfs"}
+  };
+  int i;
+
+  for (i=0; i<ARRAY_LEN(nn); i++)
+    if (nn[i].num == statfs->f_type) s = nn[i].name;
+  if (!s) sprintf(s = libbuf, "0x%x", (unsigned)statfs->f_type);
+  return s;
+#endif
 }

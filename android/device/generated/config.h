@@ -54,6 +54,8 @@
 #define USE_TOYBOX_UTMPX(...)
 #define CFG_ACPI 1
 #define USE_ACPI(...) __VA_ARGS__
+#define CFG_ARCH 0
+#define USE_ARCH(...)
 #define CFG_ARPING 0
 #define USE_ARPING(...)
 #define CFG_ARP 0
@@ -64,8 +66,8 @@
 #define USE_BASE64(...) __VA_ARGS__
 #define CFG_BASENAME 1
 #define USE_BASENAME(...) __VA_ARGS__
-#define CFG_BC 1
-#define USE_BC(...) __VA_ARGS__
+#define CFG_BC 0
+#define USE_BC(...)
 #define CFG_BLKID 1
 #define USE_BLKID(...) __VA_ARGS__
 #define CFG_BLOCKDEV 1
@@ -166,6 +168,8 @@
 #define USE_DIRNAME(...) __VA_ARGS__
 #define CFG_DMESG 1
 #define USE_DMESG(...) __VA_ARGS__
+#define CFG_DNSDOMAINNAME 0
+#define USE_DNSDOMAINNAME(...)
 #define CFG_DOS2UNIX 1
 #define USE_DOS2UNIX(...) __VA_ARGS__
 #define CFG_DUMPLEASES 0
@@ -228,6 +232,8 @@
 #define USE_GETENFORCE(...) __VA_ARGS__
 #define CFG_GETFATTR 1
 #define USE_GETFATTR(...) __VA_ARGS__
+#define CFG_GETOPT 1
+#define USE_GETOPT(...) __VA_ARGS__
 #define CFG_GETTY 0
 #define USE_GETTY(...)
 #define CFG_GREP 1
@@ -462,6 +468,8 @@
 #define USE_PWD(...) __VA_ARGS__
 #define CFG_READAHEAD 0
 #define USE_READAHEAD(...)
+#define CFG_READELF 1
+#define USE_READELF(...) __VA_ARGS__
 #define CFG_READLINK 1
 #define USE_READLINK(...) __VA_ARGS__
 #define CFG_REALPATH 1
@@ -632,8 +640,8 @@
 #define USE_UUIDGEN(...) __VA_ARGS__
 #define CFG_VCONFIG 1
 #define USE_VCONFIG(...) __VA_ARGS__
-#define CFG_VI 0
-#define USE_VI(...)
+#define CFG_VI 1
+#define USE_VI(...) __VA_ARGS__
 #define CFG_VMSTAT 1
 #define USE_VMSTAT(...) __VA_ARGS__
 #define CFG_WATCH 1

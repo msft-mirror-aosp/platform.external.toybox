@@ -72,7 +72,7 @@ void help_exit(char *msg, ...)
 {
   va_list va;
 
-  if (!msg) show_help(stdout);
+  if (!msg) show_help(stdout, 1);
   else {
     va_start(va, msg);
     verror_msg(msg, -1, va);
@@ -162,9 +162,10 @@ off_t lskip(int fd, off_t offset)
   return offset;
 }
 
-// flags: 1=make last dir (with mode lastmode, otherwise skips last component)
-//        2=make path (already exists is ok)
-//        4=verbose
+// flags:
+// MKPATHAT_MKLAST  make last dir (with mode lastmode, else skips last part)
+// MKPATHAT_MAKE    make leading dirs (it's ok if they already exist)
+// MKPATHAT_VERBOSE Print what got created to stderr
 // returns 0 = path ok, 1 = error
 int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
 {
@@ -186,20 +187,20 @@ int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
     mode_t mode = (0777&~toys.old_umask)|0300;
 
     // find next '/', but don't try to mkdir "" at start of absolute path
-    if (*s == '/' && (flags&2) && s != dir) {
+    if (*s == '/' && (flags&MKPATHAT_MAKE) && s != dir) {
       save = *s;
       *s = 0;
     } else if (*s) continue;
 
     // Use the mode from the -m option only for the last directory.
     if (!save) {
-      if (flags&1) mode = lastmode;
+      if (flags&MKPATHAT_MKLAST) mode = lastmode;
       else break;
     }
 
     if (mkdirat(atfd, dir, mode)) {
-      if (!(flags&2) || errno != EEXIST) return 1;
-    } else if (flags&4)
+      if (!(flags&MKPATHAT_MAKE) || errno != EEXIST) return 1;
+    } else if (flags&MKPATHAT_VERBOSE)
       fprintf(stderr, "%s: created directory '%s'\n", toys.which->name, dir);
 
     if (!(*s = save)) break;
@@ -215,6 +216,7 @@ int mkpath(char *dir)
 }
 
 // Split a path into linked list of components, tracking head and tail of list.
+// Assigns head of list to *list, returns address of ->next entry to extend list
 // Filters out // entries with no contents.
 struct string_list **splitpath(char *path, struct string_list **list)
 {
@@ -447,11 +449,12 @@ char *strend(char *str, char *suffix)
 // If *a starts with b, advance *a past it and return 1, else return 0;
 int strstart(char **a, char *b)
 {
-  int len = strlen(b), i = !strncmp(*a, b, len);
+  char *c = *a;
 
-  if (i) *a += len;
+  while (*b && *c == *b) b++, c++;
+  if (!*b) *a = c;
 
-  return i;
+  return !*b;
 }
 
 // If *a starts with b, advance *a past it and return 1, else return 0;
@@ -919,12 +922,12 @@ mode_t string_to_mode(char *modestr, mode_t mode)
     // If who isn't specified, like "a" but honoring umask.
     if (!dowho) {
       dowho = 8;
-      umask(amask=umask(0));
+      umask(amask = umask(0));
     }
-    if (!*str || !(s = strchr(hows, *str))) goto barf;
-    dohow = *(str++);
 
-    if (!dohow) goto barf;
+    if (!*str || !(s = strchr(hows, *str))) goto barf;
+    if (!(dohow = *(str++))) goto barf;
+
     while (*str && (s = strchr(whats, *str))) {
       dowhat |= 1<<(s-whats);
       str++;
@@ -942,7 +945,7 @@ mode_t string_to_mode(char *modestr, mode_t mode)
     // Are we ready to do a thing yet?
     if (*str && *(str++) != ',') goto barf;
 
-    // Ok, apply the bits to the mode.
+    // Loop through what=xwrs and who=ogu to apply bits to the mode.
     for (i=0; i<4; i++) {
       for (j=0; j<3; j++) {
         mode_t bit = 0;
@@ -952,13 +955,12 @@ mode_t string_to_mode(char *modestr, mode_t mode)
 
         // Figure out new value at this location
         if (i == 3) {
-          // suid/sticky bit.
-          if (j) {
-            if ((dowhat & 8) && (dowho&(8|(1<<i)))) bit++;
-          } else if (dowhat & 16) bit++;
+          // suid and sticky
+          if (!j) bit = dowhat&16; // o+s = t
+          else if ((dowhat&8) && (dowho&(8|(1<<j)))) bit++;
         } else {
           if (!(dowho&(8|(1<<i)))) continue;
-          if (dowhat&(1<<j)) bit++;
+          else if (dowhat&(1<<j)) bit++;
         }
 
         // When selection active, modify bit
@@ -1003,17 +1005,6 @@ void mode_to_string(mode_t mode, char *buf)
   *buf = c;
 }
 
-// dirname() can modify its argument or return a pointer to a constant string
-// This always returns a malloc() copy of everyting before last (run of ) '/'.
-char *getdirname(char *name)
-{
-  char *s = xstrdup(name), *ss = strrchr(s, '/');
-
-  while (ss && *ss && *ss == '/' && s != ss) *ss-- = 0;
-
-  return s;
-}
-
 // basename() can modify its argument or return a pointer to a constant string
 // This just gives after the last '/' or the whole stirng if no /
 char *getbasename(char *name)
@@ -1035,6 +1026,34 @@ char *fileunderdir(char *file, char *dir)
   if (!rc) free(s2);
 
   return rc ? s2 : 0;
+}
+
+// return (malloced) relative path to get from "from" to "to"
+char *relative_path(char *from, char *to)
+{
+  char *s, *ret = 0;
+  int i, j, k;
+
+  if (!(from = xabspath(from, -1))) return 0;
+  if (!(to = xabspath(to, -1))) goto error;
+
+  // skip common directories from root
+  for (i = j = 0; from[i] && from[i] == to[i]; i++) if (to[i] == '/') j = i+1;
+
+  // count remaining destination directories
+  for (i = j, k = 0; from[i]; i++) if (from[i] == '/') k++;
+
+  if (!k) ret = xstrdup(to+j);
+  else {
+    s = ret = xmprintf("%*c%s", 3*k, ' ', to+j);
+    while (k--) memcpy(s+3*k, "../", 3);
+  }
+
+error:
+  free(from);
+  free(to);
+
+  return ret;
 }
 
 // Execute a callback for each PID that matches a process name from a list.
@@ -1191,21 +1210,6 @@ char *next_printf(char *s, char **start)
   }
 
   return 0;
-}
-
-int dev_minor(int dev)
-{
-  return ((dev&0xfff00000)>>12)|(dev&0xff);
-}
-
-int dev_major(int dev)
-{
-  return (dev&0xfff00)>>8;
-}
-
-int dev_makedev(int major, int minor)
-{
-  return (minor&0xff)|((major&0xfff)<<8)|((minor&0xfff00)<<12);
 }
 
 // Return cached passwd entries.
@@ -1404,4 +1408,30 @@ int is_tar_header(void *pkt)
   sscanf(p+148, "%8o", &i);
 
   return i && tar_cksum(pkt) == i;
+}
+
+char *elf_arch_name(int type)
+{
+  int i;
+  // Values from include/linux/elf-em.h (plus arch/*/include/asm/elf.h)
+  // Names are linux/arch/ directory (sometimes before 32/64 bit merges)
+  struct {int val; char *name;} types[] = {{0x9026, "alpha"}, {93, "arc"},
+    {195, "arcv2"}, {40, "arm"}, {183, "arm64"}, {0x18ad, "avr32"},
+    {247, "bpf"}, {106, "blackfin"}, {140, "c6x"}, {23, "cell"}, {76, "cris"},
+    {252, "csky"}, {0x5441, "frv"}, {46, "h8300"}, {164, "hexagon"},
+    {50, "ia64"}, {88, "m32r"}, {0x9041, "m32r"}, {4, "m68k"}, {174, "metag"},
+    {189, "microblaze"}, {0xbaab, "microblaze-old"}, {8, "mips"},
+    {10, "mips-old"}, {89, "mn10300"}, {0xbeef, "mn10300-old"}, {113, "nios2"},
+    {92, "openrisc"}, {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"},
+    {21, "ppc64"}, {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"},
+    {135, "score"}, {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"},
+    {188, "tile"}, {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"},
+    {94, "xtensa"}, {0xabc7, "xtensa-old"}
+  };
+
+  for (i = 0; i<ARRAY_LEN(types); i++) {
+    if (type==types[i].val) return types[i].name;
+  }
+  sprintf(libbuf, "unknown arch %d", type);
+  return libbuf;
 }
