@@ -2,7 +2,7 @@
 #undef FORCED_FLAGLL
 #ifdef FORCE_FLAGS
 #define FORCED_FLAG 1
-#define FORCED_FLAGLL 1LL
+#define FORCED_FLAGLL 1ULL
 #else
 #define FORCED_FLAG 0
 #define FORCED_FLAGLL 0
@@ -218,12 +218,15 @@
 #undef FLAG_L
 #endif
 
-// chattr    
+// chattr ?p#v#R ?p#v#R
 #undef OPTSTR_chattr
-#define OPTSTR_chattr 0
+#define OPTSTR_chattr "?p#v#R"
 #ifdef CLEANUP_chattr
 #undef CLEANUP_chattr
 #undef FOR_chattr
+#undef FLAG_R
+#undef FLAG_v
+#undef FLAG_p
 #endif
 
 // chcon <2hvR <2hvR
@@ -1645,18 +1648,18 @@
 #undef FLAG_color
 #endif
 
-// lsattr vpldaR vpldaR
+// lsattr ldapvR ldapvR
 #undef OPTSTR_lsattr
-#define OPTSTR_lsattr "vpldaR"
+#define OPTSTR_lsattr "ldapvR"
 #ifdef CLEANUP_lsattr
 #undef CLEANUP_lsattr
 #undef FOR_lsattr
 #undef FLAG_R
+#undef FLAG_v
+#undef FLAG_p
 #undef FLAG_a
 #undef FLAG_d
 #undef FLAG_l
-#undef FLAG_p
-#undef FLAG_v
 #endif
 
 // lsmod    
@@ -3599,6 +3602,9 @@
 #ifndef TT
 #define TT this.chattr
 #endif
+#define FLAG_R (1<<0)
+#define FLAG_v (1<<1)
+#define FLAG_p (1<<2)
 #endif
 
 #ifdef FOR_chcon
@@ -3843,7 +3849,7 @@
 #define FLAG_C (FORCED_FLAG<<28)
 #define FLAG_D (FORCED_FLAG<<29)
 #define FLAG_E (FORCED_FLAG<<30)
-#define FLAG_F (FORCED_FLAG<<31)
+#define FLAG_F (FORCED_FLAGLL<<31)
 #define FLAG_G (FORCED_FLAGLL<<32)
 #define FLAG_H (FORCED_FLAGLL<<33)
 #define FLAG_I (FORCED_FLAGLL<<34)
@@ -4337,7 +4343,7 @@
 #define FLAG_S (1<<28)
 #define FLAG_exclude_dir (1<<29)
 #define FLAG_color (1<<30)
-#define FLAG_line_buffered (1<<31)
+#define FLAG_line_buffered (1LL<<31)
 #endif
 
 #ifdef FOR_groupadd
@@ -4798,7 +4804,7 @@
 #define FLAG_g (1<<28)
 #define FLAG_Z (1<<29)
 #define FLAG_show_control_chars (1<<30)
-#define FLAG_full_time (1<<31)
+#define FLAG_full_time (1LL<<31)
 #define FLAG_color (1LL<<32)
 #endif
 
@@ -4807,11 +4813,11 @@
 #define TT this.lsattr
 #endif
 #define FLAG_R (1<<0)
-#define FLAG_a (1<<1)
-#define FLAG_d (1<<2)
-#define FLAG_l (1<<3)
-#define FLAG_p (1<<4)
-#define FLAG_v (1<<5)
+#define FLAG_v (1<<1)
+#define FLAG_p (1<<2)
+#define FLAG_a (1<<3)
+#define FLAG_d (1<<4)
+#define FLAG_l (1<<5)
 #endif
 
 #ifdef FOR_lsmod

@@ -307,6 +307,17 @@ struct losetup_data {
   char *dir;
 };
 
+// toys/other/lsattr.c
+
+struct lsattr_data {
+  long v;
+  long p;
+
+  long add, rm, set;
+  // !add and !rm tell us whether they were used, but `chattr =` is meaningful.
+  int have_set;
+};
+
 // toys/other/lspci.c
 
 struct lspci_data {
@@ -1315,9 +1326,8 @@ struct patch_data {
   char *i, *d;
   long p, g, F;
 
-  struct double_list *current_hunk;
-  long oldline, oldlen, newline, newlen;
-  long linenum;
+  void *current_hunk;
+  long oldline, oldlen, newline, newlen, linenum, outnum;
   int context, state, filein, fileout, filepatch, hunknum;
   char *tempname;
 };
@@ -1537,6 +1547,7 @@ extern union global_union {
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
+	struct lsattr_data lsattr;
 	struct lspci_data lspci;
 	struct makedevs_data makedevs;
 	struct mix_data mix;

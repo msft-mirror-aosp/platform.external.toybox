@@ -294,7 +294,7 @@ CONFIG_TAR=y
 CONFIG_TEE=y
 # CONFIG_TELNETD is not set
 # CONFIG_TELNET is not set
-# CONFIG_TEST is not set
+CONFIG_TEST=y
 # CONFIG_TFTPD is not set
 # CONFIG_TFTP is not set
 # CONFIG_TIME is not set
@@ -336,4 +336,4 @@ CONFIG_XARGS=y
 CONFIG_XXD=y
 # CONFIG_XZCAT is not set
 # CONFIG_YES is not set
-# CONFIG_ZCAT is not set
+CONFIG_ZCAT=y
