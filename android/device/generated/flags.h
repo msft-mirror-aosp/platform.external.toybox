@@ -2304,9 +2304,9 @@
 #undef FOR_readahead
 #endif
 
-// readelf <1(dyn-syms)adhlnp:SsWx: <1(dyn-syms)adhlnp:SsWx:
+// readelf <1(dyn-syms)adehlnp:SsWx: <1(dyn-syms)adehlnp:SsWx:
 #undef OPTSTR_readelf
-#define OPTSTR_readelf "<1(dyn-syms)adhlnp:SsWx:"
+#define OPTSTR_readelf "<1(dyn-syms)adehlnp:SsWx:"
 #ifdef CLEANUP_readelf
 #undef CLEANUP_readelf
 #undef FOR_readelf
@@ -2318,6 +2318,7 @@
 #undef FLAG_n
 #undef FLAG_l
 #undef FLAG_h
+#undef FLAG_e
 #undef FLAG_d
 #undef FLAG_a
 #undef FLAG_dyn_syms
@@ -3179,6 +3180,17 @@
 #ifdef CLEANUP_unlink
 #undef CLEANUP_unlink
 #undef FOR_unlink
+#endif
+
+// unset   fvn
+#undef OPTSTR_unset
+#define OPTSTR_unset "fvn"
+#ifdef CLEANUP_unset
+#undef CLEANUP_unset
+#undef FOR_unset
+#undef FLAG_n
+#undef FLAG_v
+#undef FLAG_f
 #endif
 
 // unshare <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
@@ -5372,9 +5384,10 @@
 #define FLAG_n (1<<5)
 #define FLAG_l (1<<6)
 #define FLAG_h (1<<7)
-#define FLAG_d (1<<8)
-#define FLAG_a (1<<9)
-#define FLAG_dyn_syms (1<<10)
+#define FLAG_e (1<<8)
+#define FLAG_d (1<<9)
+#define FLAG_a (1<<10)
+#define FLAG_dyn_syms (1<<11)
 #endif
 
 #ifdef FOR_readlink
@@ -6099,6 +6112,15 @@
 #ifndef TT
 #define TT this.unlink
 #endif
+#endif
+
+#ifdef FOR_unset
+#ifndef TT
+#define TT this.unset
+#endif
+#define FLAG_n (FORCED_FLAG<<0)
+#define FLAG_v (FORCED_FLAG<<1)
+#define FLAG_f (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_unshare

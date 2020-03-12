@@ -75,7 +75,6 @@ cc_defaults {
         "toys/net/microcom.c",
         "toys/other/dos2unix.c",
         "toys/other/readlink.c",
-        "toys/other/realpath.c",
         "toys/other/setsid.c",
         "toys/other/stat.c",
         "toys/other/timeout.c",
