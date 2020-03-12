@@ -8,6 +8,8 @@
 # With no arguments, lists available targets. Use target "all" to iterate
 # through each $TARGET from the list.
 
+trap "exit 1" INT
+
 CCC="$(dirname "$(readlink -f "$0")")"/../ccc
 if [ ! -d "$CCC" ]
 then
@@ -21,9 +23,12 @@ unset X Y
 # Display target list?
 list()
 {
-  ls "$CCC" | sed 's/-.*//' | sort -u | xargs
+  ls "$CCC" | sed -n 's/-.*//p' | sort -u | xargs
 }
 [ $# -eq 0 ] && list && exit
+
+[ -z "$TOP" ] && TOP="$PWD/root/log"
+mkdir -p "$TOP" || exit 1
 
 X="$1"
 shift
@@ -33,11 +38,17 @@ if [ "$X" == all ]
 then
   for TARGET in $(list)
   do
+    LOG="$TOP/cross-log-$TARGET"
     {
       export TARGET
       echo -en "\033]2;$TARGET $*\007"
-      "$0" $TARGET "$@" 2>&1 || mv cross-log-$TARGET.{txt,failed}
-    } | tee cross-log-$TARGET.txt
+
+      rm -f "$LOG".{failed,success}
+      "$0" $TARGET "$@" 2>&1
+      X=$?
+      [ $X -eq 0 ] && mv "$LOG".{txt,success}
+    } |& tee "$LOG".txt
+    [ ! -e "$LOG".success ] && { mv "$LOG".{txt,failed};[ -z "$ALL" ] && break;}
   done
 
   exit
