@@ -786,6 +786,14 @@
 #undef FLAG_0
 #endif
 
+// eval    
+#undef OPTSTR_eval
+#define OPTSTR_eval 0
+#ifdef CLEANUP_eval
+#undef CLEANUP_eval
+#undef FOR_eval
+#endif
+
 // exit    
 #undef OPTSTR_exit
 #define OPTSTR_exit 0
@@ -4096,6 +4104,12 @@
 #define FLAG_u (1<<0)
 #define FLAG_i (1<<1)
 #define FLAG_0 (1<<2)
+#endif
+
+#ifdef FOR_eval
+#ifndef TT
+#define TT this.eval
+#endif
 #endif
 
 #ifdef FOR_exit

@@ -809,8 +809,13 @@ struct route_data {
 // toys/pending/sh.c
 
 struct sh_data {
-  char *c;
+  union {
+    struct {
+      char *c;
+    } sh;
+  };
 
+  // keep lineno here, we use it to work around a compiler bug
   long lineno;
   char **locals, *subshell_env, *ifs;
   struct double_list functions;
@@ -1006,7 +1011,7 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified, fd;
+  int modified;
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data

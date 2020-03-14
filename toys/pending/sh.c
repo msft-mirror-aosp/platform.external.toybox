@@ -8,14 +8,14 @@
  *
  * The first link describes the following shell builtins:
  *
- *   break : continue dot eval exec exit export readonly return set shift
- *   times trap unset
+ *   break : continue exit
+ *   . eval exec export readonly return set shift times trap unset
  *
  * The second link (the utilities directory) also contains specs for the
  * following shell builtins:
  *
- *   alias bg cd command fc fg getopts hash jobs kill read type ulimit
- *   umask unalias wait
+ *   cd ulimit umask
+ *   alias bg command fc fg getopts hash jobs kill read type unalias wait
  *
  * Things like the bash man page are good to read too.
  *
@@ -50,6 +50,7 @@
 USE_SH(NEWTOY(cd, ">1LP[-LP]", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(exit, 0, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(unset, "fvn", TOYFLAG_NOFORK))
+USE_SH(NEWTOY(eval, 0, TOYFLAG_NOFORK))
 
 USE_SH(NEWTOY(sh, "(noediting)(noprofile)(norc)sc:i", TOYFLAG_BIN))
 USE_SH(OLDTOY(toysh, sh, TOYFLAG_BIN))
@@ -104,14 +105,28 @@ config UNSET
     -f	NAME is a function
     -v	NAME is a variable
     -n	dereference NAME and unset that
+
+config EVAL
+  bool
+  default n
+  depends on SH
+  help
+    usage: eval COMMAND...
+
+    Execute (combined) arguments as a shell command.
 */
 
 #define FOR_sh
 #include "toys.h"
 
 GLOBALS(
-  char *c;
+  union {
+    struct {
+      char *c;
+    } sh;
+  };
 
+  // keep lineno here, we use it to work around a compiler bug
   long lineno;
   char **locals, *subshell_env, *ifs;
   struct double_list functions;
@@ -142,7 +157,66 @@ GLOBALS(
   struct sh_arg *arg;
 )
 
+// Can't yet avoid this prototype. Fundamental problem is $($($(blah))) nests,
+// leading to function loop with run->parse->run
+static int sh_run(char *new);
+
+// Pipeline segments
+struct sh_pipeline {
+  struct sh_pipeline *next, *prev;
+  int count, here, type;
+  struct sh_arg arg[1];
+};
+
+// scratch space (state held between calls). Don't want to make it global yet
+// because this could be reentrant.
+struct sh_function {
+  char *name;
+  struct sh_pipeline *pipeline;
+  struct double_list *expect;
+// TODO: lifetime rules for arg? remember "shift" command.
+  struct sh_arg *arg; // arguments to function call
+  char *end;
+};
+
 #define BUGBUG 0
+
+static void dump_state(struct sh_function *sp)
+{
+  struct sh_pipeline *pl;
+  long i;
+  int q = 0, fd = open("/proc/self/fd", O_RDONLY);
+  DIR *dir = fdopendir(fd);
+  char buf[256];
+
+  if (sp->expect) {
+    struct double_list *dl;
+
+    for (dl = sp->expect; dl; dl = (dl->next == sp->expect) ? 0 : dl->next)
+      dprintf(255, "expecting %s\n", dl->data);
+    if (sp->pipeline)
+      dprintf(255, "pipeline count=%d here=%d\n", sp->pipeline->prev->count,
+        sp->pipeline->prev->here);
+  }
+
+  for (pl = sp->pipeline; pl ; pl = (pl->next == sp->pipeline) ? 0 : pl->next) {
+    for (i = 0; i<pl->arg->c; i++)
+      dprintf(255, "arg[%d][%ld]=%s\n", q, i, pl->arg->v[i]);
+    if (pl->arg->c<0) dprintf(255, "argc=%d\n", pl->arg->c);
+    else dprintf(255, "type=%d term[%d]=%s\n", pl->type, q++, pl->arg->v[pl->arg->c]);
+  }
+
+  if (dir) {
+    struct dirent *dd;
+
+    while ((dd = readdir(dir))) {
+      if (atoi(dd->d_name)!=fd && 0<readlinkat(fd, dd->d_name, buf,sizeof(buf)))
+        dprintf(2, "OPEN %d: %s = %s\n", getpid(), dd->d_name, buf);
+    }
+    closedir(dir);
+  }
+  close(fd);
+}
 
 // ordered for greedy matching, so >&; becomes >& ; not > &;
 // making these const means I need to typecast the const away later to
@@ -166,7 +240,7 @@ static void syntax_err(char *msg, ...)
 }
 
 // append to array with null terminator and realloc as necessary
-void array_add(char ***list, unsigned count, char *data)
+static void array_add(char ***list, unsigned count, char *data)
 {
   if (!(count&31)) *list = xrealloc(*list, sizeof(char *)*(count+33));
   (*list)[count] = data;
@@ -174,7 +248,7 @@ void array_add(char ***list, unsigned count, char *data)
 }
 
 // add argument to an arg_list
-void add_arg(struct arg_list **list, char *arg)
+static void add_arg(struct arg_list **list, char *arg)
 {
   struct arg_list *al;
 
@@ -185,7 +259,7 @@ void add_arg(struct arg_list **list, char *arg)
   *list = al;
 }
 
-void array_add_del(char ***list, unsigned count, char *data,
+static void array_add_del(char ***list, unsigned count, char *data,
   struct arg_list **delete)
 {
   if (delete) add_arg(delete, data);
@@ -254,7 +328,7 @@ static char *getvar(char *s)
 
 // TODO: make parse_word use this?
 // returns length of current quote context. Handles \ '' "" `` $()
-int skip_quote(char *s)
+static int skip_quote(char *s)
 {
   int i, q = 0;
 
@@ -286,7 +360,7 @@ int skip_quote(char *s)
 }
 
 // Return next available high (>=10) file descriptor
-int next_hfd()
+static int next_hfd()
 {
   int hfd;
 
@@ -303,7 +377,7 @@ int next_hfd()
 // Perform a redirect, saving displaced filehandle to a high (>10) fd
 // rd is an int array: [0] = count, followed by from/to pairs to restore later.
 // If from == -1 just save to, else dup from->to after saving to.
-int save_redirect(int **rd, int from, int to)
+static int save_redirect(int **rd, int from, int to)
 {
   int cnt, hfd, *rr;
 
@@ -341,11 +415,6 @@ static void subshell_callback(void)
 
 // TODO check every caller of run_subshell for error, or syntax_error() here
 // from pipe() failure
-
-// TODO eliminate prototypes
-static int sh_run(char *new);
-static void unredirect(int *urd);
-
 
 // Pass environment and command string to child shell, return PID of child
 static int run_subshell(char *str, int len)
@@ -388,8 +457,26 @@ static int run_subshell(char *str, int len)
   return pid;
 }
 
+// restore displaced filehandles, closing high filehandles they were copied to
+static void unredirect(int *urd)
+{
+  int *rr = urd+1, i;
+
+  if (!urd) return;
+
+  for (i = 0; i<*urd; i++, rr += 2) {
+if (BUGBUG) dprintf(255, "urd %d %d\n", rr[0], rr[1]);
+    if (rr[1] != -1) {
+      // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
+      dup2(rr[0], rr[1]);
+      close(rr[0]);
+    }
+  }
+  free(urd);
+}
+
 // Call subshell with either stdin/stdout redirected, return other end of pipe
-int pipe_subshell(char *s, int len, int out)
+static int pipe_subshell(char *s, int len, int out)
 {
   int pipes[2], *uu = 0, in = !out;
 
@@ -821,42 +908,6 @@ static int redir_prefix(char *word)
 
 // TODO |&
 
-// restore displaced filehandles, closing high filehandles they were copied to
-static void unredirect(int *urd)
-{
-  int *rr = urd+1, i;
-
-  if (!urd) return;
-
-  for (i = 0; i<*urd; i++, rr += 2) {
-if (BUGBUG) dprintf(255, "urd %d %d\n", rr[0], rr[1]);
-    if (rr[1] != -1) {
-      // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
-      dup2(rr[0], rr[1]);
-      close(rr[0]);
-    }
-  }
-  free(urd);
-}
-
-// Pipeline segments
-struct sh_pipeline {
-  struct sh_pipeline *next, *prev;
-  int count, here, type;
-  struct sh_arg arg[1];
-};
-
-// scratch space (state held between calls). Don't want to make it global yet
-// because this could be reentrant.
-struct sh_function {
-  char *name;
-  struct sh_pipeline *pipeline;
-  struct double_list *expect;
-// TODO: lifetime rules for arg? remember "shift" command.
-  struct sh_arg *arg; // arguments to function call
-  char *end;
-};
-
 // turn a parsed pipeline back into a string.
 static char *pl2str(struct sh_pipeline *pl)
 {
@@ -1109,23 +1160,29 @@ if (BUGBUG) { int i; dprintf(255, "envlen=%d arg->c=%d run=", envlen, arg->c); f
   else if ((tl = toy_find(*pp->arg.v))
     && (tl->flags & (TOYFLAG_NOFORK|TOYFLAG_MAYFORK)))
   {
-    struct toy_context temp;
     sigjmp_buf rebound;
+    char temp[j = offsetof(struct toy_context, rebound)];
 
     // This fakes lots of what toybox_main() does.
-    memcpy(&temp, &toys, sizeof(struct toy_context));
-    memset(&toys, 0, sizeof(struct toy_context));
+    memcpy(&temp, &toys, j);
+    memset(&toys, 0, j);
+
+    // If we give the union in TT a name, the compiler complains
+    // "declaration does not declare anything", but if we DON'T give it a name
+    // it accepts it. So we can't use the union's type name here, and have
+    // to offsetof() the first thing _after_ the union to get the size.
+    memset(&TT, 0, offsetof(struct sh_data, lineno));
 
     if (!sigsetjmp(rebound, 1)) {
       toys.rebound = &rebound;
-      toy_init(tl, pp->arg.v);  // arg.v must be null terminated
+      toy_singleinit(tl, pp->arg.v);  // arg.v must be null terminated
       tl->toy_main();
       xflush(0);
     }
     pp->exit = toys.exitval;
     if (toys.optargs != toys.argv+1) free(toys.optargs);
     if (toys.old_umask) umask(toys.old_umask);
-    memcpy(&toys, &temp, sizeof(struct toy_context));
+    memcpy(&toys, &temp, j);
   } else {
     char **env = 0, **old = environ, *ss, *sss;
     int kk = 0, ll;
@@ -1261,7 +1318,7 @@ static char *parse_word(char *start)
 // if then fi for while until select done done case esac break continue return
 
 // Free one pipeline segment.
-void free_pipeline(void *pipeline)
+static void free_pipeline(void *pipeline)
 {
   struct sh_pipeline *pl = pipeline;
   int i, j;
@@ -1274,7 +1331,7 @@ void free_pipeline(void *pipeline)
 }
 
 // Return end of current block, or NULL if we weren't in block and fell off end.
-struct sh_pipeline *block_end(struct sh_pipeline *pl)
+static struct sh_pipeline *block_end(struct sh_pipeline *pl)
 {
   int i = 0;
 
@@ -1290,7 +1347,7 @@ struct sh_pipeline *block_end(struct sh_pipeline *pl)
   return pl;
 }
 
-void free_function(struct sh_function *sp)
+static void free_function(struct sh_function *sp)
 {
   llist_traverse(sp->pipeline, free_pipeline);
   llist_traverse(sp->expect, free);
@@ -1298,7 +1355,7 @@ void free_function(struct sh_function *sp)
 }
 
 // TODO this has to add to a namespace context. Functions within functions...
-struct sh_pipeline *add_function(char *name, struct sh_pipeline *pl)
+static struct sh_pipeline *add_function(char *name, struct sh_pipeline *pl)
 {
 dprintf(2, "stub add_function");
 
@@ -1619,48 +1676,6 @@ flush:
   free_function(sp);
 
   return 0-!!s;
-}
-
-static void dump_state(struct sh_function *sp)
-{
-  struct sh_pipeline *pl;
-  int q = 0;
-  long i;
-
-  if (sp->expect) {
-    struct double_list *dl;
-
-    for (dl = sp->expect; dl; dl = (dl->next == sp->expect) ? 0 : dl->next)
-      dprintf(255, "expecting %s\n", dl->data);
-    if (sp->pipeline)
-      dprintf(255, "pipeline count=%d here=%d\n", sp->pipeline->prev->count,
-        sp->pipeline->prev->here);
-  }
-
-  for (pl = sp->pipeline; pl ; pl = (pl->next == sp->pipeline) ? 0 : pl->next) {
-    for (i = 0; i<pl->arg->c; i++)
-      dprintf(255, "arg[%d][%ld]=%s\n", q, i, pl->arg->v[i]);
-    if (pl->arg->c<0) dprintf(255, "argc=%d\n", pl->arg->c);
-    else dprintf(255, "type=%d term[%d]=%s\n", pl->type, q++, pl->arg->v[pl->arg->c]);
-  }
-}
-
-void dump_filehandles(char *when)
-{
-  int fd = open("/proc/self/fd", O_RDONLY);
-  DIR *dir = fdopendir(fd);
-  char buf[256];
-
-  if (dir) {
-    struct dirent *dd;
-
-    while ((dd = readdir(dir))) {
-      if (atoi(dd->d_name)!=fd && 0<readlinkat(fd, dd->d_name, buf,sizeof(buf)))
-        dprintf(2, "OPEN %s %d: %s = %s\n", when, getpid(), dd->d_name, buf);
-    }
-    closedir(dir);
-  }
-  close(fd);
 }
 
 /* Flow control statements:
@@ -2069,7 +2084,7 @@ static void setonlylocal(char ***to, char *name, char *val)
 }
 
 // init locals, sanitize environment, handle nommu subshell handoff
-void subshell_setup(void)
+static void subshell_setup(void)
 {
   struct passwd *pw = getpwuid(getuid());
   int to, from, pid = 0, ppid = 0, mypid, myppid, len;
@@ -2202,7 +2217,7 @@ if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); dup2(fd, 255); close(fd); }
   memset(&scratch, 0, sizeof(scratch));
 
 // TODO unify fmemopen() here with sh_run
-  if (TT.c) f = fmemopen(TT.c, strlen(TT.c), "r");
+  if (TT.sh.c) f = fmemopen(TT.sh.c, strlen(TT.sh.c), "r");
   else if (*toys.optargs) f = xfopen(*toys.optargs, "r");
   else {
     f = stdin;
@@ -2342,4 +2357,16 @@ void unset_main(void)
       xsetenv(*arg, 0);
     }
   }
+}
+
+void eval_main(void)
+{
+  struct sh_arg *aa, arg;
+
+  aa = TT.arg;
+  TT.arg = &arg;
+  arg.v = toys.argv;
+  arg.c = toys.optc+1;
+  sh_run("\"$@\"");
+  TT.arg = aa;
 }
