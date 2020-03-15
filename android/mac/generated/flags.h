@@ -794,6 +794,17 @@
 #undef FOR_eval
 #endif
 
+// exec   cla:
+#undef OPTSTR_exec
+#define OPTSTR_exec "cla:"
+#ifdef CLEANUP_exec
+#undef CLEANUP_exec
+#undef FOR_exec
+#undef FLAG_a
+#undef FLAG_l
+#undef FLAG_c
+#endif
+
 // exit    
 #undef OPTSTR_exit
 #define OPTSTR_exit 0
@@ -4110,6 +4121,15 @@
 #ifndef TT
 #define TT this.eval
 #endif
+#endif
+
+#ifdef FOR_exec
+#ifndef TT
+#define TT this.exec
+#endif
+#define FLAG_a (FORCED_FLAG<<0)
+#define FLAG_l (FORCED_FLAG<<1)
+#define FLAG_c (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_exit

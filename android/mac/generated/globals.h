@@ -813,6 +813,9 @@ struct sh_data {
     struct {
       char *c;
     } sh;
+    struct {
+      char *a;
+    } exec;
   };
 
   // keep lineno here, we use it to work around a compiler bug
@@ -822,7 +825,7 @@ struct sh_data {
   unsigned options, jobcnt, loc_ro, loc_magic;
   int hfd;  // next high filehandle (>= 10)
 
-  // Running jobs.
+  // Running jobs for job control.
   struct sh_job {
     struct sh_job *next, *prev;
     unsigned jobno;
@@ -843,6 +846,7 @@ struct sh_data {
     } *procs, *proc;
   } *jobs, *job;
 
+  struct sh_process *pp;
   struct sh_arg *arg;
 };
 
