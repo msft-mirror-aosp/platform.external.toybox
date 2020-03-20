@@ -103,6 +103,8 @@ char *dirname(char *path);
 char *__xpg_basename(char *path);
 static inline char *basename(char *path) { return __xpg_basename(path); }
 char *strcasestr(const char *haystack, const char *needle);
+void *memmem(const void *haystack, size_t haystack_length,
+  const void *needle, size_t needle_length);
 #endif // defined(glibc)
 
 // getopt_long(), getopt_long_only(), and struct option.
@@ -357,3 +359,5 @@ int dev_major(int dev);
 int dev_makedev(int major, int minor);
 
 char *fs_type_name(struct statfs *statfs);
+
+int get_block_device_size(int fd, unsigned long long *size);

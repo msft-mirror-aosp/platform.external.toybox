@@ -5,13 +5,6 @@
 
 #include "toys.h"
 
-#ifndef TOYBOX_VERSION
-#ifndef TOYBOX_VENDOR
-#define TOYBOX_VENDOR ""
-#endif
-#define TOYBOX_VERSION "0.8.2"TOYBOX_VENDOR
-#endif
-
 // Populate toy_list[].
 
 #undef NEWTOY
@@ -36,14 +29,11 @@ struct toy_list *toy_find(char *name)
 
   if (!CFG_TOYBOX || strchr(name, '/')) return 0;
 
-  // If the name starts with "toybox" accept that as a match.  Otherwise
-  // skip the first entry, which is out of order.
-
-  if (!strncmp(name, "toybox", 6)) return toy_list;
+  // Multiplexer name works as prefix, else skip first entry (it's out of order)
+  if (!toys.which && strstart(&name, "toybox")) return toy_list;
   bottom = 1;
 
   // Binary search to find this command.
-
   top = ARRAY_LEN(toy_list)-1;
   for (;;) {
     int result;
@@ -78,24 +68,18 @@ static void unknown(char *name)
 }
 
 // Setup toybox global state for this command.
-static void toy_singleinit(struct toy_list *which, char *argv[])
+void toy_singleinit(struct toy_list *which, char *argv[])
 {
   toys.which = which;
   toys.argv = argv;
-
-  if (CFG_TOYBOX_I18N) {
-    // Deliberately try C.UTF-8 before the user's locale to work around users
-    // that choose non-UTF-8 locales. macOS doesn't support C.UTF-8 though.
-    if (!setlocale(LC_CTYPE, "C.UTF-8")) setlocale(LC_CTYPE, "");
-  }
-  setlinebuf(stdout);
+  toys.toycount = ARRAY_LEN(toy_list);
 
   // Parse --help and --version for (almost) all commands
   if (CFG_TOYBOX_HELP_DASHDASH && !(which->flags & TOYFLAG_NOHELP) && argv[1]) {
     if (!strcmp(argv[1], "--help")) {
       if (CFG_TOYBOX && toys.which == toy_list && toys.argv[2])
         if (!(toys.which = toy_find(toys.argv[2]))) unknown(toys.argv[2]);
-      show_help(stdout);
+      show_help(stdout, 1);
       xexit();
     }
 
@@ -110,10 +94,17 @@ static void toy_singleinit(struct toy_list *which, char *argv[])
     toys.optargs = argv+1;
     for (toys.optc = 0; toys.optargs[toys.optc]; toys.optc++);
   }
-  toys.old_umask = umask(0);
-  if (!(which->flags & TOYFLAG_UMASK)) umask(toys.old_umask);
-  toys.signalfd--;
-  toys.toycount = ARRAY_LEN(toy_list);
+
+  if (!(which->flags & TOYFLAG_NOFORK)) {
+    toys.old_umask = umask(0);
+    if (!(which->flags & TOYFLAG_UMASK)) umask(toys.old_umask);
+    if (CFG_TOYBOX_I18N) {
+      // Deliberately try C.UTF-8 before the user's locale to work around users
+      // that choose non-UTF-8 locales. macOS doesn't support C.UTF-8 though.
+      if (!setlocale(LC_CTYPE, "C.UTF-8")) setlocale(LC_CTYPE, "");
+    }
+    setlinebuf(stdout);
+  }
 }
 
 // Full init needed by multiplexer or reentrant calls, calls singleinit at end
@@ -185,7 +176,7 @@ void toy_exec(char *argv[])
 // If first argument starts with - output list of command install paths.
 void toybox_main(void)
 {
-  static char *toy_paths[]={"usr/","bin/","sbin/",0};
+  static char *toy_paths[] = {"usr/","bin/","sbin/",0};
   int i, len = 0;
 
   // fast path: try to exec immediately.
@@ -207,12 +198,12 @@ void toybox_main(void)
   if (toys.argv[1] && toys.argv[1][0] != '-') unknown(toys.argv[1]);
 
   // Output list of command.
-  for (i=1; i<ARRAY_LEN(toy_list); i++) {
+  for (i = 1; i<ARRAY_LEN(toy_list); i++) {
     int fl = toy_list[i].flags;
     if (fl & TOYMASK_LOCATION) {
       if (toys.argv[1]) {
         int j;
-        for (j=0; toy_paths[j]; j++)
+        for (j = 0; toy_paths[j]; j++)
           if (fl & (1<<j)) len += printf("%s", toy_paths[j]);
       }
       len += printf("%s",toy_list[i].name);
@@ -225,40 +216,27 @@ void toybox_main(void)
 
 int main(int argc, char *argv[])
 {
+  // don't segfault if our environment is crazy
   if (!*argv) return 127;
 
   // Snapshot stack location so we can detect recursion depth later.
-  // This is its own block so probe doesn't permanently consume stack.
+  // Nommu has special reentry path, !stacktop = "vfork/exec self happened"
+  if (!CFG_TOYBOX_FORK && (0x80 & **argv)) **argv &= 0x7f;
   else {
-    int stack;
+    int stack_start;  // here so probe var won't permanently eat stack
 
-    toys.stacktop = &stack;
+    toys.stacktop = &stack_start;
   }
 
-  // Up to and including Android M, bionic's dynamic linker added a handler to
-  // cause a crash dump on SIGPIPE. That was removed in Android N, but adbd
-  // was still setting the SIGPIPE disposition to SIG_IGN, and its children
-  // were inheriting that. In Android O, adbd is fixed, but manually asking
-  // for the default disposition is harmless, and it'll be a long time before
-  // no one's using anything older than O!
+  // Android before O had non-default SIGPIPE, 7 years = remove in Sep 2024.
   if (CFG_TOYBOX_ON_ANDROID) signal(SIGPIPE, SIG_DFL);
 
-  // If nommu can't fork, special reentry path.
-  // Use !stacktop to signal "vfork happened", both before and after xexec()
-  if (!CFG_TOYBOX_FORK) {
-    if (0x80 & **argv) {
-      **argv &= 0x7f;
-      toys.stacktop = 0;
-    }
-  }
-
   if (CFG_TOYBOX) {
-    // Call the multiplexer, adjusting this argv[] to be its' argv[1].
-    // (It will adjust it back before calling toy_exec().)
+    // Call the multiplexer with argv[] as its arguments so it can toy_find()
     toys.argv = argv-1;
     toybox_main();
   } else {
-    // a single toybox command built standalone with no multiplexer
+    // single command built standalone with no multiplexer is first list entry
     toy_singleinit(toy_list, argv);
     toy_list->toy_main();
   }

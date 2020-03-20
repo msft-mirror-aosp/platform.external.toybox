@@ -127,14 +127,14 @@ CONFIG_FIND=y
 CONFIG_GETCONF=y
 # CONFIG_GETENFORCE is not set
 # CONFIG_GETFATTR is not set
-# CONFIG_GETOPT is not set
+CONFIG_GETOPT=y
 # CONFIG_GETTY is not set
 CONFIG_GREP=y
 # CONFIG_GROUPADD is not set
 # CONFIG_GROUPDEL is not set
 # CONFIG_GROUPS is not set
 # CONFIG_GUNZIP is not set
-# CONFIG_GZIP is not set
+CONFIG_GZIP=y
 CONFIG_HEAD=y
 # CONFIG_HELLO is not set
 # CONFIG_HELP_EXTRAS is not set
@@ -241,6 +241,7 @@ CONFIG_PS=y
 # CONFIG_PWDX is not set
 CONFIG_PWD=y
 # CONFIG_READAHEAD is not set
+# CONFIG_READELF is not set
 CONFIG_READLINK=y
 CONFIG_REALPATH=y
 # CONFIG_REBOOT is not set
@@ -293,7 +294,7 @@ CONFIG_TAR=y
 CONFIG_TEE=y
 # CONFIG_TELNETD is not set
 # CONFIG_TELNET is not set
-# CONFIG_TEST is not set
+CONFIG_TEST=y
 # CONFIG_TFTPD is not set
 # CONFIG_TFTP is not set
 # CONFIG_TIME is not set
@@ -335,4 +336,4 @@ CONFIG_XARGS=y
 CONFIG_XXD=y
 # CONFIG_XZCAT is not set
 # CONFIG_YES is not set
-# CONFIG_ZCAT is not set
+CONFIG_ZCAT=y

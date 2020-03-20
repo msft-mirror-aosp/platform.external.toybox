@@ -15,45 +15,38 @@
 // options shared between mv/cp must be in same order (right to left)
 // for FLAG macros to work out right in shared infrastructure.
 
-USE_CP(NEWTOY(cp, "<2"USE_CP_PRESERVE("(preserve):;")"D(parents)RHLPprdaslvnF(remove-destination)fi[-HLPd][-ni]", TOYFLAG_BIN))
-USE_MV(NEWTOY(mv, "<2vnF(remove-destination)fi[-ni]", TOYFLAG_BIN))
+USE_CP(NEWTOY(cp, "<2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fiT[-HLPd][-ni]", TOYFLAG_BIN))
+USE_MV(NEWTOY(mv, "<2vnF(remove-destination)fiT[-ni]", TOYFLAG_BIN))
 USE_INSTALL(NEWTOY(install, "<1cdDpsvm:o:g:", TOYFLAG_USR|TOYFLAG_BIN))
 
 config CP
   bool "cp"
   default y
   help
-    usage: cp [-adlnrsvfipRHLP] SOURCE... DEST
+    usage: cp [-adfHiLlnPpRrsTv] [--preserve=motcxa] SOURCE... DEST
 
     Copy files from SOURCE to DEST.  If more than one SOURCE, DEST must
     be a directory.
 
-    -D	Create leading dirs under DEST (--parents)
-    -f	Delete destination files we can't write to
-    -F	Delete any existing destination file first (--remove-destination)
-    -i	Interactive, prompt before overwriting existing DEST
-    -p	Preserve timestamps, ownership, and mode
-    -R	Recurse into subdirectories (DEST must be a directory)
-    -H	Follow symlinks listed on command line
-    -L	Follow all symlinks
-    -P	Do not follow symlinks [default]
     -a	Same as -dpr
+    -D	Create leading dirs under DEST (--parents)
     -d	Don't dereference symlinks
+    -F	Delete any existing destination file first (--remove-destination)
+    -f	Delete destination files we can't write to
+    -H	Follow symlinks listed on command line
+    -i	Interactive, prompt before overwriting existing DEST
+    -L	Follow all symlinks
     -l	Hard link instead of copy
     -n	No clobber (don't overwrite DEST)
+    -P	Do not follow symlinks [default]
+    -p	Preserve timestamps, ownership, and mode
+    -R	Recurse into subdirectories (DEST must be a directory)
     -r	Synonym for -R
     -s	Symlink instead of copy
+    -T	DEST always treated as file, max 2 arguments
     -v	Verbose
 
-config CP_PRESERVE
-  bool "cp --preserve support"
-  default y
-  depends on CP
-  help
-    usage: cp [--preserve=motcxa]
-
-    --preserve takes either a comma separated list of attributes, or the first
-    letter(s) of:
+    Arguments to --preserve are the first letter(s) of:
 
             mode - permissions (ignore umask for rwx, copy suid and sticky bit)
        ownership - user and group
@@ -66,12 +59,13 @@ config MV
   bool "mv"
   default y
   help
-    usage: mv [-fivn] SOURCE... DEST
+    usage: mv [-finTv] SOURCE... DEST
 
     -f	Force copy by deleting destination file
     -i	Interactive, prompt before overwriting existing DEST
-    -v	Verbose
     -n	No clobber (don't overwrite DEST)
+    -T	DEST always treated as file, max 2 arguments
+    -v	Verbose
 
 config INSTALL
   bool "install"
@@ -368,13 +362,18 @@ void cp_main(void)
   char *destname = toys.optargs[--toys.optc];
   int i, destdir = !stat(destname, &TT.top) && S_ISDIR(TT.top.st_mode);
 
+  if (FLAG(T)) {
+    if (toys.optc>1) help_exit("Max 2 arguments");
+    if (destdir) error_exit("'%s' is a directory", destname);
+  }
+
   if ((toys.optc>1 || FLAG(D)) && !destdir)
     error_exit("'%s' not directory", destname);
 
   if (FLAG(a)||FLAG(p)) TT.pflags = _CP_mode|_CP_ownership|_CP_timestamps;
 
   // Not using comma_args() (yet?) because interpeting as letters.
-  if (CFG_CP_PRESERVE && FLAG(preserve)) {
+  if (FLAG(preserve)) {
     char *pre = xstrdup(TT.c.preserve ? TT.c.preserve : "mot"), *s;
 
     if (comma_remove(pre, "all")) TT.pflags = ~0;
@@ -408,7 +407,7 @@ void cp_main(void)
     if (*--trail == '/') *trail = 0;
 
     if (destdir) {
-      char *s = FLAG(D) ? dirname(src) : getbasename(src);
+      char *s = FLAG(D) ? src : getbasename(src);
 
       TT.destname = xmprintf("%s/%s", destname, s);
       if (FLAG(D)) {

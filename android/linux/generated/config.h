@@ -228,8 +228,8 @@
 #define USE_GETENFORCE(...)
 #define CFG_GETFATTR 0
 #define USE_GETFATTR(...)
-#define CFG_GETOPT 0
-#define USE_GETOPT(...)
+#define CFG_GETOPT 1
+#define USE_GETOPT(...) __VA_ARGS__
 #define CFG_GETTY 0
 #define USE_GETTY(...)
 #define CFG_GREP 1
@@ -242,8 +242,8 @@
 #define USE_GROUPS(...)
 #define CFG_GUNZIP 0
 #define USE_GUNZIP(...)
-#define CFG_GZIP 0
-#define USE_GZIP(...)
+#define CFG_GZIP 1
+#define USE_GZIP(...) __VA_ARGS__
 #define CFG_HEAD 1
 #define USE_HEAD(...) __VA_ARGS__
 #define CFG_HELLO 0
@@ -456,6 +456,8 @@
 #define USE_PWD(...) __VA_ARGS__
 #define CFG_READAHEAD 0
 #define USE_READAHEAD(...)
+#define CFG_READELF 0
+#define USE_READELF(...)
 #define CFG_READLINK 1
 #define USE_READLINK(...) __VA_ARGS__
 #define CFG_REALPATH 1
@@ -560,8 +562,8 @@
 #define USE_TELNETD(...)
 #define CFG_TELNET 0
 #define USE_TELNET(...)
-#define CFG_TEST 0
-#define USE_TEST(...)
+#define CFG_TEST 1
+#define USE_TEST(...) __VA_ARGS__
 #define CFG_TFTPD 0
 #define USE_TFTPD(...)
 #define CFG_TFTP 0
@@ -644,5 +646,5 @@
 #define USE_XZCAT(...)
 #define CFG_YES 0
 #define USE_YES(...)
-#define CFG_ZCAT 0
-#define USE_ZCAT(...)
+#define CFG_ZCAT 1
+#define USE_ZCAT(...) __VA_ARGS__

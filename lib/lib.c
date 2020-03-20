@@ -72,7 +72,7 @@ void help_exit(char *msg, ...)
 {
   va_list va;
 
-  if (!msg) show_help(stdout);
+  if (!msg) show_help(stdout, 1);
   else {
     va_start(va, msg);
     verror_msg(msg, -1, va);
@@ -347,6 +347,7 @@ int stridx(char *haystack, char needle)
 }
 
 // Convert utf8 sequence to a unicode wide character
+// returns bytes consumed, or -1 if err, or -2 if need more data.
 int utf8towc(wchar_t *wc, char *str, unsigned len)
 {
   unsigned result, mask, first;
@@ -472,20 +473,16 @@ off_t fdlength(int fd)
 {
   struct stat st;
   off_t base = 0, range = 1, expand = 1, old;
+  unsigned long long size;
 
   if (!fstat(fd, &st) && S_ISREG(st.st_mode)) return st.st_size;
 
   // If the ioctl works for this, return it.
-  // TODO: is blocksize still always 512, or do we stat for it?
-  // unsigned int size;
-  // if (ioctl(fd, BLKGETSIZE, &size) >= 0) return size*512L;
+  if (get_block_device_size(fd, &size)) return size;
 
   // If not, do a binary search for the last location we can read.  (Some
   // block devices don't do BLKGETSIZE right.)  This should probably have
   // a CONFIG option...
-
-  // If not, do a binary search for the last location we can read.
-
   old = lseek(fd, 0, SEEK_CUR);
   do {
     char temp;
@@ -508,20 +505,13 @@ off_t fdlength(int fd)
   return base;
 }
 
-// Read contents of file as a single nul-terminated string.
-// measure file size if !len, allocate buffer if !buf
-// Existing buffers need len in *plen
-// Returns amount of data read in *plen
-char *readfileat(int dirfd, char *name, char *ibuf, off_t *plen)
+char *readfd(int fd, char *ibuf, off_t *plen)
 {
   off_t len, rlen;
-  int fd;
   char *buf, *rbuf;
 
   // Unsafe to probe for size with a supplied buffer, don't ever do that.
   if (CFG_TOYBOX_DEBUG && (ibuf ? !*plen : *plen)) error_exit("bad readfileat");
-
-  if (-1 == (fd = openat(dirfd, name, O_RDONLY))) return 0;
 
   // If we dunno the length, probe it. If we can't probe, start with 1 page.
   if (!*plen) {
@@ -543,7 +533,6 @@ char *readfileat(int dirfd, char *name, char *ibuf, off_t *plen)
     len -= rlen;
   }
   *plen = len = rlen+(rbuf-buf);
-  close(fd);
 
   if (rlen<0) {
     if (ibuf != buf) free(buf);
@@ -551,6 +540,20 @@ char *readfileat(int dirfd, char *name, char *ibuf, off_t *plen)
   } else buf[len] = 0;
 
   return buf;
+}
+
+// Read contents of file as a single nul-terminated string.
+// measure file size if !len, allocate buffer if !buf
+// Existing buffers need len in *plen
+// Returns amount of data read in *plen
+char *readfileat(int dirfd, char *name, char *ibuf, off_t *plen)
+{
+  if (-1 == (dirfd = openat(dirfd, name, O_RDONLY))) return 0;
+
+  ibuf = readfd(dirfd, ibuf, plen);
+  close(dirfd);
+
+  return ibuf;
 }
 
 char *readfile(char *name, char *ibuf, off_t len)
@@ -922,12 +925,12 @@ mode_t string_to_mode(char *modestr, mode_t mode)
     // If who isn't specified, like "a" but honoring umask.
     if (!dowho) {
       dowho = 8;
-      umask(amask=umask(0));
+      umask(amask = umask(0));
     }
-    if (!*str || !(s = strchr(hows, *str))) goto barf;
-    dohow = *(str++);
 
-    if (!dohow) goto barf;
+    if (!*str || !(s = strchr(hows, *str))) goto barf;
+    if (!(dohow = *(str++))) goto barf;
+
     while (*str && (s = strchr(whats, *str))) {
       dowhat |= 1<<(s-whats);
       str++;
@@ -945,7 +948,7 @@ mode_t string_to_mode(char *modestr, mode_t mode)
     // Are we ready to do a thing yet?
     if (*str && *(str++) != ',') goto barf;
 
-    // Ok, apply the bits to the mode.
+    // Loop through what=xwrs and who=ogu to apply bits to the mode.
     for (i=0; i<4; i++) {
       for (j=0; j<3; j++) {
         mode_t bit = 0;
@@ -955,13 +958,12 @@ mode_t string_to_mode(char *modestr, mode_t mode)
 
         // Figure out new value at this location
         if (i == 3) {
-          // suid/sticky bit.
-          if (j) {
-            if ((dowhat & 8) && (dowho&(8|(1<<i)))) bit++;
-          } else if (dowhat & 16) bit++;
+          // suid and sticky
+          if (!j) bit = dowhat&16; // o+s = t
+          else if ((dowhat&8) && (dowho&(8|(1<<j)))) bit++;
         } else {
           if (!(dowho&(8|(1<<i)))) continue;
-          if (dowhat&(1<<j)) bit++;
+          else if (dowhat&(1<<j)) bit++;
         }
 
         // When selection active, modify bit
@@ -1409,4 +1411,30 @@ int is_tar_header(void *pkt)
   sscanf(p+148, "%8o", &i);
 
   return i && tar_cksum(pkt) == i;
+}
+
+char *elf_arch_name(int type)
+{
+  int i;
+  // Values from include/linux/elf-em.h (plus arch/*/include/asm/elf.h)
+  // Names are linux/arch/ directory (sometimes before 32/64 bit merges)
+  struct {int val; char *name;} types[] = {{0x9026, "alpha"}, {93, "arc"},
+    {195, "arcv2"}, {40, "arm"}, {183, "arm64"}, {0x18ad, "avr32"},
+    {247, "bpf"}, {106, "blackfin"}, {140, "c6x"}, {23, "cell"}, {76, "cris"},
+    {252, "csky"}, {0x5441, "frv"}, {46, "h8300"}, {164, "hexagon"},
+    {50, "ia64"}, {88, "m32r"}, {0x9041, "m32r"}, {4, "m68k"}, {174, "metag"},
+    {189, "microblaze"}, {0xbaab, "microblaze-old"}, {8, "mips"},
+    {10, "mips-old"}, {89, "mn10300"}, {0xbeef, "mn10300-old"}, {113, "nios2"},
+    {92, "openrisc"}, {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"},
+    {21, "ppc64"}, {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"},
+    {135, "score"}, {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"},
+    {188, "tile"}, {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"},
+    {94, "xtensa"}, {0xabc7, "xtensa-old"}
+  };
+
+  for (i = 0; i<ARRAY_LEN(types); i++) {
+    if (type==types[i].val) return types[i].name;
+  }
+  sprintf(libbuf, "unknown arch %d", type);
+  return libbuf;
 }

@@ -10,7 +10,7 @@ config DF
   bool "df"
   default y
   help
-    usage: df [-HPkhi] [-t type] [FILESYSTEM ...]
+    usage: df [-HPkhi] [-t type] [FILE...]
 
     The "disk free" command shows total/used/available disk space for
     each filesystem listed on the command line, or all currently mounted
@@ -134,7 +134,7 @@ static void show_mt(struct mtab_list *mt, int measuring)
     if (used*100 != percent*(used+avail)) percent++;
   }
 
-  device = *mt->device == '/' ? realpath(mt->device, NULL) : NULL;
+  device = *mt->device == '/' ? xabspath(mt->device, 0) : NULL;
   if (!device) device = mt->device;
 
   if (measuring) {

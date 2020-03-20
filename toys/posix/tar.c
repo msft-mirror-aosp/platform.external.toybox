@@ -23,7 +23,7 @@ config TAR
   bool "tar"
   default y
   help
-    usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILES]
+    usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILE...]
 
     Create, extract, or list files in a .tar (or compressed t?z) file.
 
@@ -38,7 +38,7 @@ config TAR
     --mode MODE      Adjust modes           --mtime TIME  Override timestamps
     --owner NAME     Set file owner to NAME --group NAME  Set file group to NAME
     --sparse         Record sparse files
-    --restrict       All archive contents must extract under one subdirctory
+    --restrict       All archive contents must extract under one subdirectory
     --numeric-owner  Save/use/display uid and gid, not user/group name
     --no-recursion   Don't store directory contents
 */
@@ -164,12 +164,12 @@ static void skippy(long long len)
 static void alloread(void *buf, int len)
 {
   // actually void **, but automatic typecasting doesn't work with void ** :(
-  void **b = buf;
+  char **b = buf;
 
   free(*b);
   *b = xmalloc(len+1);
   xreadall(TT.fd, *b, len);
-  b[len] = 0;
+  (*b)[len] = 0;
 }
 
 // callback from dirtree to create archive
