@@ -118,8 +118,8 @@
 #define USE_COMM(...) __VA_ARGS__
 #define CFG_COUNT 0
 #define USE_COUNT(...)
-#define CFG_CPIO 0
-#define USE_CPIO(...)
+#define CFG_CPIO 1
+#define USE_CPIO(...) __VA_ARGS__
 #define CFG_CP_PRESERVE 1
 #define USE_CP_PRESERVE(...) __VA_ARGS__
 #define CFG_CP 1
