@@ -751,8 +751,27 @@ static int cur_down(int count0, int count1, char *unused)
 {
   int count = count0*count1;
   for (;count--;) TT.cursor = text_nsol(TT.cursor);
-
   check_cursor_bounds();
+  return 1;
+}
+
+static int vi_H(int count0, int count1, char *unused)
+{
+  TT.cursor = text_sol(TT.screen);
+  return 1;
+}
+
+static int vi_L(int count0, int count1, char *unused)
+{
+  TT.cursor = text_sol(TT.screen);
+  cur_down(TT.screen_height-1, 1, 0);
+  return 1;
+}
+
+static int vi_M(int count0, int count1, char *unused)
+{
+  TT.cursor = text_sol(TT.screen);
+  cur_down(TT.screen_height/2, 1, 0);
   return 1;
 }
 
@@ -1106,10 +1125,13 @@ struct vi_mov_param vi_movs[] =
   {"b", 0, &vi_movb},
   {"e", 0, &vi_move},
   {"G", 0, &vi_go},
+  {"H", 0, &vi_H},
   {"h", 0, &cur_left},
   {"j", 0, &cur_down},
   {"k", 0, &cur_up},
+  {"L", 0, &vi_L},
   {"l", 0, &cur_right},
+  {"M", 0, &vi_M},
   {"w", 0, &vi_movw},
   {"$", 0, &vi_eol},
   {"f", 1, &vi_find_c},
@@ -1414,7 +1436,10 @@ static void draw_page()
   tty_jump(0, TT.screen_height);
   tty_esc("2K");
   if (TT.vi_mode == 2) printf("\x1b[1m-- INSERT --\x1b[m");
-  if (!TT.vi_mode) printf("\x1b[1m%s \x1b[m",TT.il->data);
+  if (!TT.vi_mode) {
+    cx_scr = printf("%s",TT.il->data);
+    cy_scr = TT.screen_height;
+  }
 
   sprintf(toybuf, "%zu / %zu,%d,%d", TT.cursor, TT.filesize,
     TT.cur_row+1, TT.cur_col+1);
@@ -1424,10 +1449,8 @@ static void draw_page()
   tty_jump(TT.screen_width-strlen(toybuf), TT.screen_height);
   printf("%s", toybuf);
 
-  if (TT.vi_mode) tty_jump(cx_scr, cy_scr);
-
+  tty_jump(cx_scr, cy_scr);
   xflush(1);
-
 }
 
 void vi_main(void)
@@ -1435,7 +1458,7 @@ void vi_main(void)
   char keybuf[16] = {0};
   char vi_buf[16] = {0};
   char utf8_code[8] = {0};
-  int utf8_dec_p = 0, vi_buf_pos = 0;
+  int utf8_dec_p = 0, vi_buf_pos = 0, i;
   FILE *script = 0;
   if (FLAG(s)) script = fopen(TT.s, "r");
 
@@ -1509,6 +1532,25 @@ void vi_main(void)
           // FALLTHROUGH
         case 'i':
           TT.vi_mode = 2;
+          break;
+        case 'B'-'@':
+          for (i=0; i<TT.screen_height-2; ++i) TT.screen = text_psol(TT.screen);
+          // TODO: if we're on the bottom visible line, move the cursor up.
+          if (TT.screen > TT.cursor) TT.cursor = TT.screen;
+          break;
+        case 'E'-'@':
+          TT.screen = text_nsol(TT.screen);
+          // TODO: real vi keeps the x position.
+          if (TT.screen > TT.cursor) TT.cursor = TT.screen;
+          break;
+        case 'F'-'@':
+          for (i=0; i<TT.screen_height-2; ++i) TT.screen = text_nsol(TT.screen);
+          // TODO: real vi keeps the x position.
+          if (TT.screen > TT.cursor) TT.cursor = TT.screen;
+          break;
+        case 'U'-'@':
+          TT.screen = text_psol(TT.screen);
+          // TODO: if we're on the bottom visible line, move the cursor up.
           break;
         case 27:
           vi_buf[0] = 0;

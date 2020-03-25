@@ -17,7 +17,7 @@
  * Why --exclude pattern but no --include? tar cvzf a.tgz dir --include '*.txt'
  *
 
-USE_TAR(NEWTOY(tar, "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
@@ -189,7 +189,7 @@ static int add_to_tar(struct dirtree *node)
   }
 
   i = 1;
-  name = dirtree_path(node, &i);
+  name = hname = dirtree_path(node, &i);
 
   // exclusion defaults to --no-anchored and --wildcards-match-slash
   for (lnk = name; *lnk;) {
@@ -202,7 +202,7 @@ static int add_to_tar(struct dirtree *node)
   if (S_ISDIR(st->st_mode) && name[i-1] != '/') strcat(name, "/");
 
   // remove leading / and any .. entries from saved name
-  for (hname = name; *hname == '/'; hname++);
+  if (!FLAG(P)) while (*hname == '/') hname++;
   for (lnk = hname;;) {
     if (!(lnk = strstr(lnk, ".."))) break;
     if (lnk == hname || lnk[-1] == '/') {
@@ -495,8 +495,9 @@ static void extract_to_disk(void)
         return perror_msg("can't link '%s' -> '%s'", name, TT.hdr.link_target);
     // write contents
     } else {
-      int fd = xcreate(name, O_WRONLY|O_CREAT|(FLAG(overwrite)?O_TRUNC:O_EXCL),
-        WARN_ONLY|(ala & 07777));
+      int fd = xcreate(name,
+        WARN_ONLY|O_WRONLY|O_CREAT|(FLAG(overwrite)?O_TRUNC:O_EXCL),
+        ala & 07777);
       if (fd != -1) sendfile_sparse(fd);
       else skippy(TT.hdr.size);
     }
