@@ -374,7 +374,7 @@
 #undef FLAG_preserve
 #endif
 
-// cpio   (no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]
+// cpio (no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF] (no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]
 #undef OPTSTR_cpio
 #define OPTSTR_cpio "(no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
 #ifdef CLEANUP_cpio
@@ -3764,18 +3764,18 @@
 #ifndef TT
 #define TT this.cpio
 #endif
-#define FLAG_o (FORCED_FLAG<<0)
-#define FLAG_v (FORCED_FLAG<<1)
-#define FLAG_F (FORCED_FLAG<<2)
-#define FLAG_t (FORCED_FLAG<<3)
-#define FLAG_i (FORCED_FLAG<<4)
-#define FLAG_p (FORCED_FLAG<<5)
-#define FLAG_H (FORCED_FLAG<<6)
-#define FLAG_u (FORCED_FLAG<<7)
-#define FLAG_d (FORCED_FLAG<<8)
-#define FLAG_m (FORCED_FLAG<<9)
-#define FLAG_trailer (FORCED_FLAG<<10)
-#define FLAG_no_preserve_owner (FORCED_FLAG<<11)
+#define FLAG_o (1<<0)
+#define FLAG_v (1<<1)
+#define FLAG_F (1<<2)
+#define FLAG_t (1<<3)
+#define FLAG_i (1<<4)
+#define FLAG_p (1<<5)
+#define FLAG_H (1<<6)
+#define FLAG_u (1<<7)
+#define FLAG_d (1<<8)
+#define FLAG_m (1<<9)
+#define FLAG_trailer (1<<10)
+#define FLAG_no_preserve_owner (1<<11)
 #endif
 
 #ifdef FOR_crc32
