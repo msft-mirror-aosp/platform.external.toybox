@@ -722,12 +722,13 @@
 #undef FOR_dos2unix
 #endif
 
-// du d#<0=-1hmlcaHkKLsx[-HL][-kKmh] d#<0=-1hmlcaHkKLsx[-HL][-kKmh]
+// du d#<0=-1hmlcaHkKLsxb[-HL][-kKmh] d#<0=-1hmlcaHkKLsxb[-HL][-kKmh]
 #undef OPTSTR_du
-#define OPTSTR_du "d#<0=-1hmlcaHkKLsx[-HL][-kKmh]"
+#define OPTSTR_du "d#<0=-1hmlcaHkKLsxb[-HL][-kKmh]"
 #ifdef CLEANUP_du
 #undef CLEANUP_du
 #undef FOR_du
+#undef FLAG_b
 #undef FLAG_x
 #undef FLAG_s
 #undef FLAG_L
@@ -4068,18 +4069,19 @@
 #ifndef TT
 #define TT this.du
 #endif
-#define FLAG_x (1<<0)
-#define FLAG_s (1<<1)
-#define FLAG_L (1<<2)
-#define FLAG_K (1<<3)
-#define FLAG_k (1<<4)
-#define FLAG_H (1<<5)
-#define FLAG_a (1<<6)
-#define FLAG_c (1<<7)
-#define FLAG_l (1<<8)
-#define FLAG_m (1<<9)
-#define FLAG_h (1<<10)
-#define FLAG_d (1<<11)
+#define FLAG_b (1<<0)
+#define FLAG_x (1<<1)
+#define FLAG_s (1<<2)
+#define FLAG_L (1<<3)
+#define FLAG_K (1<<4)
+#define FLAG_k (1<<5)
+#define FLAG_H (1<<6)
+#define FLAG_a (1<<7)
+#define FLAG_c (1<<8)
+#define FLAG_l (1<<9)
+#define FLAG_m (1<<10)
+#define FLAG_h (1<<11)
+#define FLAG_d (1<<12)
 #endif
 
 #ifdef FOR_dumpleases
