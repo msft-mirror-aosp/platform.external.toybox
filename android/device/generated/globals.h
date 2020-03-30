@@ -823,7 +823,7 @@ struct sh_data {
   char **locals, *subshell_env, *ifs;
   struct double_list functions;
   unsigned options, jobcnt, loc_ro, loc_magic;
-  int hfd;  // next high filehandle (>= 10)
+  int hfd, pid;
 
   // Running jobs for job control.
   struct sh_job {
