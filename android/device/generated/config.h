@@ -494,6 +494,8 @@
 #define USE_RM(...) __VA_ARGS__
 #define CFG_ROUTE 0
 #define USE_ROUTE(...)
+#define CFG_RTCWAKE 1
+#define USE_RTCWAKE(...) __VA_ARGS__
 #define CFG_RUNCON 1
 #define USE_RUNCON(...) __VA_ARGS__
 #define CFG_SED 1

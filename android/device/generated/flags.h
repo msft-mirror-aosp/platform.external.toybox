@@ -2469,6 +2469,24 @@
 #undef FLAG_n
 #endif
 
+// rtcwake (list-modes);(auto)a(device)d:(local)l(mode)m:(seconds)s#(time)t#(utc)u(verbose)v[!alu] (list-modes);(auto)a(device)d:(local)l(mode)m:(seconds)s#(time)t#(utc)u(verbose)v[!alu]
+#undef OPTSTR_rtcwake
+#define OPTSTR_rtcwake "(list-modes);(auto)a(device)d:(local)l(mode)m:(seconds)s#(time)t#(utc)u(verbose)v[!alu]"
+#ifdef CLEANUP_rtcwake
+#undef CLEANUP_rtcwake
+#undef FOR_rtcwake
+#undef FLAG_v
+#undef FLAG_u
+#undef FLAG_t
+#undef FLAG_s
+#undef FLAG_m
+#undef FLAG_l
+#undef FLAG_d
+#undef FLAG_a
+#undef FLAG_auto
+#undef FLAG_list_modes
+#endif
+
 // runcon <2 <2
 #undef OPTSTR_runcon
 #define OPTSTR_runcon "<2"
@@ -5526,6 +5544,22 @@
 #define FLAG_A (FORCED_FLAG<<0)
 #define FLAG_e (FORCED_FLAG<<1)
 #define FLAG_n (FORCED_FLAG<<2)
+#endif
+
+#ifdef FOR_rtcwake
+#ifndef TT
+#define TT this.rtcwake
+#endif
+#define FLAG_v (1<<0)
+#define FLAG_u (1<<1)
+#define FLAG_t (1<<2)
+#define FLAG_s (1<<3)
+#define FLAG_m (1<<4)
+#define FLAG_l (1<<5)
+#define FLAG_d (1<<6)
+#define FLAG_a (1<<7)
+#define FLAG_auto (1<<8)
+#define FLAG_list_modes (1<<9)
 #endif
 
 #ifdef FOR_runcon

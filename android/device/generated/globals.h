@@ -277,8 +277,6 @@ struct hexedit_data {
 
 struct hwclock_data {
   char *f;
-
-  int utc;
 };
 
 // toys/other/ionice.c
@@ -804,6 +802,15 @@ struct readelf_data {
 
 struct route_data {
   char *family;
+};
+
+// toys/pending/rtcwake.c
+
+struct rtcwake_data {
+  long long t, s;
+  char *m, *d;
+
+  struct rtc_wkalrm alarm;
 };
 
 // toys/pending/sh.c
@@ -1599,6 +1606,7 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct readelf_data readelf;
 	struct route_data route;
+	struct rtcwake_data rtcwake;
 	struct sh_data sh;
 	struct stty_data stty;
 	struct sulogin_data sulogin;
