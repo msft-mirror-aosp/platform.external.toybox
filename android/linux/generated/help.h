@@ -348,6 +348,8 @@
 
 #define HELP_stty "usage: stty [-ag] [-F device] SETTING...\n\nGet/set terminal configuration.\n\n-F	Open device instead of stdin\n-a	Show all current settings (default differences from \"sane\")\n-g	Show all current settings usable as input to stty\n\nSpecial characters (syntax ^c or undef): intr quit erase kill eof eol eol2\nswtch start stop susp rprnt werase lnext discard\n\nControl/input/output/local settings as shown by -a, '-' prefix to disable\n\nCombo settings: cooked/raw, evenp/oddp/parity, nl, ek, sane\n\nN	set input and output speed (ispeed N or ospeed N for just one)\ncols N	set number of columns\nrows N	set number of rows\nline N	set line discipline\nmin N	set minimum chars per read\ntime N	set read timeout\nspeed	show speed only\nsize	show size only"
 
+#define HELP_export "usage: export [-n] [NAME[=VALUE]...]\n\nMake variables available to child processes. NAME exports existing local\nvariable(s), NAME=VALUE sets and exports.\n\n-n	Unexport. Turn listed variable(s) into local variables.\n\nWith no arguments list exported variables/attributes as \"declare\" statements."
+
 #define HELP_exec "usage: exec [-cl] [-a NAME] COMMAND...\n\n-a	set argv[0] to NAME\n-c	clear environment\n-l	prepend - to argv[0]"
 
 #define HELP_eval "usage: eval COMMAND...\n\nExecute (combined) arguments as a shell command."

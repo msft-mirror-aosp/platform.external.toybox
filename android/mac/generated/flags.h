@@ -823,6 +823,16 @@
 #undef FLAG_t
 #endif
 
+// export   np
+#undef OPTSTR_export
+#define OPTSTR_export "np"
+#ifdef CLEANUP_export
+#undef CLEANUP_export
+#undef FOR_export
+#undef FLAG_p
+#undef FLAG_n
+#endif
+
 // expr    
 #undef OPTSTR_expr
 #define OPTSTR_expr 0
@@ -4164,6 +4174,14 @@
 #define TT this.expand
 #endif
 #define FLAG_t (FORCED_FLAG<<0)
+#endif
+
+#ifdef FOR_export
+#ifndef TT
+#define TT this.export
+#endif
+#define FLAG_p (FORCED_FLAG<<0)
+#define FLAG_n (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_expr

@@ -809,8 +809,6 @@ struct route_data {
 struct rtcwake_data {
   long long t, s;
   char *m, *d;
-
-  struct rtc_wkalrm alarm;
 };
 
 // toys/pending/sh.c
@@ -827,10 +825,16 @@ struct sh_data {
 
   // keep lineno here, we use it to work around a compiler bug
   long lineno;
-  char **locals, *subshell_env, *ifs;
+  char *ifs;
   struct double_list functions;
-  unsigned options, jobcnt, loc_ro, loc_magic;
-  int hfd, pid;
+  unsigned options, jobcnt;
+  int hfd, pid, varlen, cdcount;
+  unsigned long long SECONDS;
+
+  struct sh_vars {
+    long flags;
+    char *str;
+  } *vars;
 
   // Running jobs for job control.
   struct sh_job {
