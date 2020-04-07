@@ -823,6 +823,16 @@
 #undef FLAG_t
 #endif
 
+// export   np
+#undef OPTSTR_export
+#define OPTSTR_export "np"
+#ifdef CLEANUP_export
+#undef CLEANUP_export
+#undef FOR_export
+#undef FLAG_p
+#undef FLAG_n
+#endif
+
 // expr    
 #undef OPTSTR_expr
 #define OPTSTR_expr 0
@@ -2467,6 +2477,24 @@
 #undef FLAG_A
 #undef FLAG_e
 #undef FLAG_n
+#endif
+
+// rtcwake   (list-modes);(auto)a(device)d:(local)l(mode)m:(seconds)s#(time)t#(utc)u(verbose)v[!alu]
+#undef OPTSTR_rtcwake
+#define OPTSTR_rtcwake "(list-modes);(auto)a(device)d:(local)l(mode)m:(seconds)s#(time)t#(utc)u(verbose)v[!alu]"
+#ifdef CLEANUP_rtcwake
+#undef CLEANUP_rtcwake
+#undef FOR_rtcwake
+#undef FLAG_v
+#undef FLAG_u
+#undef FLAG_t
+#undef FLAG_s
+#undef FLAG_m
+#undef FLAG_l
+#undef FLAG_d
+#undef FLAG_a
+#undef FLAG_auto
+#undef FLAG_list_modes
 #endif
 
 // runcon   <2
@@ -4148,6 +4176,14 @@
 #define FLAG_t (FORCED_FLAG<<0)
 #endif
 
+#ifdef FOR_export
+#ifndef TT
+#define TT this.export
+#endif
+#define FLAG_p (FORCED_FLAG<<0)
+#define FLAG_n (FORCED_FLAG<<1)
+#endif
+
 #ifdef FOR_expr
 #ifndef TT
 #define TT this.expr
@@ -5526,6 +5562,22 @@
 #define FLAG_A (FORCED_FLAG<<0)
 #define FLAG_e (FORCED_FLAG<<1)
 #define FLAG_n (FORCED_FLAG<<2)
+#endif
+
+#ifdef FOR_rtcwake
+#ifndef TT
+#define TT this.rtcwake
+#endif
+#define FLAG_v (FORCED_FLAG<<0)
+#define FLAG_u (FORCED_FLAG<<1)
+#define FLAG_t (FORCED_FLAG<<2)
+#define FLAG_s (FORCED_FLAG<<3)
+#define FLAG_m (FORCED_FLAG<<4)
+#define FLAG_l (FORCED_FLAG<<5)
+#define FLAG_d (FORCED_FLAG<<6)
+#define FLAG_a (FORCED_FLAG<<7)
+#define FLAG_auto (FORCED_FLAG<<8)
+#define FLAG_list_modes (FORCED_FLAG<<9)
 #endif
 
 #ifdef FOR_runcon

@@ -254,6 +254,7 @@ CONFIG_RMDIR=y
 # CONFIG_RMMOD is not set
 CONFIG_RM=y
 # CONFIG_ROUTE is not set
+# CONFIG_RTCWAKE is not set
 # CONFIG_RUNCON is not set
 CONFIG_SED=y
 # CONFIG_SENDEVENT is not set

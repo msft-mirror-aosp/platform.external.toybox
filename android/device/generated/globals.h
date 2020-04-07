@@ -277,8 +277,6 @@ struct hexedit_data {
 
 struct hwclock_data {
   char *f;
-
-  int utc;
 };
 
 // toys/other/ionice.c
@@ -806,6 +804,13 @@ struct route_data {
   char *family;
 };
 
+// toys/pending/rtcwake.c
+
+struct rtcwake_data {
+  long long t, s;
+  char *m, *d;
+};
+
 // toys/pending/sh.c
 
 struct sh_data {
@@ -820,10 +825,16 @@ struct sh_data {
 
   // keep lineno here, we use it to work around a compiler bug
   long lineno;
-  char **locals, *subshell_env, *ifs;
+  char *ifs;
   struct double_list functions;
-  unsigned options, jobcnt, loc_ro, loc_magic;
-  int hfd, pid;
+  unsigned options, jobcnt;
+  int hfd, pid, varlen, cdcount;
+  unsigned long long SECONDS;
+
+  struct sh_vars {
+    long flags;
+    char *str;
+  } *vars;
 
   // Running jobs for job control.
   struct sh_job {
@@ -1599,6 +1610,7 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct readelf_data readelf;
 	struct route_data route;
+	struct rtcwake_data rtcwake;
 	struct sh_data sh;
 	struct stty_data stty;
 	struct sulogin_data sulogin;
