@@ -1,48 +1,64 @@
 #!/bin/bash
 
 # Clear environment variables by restarting script w/bare minimum passed through
-[ -z "$NOCLEAR" ] &&
-  exec env -i NOCLEAR=1 HOME="$HOME" PATH="$PATH" LINUX="$LINUX" \
-    CROSS_COMPILE="$CROSS_COMPILE" CROSS_SHORT="$CROSS_SHORT" "$0" "$@"
+# set ALL= LINUX= CROSS= on command line
+[ -z "$NOCLEAR" ] && exec env -i NOCLEAR=1 HOME="$HOME" PATH="$PATH" \
+    CROSS_COMPILE="$CROSS_COMPILE" "$0" "$@"
+
+die() { echo "$@" >&2; exit 1; }
+announce() { echo -e "\033]2;$CROSS $*\007\n=== $*"; }
+getcross() { X="$(echo "$CCC/$1"-*cross/bin/"$1"*-cc)"; echo "${X%cc}"; }
 
 # assign command line NAME=VALUE args to env vars
 while [ $# -ne 0 ]; do
   X="${1/=*/}" Y="${1#*=}"
-  [ "${1/=/}" != "$1" ] && eval "export $X=\"\$Y\"" || echo "unknown $i"
+  [ "${1/=/}" != "$1" ] && eval "export $X=\"\$Y\"" || PKG="$PKG $i"
   shift
 done
 
-# If we're cross compiling, set appropriate environment variables.
+# set up directories (can override most of these paths on cmdline)
+TOP="$PWD/root"
+: ${BUILD:=$TOP/build} ${AIRLOCK:=$TOP/airlock}
+mkdir -p ${LOG:=$TOP/log} || exit 1
+
+# set CROSS_COMPILE from $CROSS using ccc. Handle "all" w/log, list, and err chk
+if [ ! -z "$CROSS" ]; then
+  [ ! -d "${CCC:=$PWD/ccc}" ] && die "No ccc symlink to compiler directory."
+  if [ "$CROSS" == all ]; then
+    for i in $(ls "$CCC" | sed -n 's/-.*//p' | sort -u | xargs); do
+      { rm -f "$LOG/$i-log".{failed,success}
+        "$0" "$@" CROSS=$i ; [ $((X=$?)) -eq 0 ] && mv "$LOG/$i".{txt,success}
+      } |& tee "$LOG/$i.txt"
+      [ ! -e "$LOG/$i.success" ] &&
+        { mv "$LOG/$i".{txt,failed};[ -z "$ALL" ] && exit 1; }
+    done; exit
+  elif [ ! -e "${CROSS_COMPILE:=$(getcross $CROSS)}cc" ]; then
+    ls "$CCC" | sed -n 's/-.*//p' | sort -u | xargs; exit
+  fi
+fi
+
+# Digest $CROSS_COMPILE (if any) into appropriate environment variables.
 if [ -z "$CROSS_COMPILE" ]; then
-  echo "Building natively"
   if ! cc --static -xc - -o /dev/null <<< "int main(void) {return 0;}"; then
-    echo "Warning: host compiler can't create static binaries." >&2
-    sleep 3
+    echo "Warning: host compiler can't create static binaries." >&2; sleep 3
   fi
 else
   CROSS_PATH="$(dirname "$(which "${CROSS_COMPILE}cc")")"
   CROSS_BASE="$(basename "$CROSS_COMPILE")"
-  [ -z "$CROSS_SHORT" ] && CROSS_SHORT="${CROSS_BASE/-*/}"
-  echo "Cross compiling to $CROSS_SHORT"
-  if [ -z "$CROSS_PATH" ]; then
-    echo "no ${CROSS_COMPILE}cc in path" >&2
-    exit 1
-  fi
+  [ -z "$CROSS_PATH" ] && die "no ${CROSS_COMPILE}cc in path"
+  : ${CROSS:=${CROSS_BASE/-*/}}
 fi
+echo "Building for ${CROSS:=host}"
 
-# set up directories (can override most of these paths on cmdline)
-TOP="$PWD/root"
-[ -z "$BUILD" ] && BUILD="$TOP/build"
-[ -z "$AIRLOCK" ] && AIRLOCK="$TOP/airlock"
-[ -z "$OUTPUT" ] && OUTPUT="$TOP/${CROSS_SHORT:-host}"
+: ${OUTPUT:=$TOP/$CROSS}
 [ -z "$ROOT" ] && ROOT="$OUTPUT/${CROSS_BASE}fs" && rm -rf "$ROOT"
 MYBUILD="$BUILD/${CROSS_BASE:-host-}tmp"
 rm -rf "$MYBUILD" && mkdir -p "$MYBUILD" || exit 1
 
-# Stabilize cross compiling by providing known $PATH contents
+# Provide known $PATH contents (airlock) for cross compile builds
 if [ ! -z "$CROSS_COMPILE" ]; then
   if [ ! -e "$AIRLOCK/toybox" ]; then
-    echo === Create airlock dir
+    announce "airlock"
     PREFIX="$AIRLOCK" KCONFIG_CONFIG="$TOP"/.airlock CROSS_COMPILE= \
       make clean defconfig toybox install_airlock &&
     rm "$TOP"/.airlock || exit 1
@@ -73,10 +89,14 @@ fi
 
 if [ $$ -eq 1 ]; then
   # Setup networking for QEMU (needs /proc)
+  ifconfig lo 127.0.0.1
   ifconfig eth0 10.0.2.15
   route add default gw 10.0.2.2
   [ "$(date +%s)" -lt 1000 ] && rdate 10.0.2.2 # Ask QEMU what time it is
   [ "$(date +%s)" -lt 10000000 ] && ntpd -nq -p north-america.pool.ntp.org
+
+  # Run expansion scripts (if any)
+  for i in $(/etc/rc/* | sort); do [ -e "$i" ] && . $i; done
 
   [ -z "$CONSOLE" ] && CONSOLE="$(</sys/class/tty/console/active)"
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo Type exit when done.
@@ -99,8 +119,9 @@ echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group &&
 echo "nameserver 8.8.8.8" > "$ROOT"/etc/resolv.conf || exit 1
 
 # Build toybox
-make clean
-make $([ -z .config ] && echo defconfig || echo silentoldconfig)
+announce toybox
+make clean &&
+make $([ -z .config ] && echo defconfig || echo silentoldconfig) &&
 LDFLAGS=--static PREFIX="$ROOT" make toybox install || exit 1
 
 write_miniconfig()
@@ -135,7 +156,6 @@ else
   # Each target needs board config, serial console, RTC, ethernet, block device.
 
   if [ "$TARGET" == armv5l ]; then
-
     # This could use the same VIRT board as armv7, but let's demonstrate a
     # different one requiring a separate device tree binary.
     QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
@@ -172,12 +192,10 @@ else
   elif [ "$TARGET" == powerpc ]; then
     KARCH=powerpc QEMU="ppc -M g3beige" KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,IDE,IDE_GD,IDE_GD_ATA,BLK_DEV_IDE_PMAC,BLK_DEV_IDE_PMAC_ATA100FIRST,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
-
   elif [ "$TARGET" == powerpc64le ]; then
     KARCH=powerpc QEMU="ppc64 -M pseries -vga none" KARGS=/dev/hvc0
     VMLINUX=vmlinux
     KCONF=PPC64,PPC_PSERIES,CPU_LITTLE_ENDIAN,PPC_OF_BOOT_TRAMPOLINE,BLK_DEV_SD,SCSI_LOWLEVEL,SCSI_IBMVSCSI,ATA,NET_VENDOR_IBM,IBMVETH,HVC_CONSOLE,PPC_TRANSACTIONAL_MEM,PPC_DISABLE_WERROR,SECTION_MISMATCH_WARN_ONLY
-
   elif [ "$TARGET" = s390x ] ; then
     QEMU="s390x" KARCH=s390 VMLINUX=arch/s390/boot/bzImage
     KCONF=MARCH_Z900,PACK_STACK,NET_CORE,VIRTIO_NET,VIRTIO_BLK,SCLP_TTY,SCLP_CONSOLE,SCLP_VT220_TTY,SCLP_VT220_CONSOLE,S390_GUEST
@@ -187,9 +205,7 @@ else
     KERNEL_CONFIG="CONFIG_MEMORY_START=0x0c000000"
     KCONF=CPU_SUBTYPE_SH7751R,MMU,VSYSCALL,SH_FPU,SH_RTS7751R2D,RTS7751R2D_PLUS,SERIAL_SH_SCI,SERIAL_SH_SCI_CONSOLE,PCI,NET_VENDOR_REALTEK,8139CP,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,PATA_PLATFORM,BINFMT_ELF_FDPIC,BINFMT_FLAT
 #see also SPI SPI_SH_SCI MFD_SM501 RTC_CLASS RTC_DRV_R9701 RTC_DRV_SH RTC_HCTOSYS
-  else
-    echo "Unknown \$TARGET"
-    exit 1
+  else die "Unknown \$TARGET"
   fi
 
   # Write the qemu launch script
@@ -199,27 +215,34 @@ else
        ${DTB:+-dtb "$(basename "$DTB")"} > "$OUTPUT/qemu-$TARGET.sh" &&
   chmod +x "$OUTPUT/qemu-$TARGET.sh" &&
 
-  echo "Build linux for $KARCH"
+  announce "linux-$KARCH"
   pushd "$LINUX" && make distclean && popd &&
-  cp -sfR "$LINUX" "$MYBUILD/linux" && pushd "$MYBUILD/linux" || exit 1
+  cp -sfR "$LINUX" "$MYBUILD/linux" && pushd "$MYBUILD/linux" &&
   write_miniconfig > "$OUTPUT/miniconfig-$TARGET" &&
-  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/miniconfig-$TARGET" &&
-  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) || exit 1
+  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/miniconfig-$TARGET" ||
+    exit 1
+
+  # Remove stupid kernel defaults that shouldn't be on by default
+  # See http://lkml.iu.edu/hypermail/linux/kernel/1912.3/03493.html
+  # And yes, CONFIG_EXPERT forces on CONFIG_DEBUG which adds gratuitous bloat.
+  sed -e 's/# CONFIG_EXPERT .*/CONFIG_EXPERT=y/' \
+    -e "$(sed -E '/^$/d;s@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set/\n@g' <<< VT,SCHED_DEBUG,DEBUG_MISC,X86_DEBUG_FPU)" -i .config &&
+  yes "" | make ARCH=$KARCH oldconfig > /dev/null &&
+
+  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) &&
+  cp .config "$OUTPUT/linux-fullconfig" || exit 1
 
   # If we have a device tree binary, save it for QEMU.
   if [ ! -z "$DTB" ]; then
     cp "$DTB" "$OUTPUT/$(basename "$DTB")" || exit 1
   fi
 
-  cp "$VMLINUX" "$OUTPUT/$(basename "$VMLINUX")" && cd .. && rm -rf linux &&
-    popd || exit 1
+  cp "$VMLINUX" "$OUTPUT" && cd .. && rm -rf linux && popd || exit 1
 fi
 
+# Build any modules, clean up, and package root filesystem for initramfs.
+for i in $PKG; do announce "$i"; ./$i; done
 rmdir "$MYBUILD" "$BUILD" 2>/dev/null
-
-# package root filesystem for initramfs.
-# we do it here so module install can add files (not implemented yet)
-echo === create "${CROSS_BASE}root.cpio.gz"
-
+announce "${CROSS_BASE}root.cpio.gz"
 (cd "$ROOT" && find . | cpio -o -H newc | gzip) > \
   "$OUTPUT/${CROSS_BASE}root.cpio.gz"

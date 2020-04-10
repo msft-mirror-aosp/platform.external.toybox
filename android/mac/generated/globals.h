@@ -73,10 +73,10 @@ struct killall_data {
 struct md5sum_data {
   int sawline;
 
+  unsigned *md5table;
   // Crypto variables blanked after summing
-  unsigned state[5];
-  unsigned oldstate[5];
-  uint64_t count;
+  unsigned state[5], oldstate[5];
+  unsigned long long count;
   union {
     char c[64];
     unsigned i[16];
