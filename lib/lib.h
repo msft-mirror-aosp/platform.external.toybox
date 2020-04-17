@@ -188,6 +188,7 @@ void xsignal(int signal, void *handler);
 time_t xvali_date(struct tm *tm, char *str);
 void xparsedate(char *str, time_t *t, unsigned *nano, int endian);
 char *xgetline(FILE *fp, int *len);
+time_t xmktime(struct tm *tm, int utc);
 
 // lib.c
 void verror_msg(char *msg, int err, va_list va);
@@ -268,7 +269,6 @@ char *getgroupname(gid_t gid);
 void do_lines(int fd, char delim, void (*call)(char **pline, long len));
 long long millitime(void);
 char *format_iso_time(char *buf, size_t len, struct timespec *ts);
-void reset_env(struct passwd *p, int clear);
 void loggit(int priority, char *format, ...);
 unsigned tar_cksum(void *data);
 int is_tar_header(void *pkt);
@@ -283,9 +283,11 @@ int human_readable(char *buf, unsigned long long num, int style);
 // env.c
 
 long environ_bytes();
-void xsetenv(char *name, char *val);
+char *xsetenv(char *name, char *val);
 void xunsetenv(char *name);
+char *xpop_env(char *name); // because xpopenv() looks like xpopen_v()
 void xclearenv(void);
+void reset_env(struct passwd *p, int clear);
 
 // linestack.c
 
