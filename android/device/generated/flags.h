@@ -107,6 +107,19 @@
 #undef FLAG_i
 #endif
 
+// blkdiscard <1>1f(force)l(length):o(offset):s(secure)z(zeroout)[!sz] <1>1f(force)l(length):o(offset):s(secure)z(zeroout)[!sz]
+#undef OPTSTR_blkdiscard
+#define OPTSTR_blkdiscard "<1>1f(force)l(length):o(offset):s(secure)z(zeroout)[!sz]"
+#ifdef CLEANUP_blkdiscard
+#undef CLEANUP_blkdiscard
+#undef FOR_blkdiscard
+#undef FLAG_z
+#undef FLAG_s
+#undef FLAG_o
+#undef FLAG_l
+#undef FLAG_f
+#endif
+
 // blkid ULs*[!LU] ULs*[!LU]
 #undef OPTSTR_blkid
 #define OPTSTR_blkid "ULs*[!LU]"
@@ -374,9 +387,9 @@
 #undef FLAG_preserve
 #endif
 
-// cpio (no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF] (no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]
+// cpio (no-preserve-owner)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF] (no-preserve-owner)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]
 #undef OPTSTR_cpio
-#define OPTSTR_cpio "(no-preserve-owner)(trailer)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
+#define OPTSTR_cpio "(no-preserve-owner)mduH:p:|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
 #ifdef CLEANUP_cpio
 #undef CLEANUP_cpio
 #undef FOR_cpio
@@ -390,7 +403,6 @@
 #undef FLAG_u
 #undef FLAG_d
 #undef FLAG_m
-#undef FLAG_trailer
 #undef FLAG_no_preserve_owner
 #endif
 
@@ -795,9 +807,9 @@
 #undef FOR_eval
 #endif
 
-// exec   cla:
+// exec   ^cla:
 #undef OPTSTR_exec
-#define OPTSTR_exec "cla:"
+#define OPTSTR_exec "^cla:"
 #ifdef CLEANUP_exec
 #undef CLEANUP_exec
 #undef FOR_exec
@@ -2597,6 +2609,14 @@
 #undef FLAG_b
 #endif
 
+// shift   >1
+#undef OPTSTR_shift
+#define OPTSTR_shift ">1"
+#ifdef CLEANUP_shift
+#undef CLEANUP_shift
+#undef FOR_shift
+#endif
+
 // shred   <1zxus#<1n#<1o#<0f
 #undef OPTSTR_shred
 #define OPTSTR_shred "<1zxus#<1n#<1o#<0f"
@@ -3568,6 +3588,17 @@
 #define FLAG_i (FORCED_FLAG<<4)
 #endif
 
+#ifdef FOR_blkdiscard
+#ifndef TT
+#define TT this.blkdiscard
+#endif
+#define FLAG_z (1<<0)
+#define FLAG_s (1<<1)
+#define FLAG_o (1<<2)
+#define FLAG_l (1<<3)
+#define FLAG_f (1<<4)
+#endif
+
 #ifdef FOR_blkid
 #ifndef TT
 #define TT this.blkid
@@ -3803,8 +3834,7 @@
 #define FLAG_u (1<<7)
 #define FLAG_d (1<<8)
 #define FLAG_m (1<<9)
-#define FLAG_trailer (1<<10)
-#define FLAG_no_preserve_owner (1<<11)
+#define FLAG_no_preserve_owner (1<<10)
 #endif
 
 #ifdef FOR_crc32
@@ -5660,6 +5690,12 @@
 #define FLAG_s (1<<0)
 #define FLAG_c (1<<1)
 #define FLAG_b (1<<2)
+#endif
+
+#ifdef FOR_shift
+#ifndef TT
+#define TT this.shift
+#endif
 #endif
 
 #ifdef FOR_shred
