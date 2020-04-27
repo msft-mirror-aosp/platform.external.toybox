@@ -218,6 +218,12 @@ struct base64_data {
   unsigned total;
 };
 
+// toys/other/blkdiscard.c
+
+struct blkdiscard_data {
+  char *o, *l;
+};
+
 // toys/other/blkid.c
 
 struct blkid_data {
@@ -371,6 +377,13 @@ struct nsenter_data {
 
 struct oneit_data {
   char *c;
+};
+
+// toys/other/rtcwake.c
+
+struct rtcwake_data {
+  long t, s;
+  char *m, *d;
 };
 
 // toys/other/setfattr.c
@@ -804,13 +817,6 @@ struct route_data {
   char *family;
 };
 
-// toys/pending/rtcwake.c
-
-struct rtcwake_data {
-  long long t, s;
-  char *m, *d;
-};
-
 // toys/pending/sh.c
 
 struct sh_data {
@@ -828,7 +834,7 @@ struct sh_data {
   char *ifs;
   struct double_list functions;
   unsigned options, jobcnt;
-  int hfd, pid, varlen, cdcount;
+  int hfd, pid, varslen, shift, cdcount;
   unsigned long long SECONDS;
 
   struct sh_vars {
@@ -1544,6 +1550,7 @@ extern union global_union {
 	struct tunctl_data tunctl;
 	struct acpi_data acpi;
 	struct base64_data base64;
+	struct blkdiscard_data blkdiscard;
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
@@ -1565,6 +1572,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct shred_data shred;
 	struct stat_data stat;
@@ -1610,7 +1618,6 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct readelf_data readelf;
 	struct route_data route;
-	struct rtcwake_data rtcwake;
 	struct sh_data sh;
 	struct stty_data stty;
 	struct sulogin_data sulogin;

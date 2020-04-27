@@ -48,9 +48,10 @@
 
 USE_SH(NEWTOY(cd, ">1LP[-LP]", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(eval, 0, TOYFLAG_NOFORK))
-USE_SH(NEWTOY(exec, "cla:", TOYFLAG_NOFORK))
+USE_SH(NEWTOY(exec, "^cla:", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(exit, 0, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(export, "np", TOYFLAG_NOFORK))
+USE_SH(NEWTOY(shift, ">1", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(unset, "fvn", TOYFLAG_NOFORK))
 
 USE_SH(NEWTOY(sh, "(noediting)(noprofile)(norc)sc:i", TOYFLAG_BIN))
@@ -140,6 +141,16 @@ config EXPORT
     -n	Unexport. Turn listed variable(s) into local variables.
 
     With no arguments list exported variables/attributes as "declare" statements.
+
+config SHIFT
+  bool
+  default n
+  depends on SH
+  help
+    usage: shift [N]
+
+    Skip N (default 1) positional parameters, moving $1 and friends along the list.
+    Does not affect $0.
 */
 
 #define FOR_sh
@@ -160,7 +171,7 @@ GLOBALS(
   char *ifs;
   struct double_list functions;
   unsigned options, jobcnt;
-  int hfd, pid, varlen, cdcount;
+  int hfd, pid, varslen, shift, cdcount;
   unsigned long long SECONDS;
 
   struct sh_vars {
@@ -261,7 +272,11 @@ static void dump_state(struct sh_function *sp)
 static const char *redirectors[] = {"<<<", "<<-", "<<", "<&", "<>", "<", ">>",
   ">&", ">|", ">", "&>>", "&>", 0};
 
-#define SH_NOCLOBBER 1   // set -C
+#define OPT_I           1
+#define OPT_BRACE       2   // set -B
+#define OPT_NOCLOBBER   4   // set -C
+#define OPT_S           8
+#define OPT_C          16
 
 static void syntax_err(char *s)
 {
@@ -309,7 +324,7 @@ static char *varend(char *s)
 static struct sh_vars *findvar(char *name)
 {
   int len = varend(name)-name;
-  struct sh_vars *var = TT.vars+TT.varlen;
+  struct sh_vars *var = TT.vars+TT.varslen;
 
   if (len) while (var-- != TT.vars) 
     if (!strncmp(var->str, name, len) && var->str[len] == '=') return var;
@@ -320,12 +335,12 @@ static struct sh_vars *findvar(char *name)
 // Append variable to TT.vars, returning *struct. Does not check duplicates.
 static struct sh_vars *addvar(char *s)
 {
-  if (!(TT.varlen&31))
-    TT.vars = xrealloc(TT.vars, (TT.varlen+32)*sizeof(*TT.vars));
-  TT.vars[TT.varlen].flags = 0;
-  TT.vars[TT.varlen].str = s;
+  if (!(TT.varslen&31))
+    TT.vars = xrealloc(TT.vars, (TT.varslen+32)*sizeof(*TT.vars));
+  TT.vars[TT.varslen].flags = 0;
+  TT.vars[TT.varslen].str = s;
 
-  return TT.vars+TT.varlen++;
+  return TT.vars+TT.varslen++;
 }
 
 // TODO function to resolve a string into a number for $((1+2)) etc
@@ -424,7 +439,7 @@ static void unsetvar(char *name)
   } else free(var->str);
 
   ii = var-TT.vars;
-  memmove(TT.vars+ii, TT.vars+ii+1, TT.varlen-ii);
+  memmove(TT.vars+ii, TT.vars+ii+1, TT.varslen-ii);
 }
 
 // malloc declare -x "escaped string"
@@ -485,7 +500,7 @@ static int redir_prefix(char *word)
 }
 
 // parse next word from command line. Returns end, or 0 if need continuation
-// caller eats leading spaces. If early, stop at first unquoted char.
+// caller eats leading spaces. early = skip one quote block (or return start)
 static char *parse_word(char *start, int early)
 {
   int i, quote = 0, q, qc = 0;
@@ -497,8 +512,7 @@ static char *parse_word(char *start, int early)
 
   // Redirections. 123<<file- parses as 2 args: "123<<" "file-".
   s = end + redir_prefix(end);
-  if ((i = anystart(s, (void *)redirectors))) s += i;
-  if (s != end) return (end == start) ? s : end;
+  if ((i = anystart(s, (void *)redirectors))) return s+i;
 
   // (( is a special quote at the start of a word
   if (strstart(&end, "((")) toybuf[quote++] = 254;
@@ -535,7 +549,8 @@ static char *parse_word(char *start, int early)
       else if (q == '\'') end++;
       else i++;
 
-      // loop if we already handled a symbol
+      // loop if we already handled a symbol and aren't stopping early
+      if (early && !quote) return end;
       if (!i) continue;
     } else {
       // Things that only matter when unquoted
@@ -552,7 +567,7 @@ static char *parse_word(char *start, int early)
     // Things the same unquoted or in most non-single-quote contexts
 
     // start new quote context?
-    if (strchr("\"'`", *end)) toybuf[quote++] = *end++;
+    if (strchr("\"'`", *end)) toybuf[quote++] = *end;
 
     // backslash escapes
     else if (*end == '\\') {
@@ -565,10 +580,9 @@ static char *parse_word(char *start, int early)
         toybuf[quote++] = ")}]"[i];
         end++;
       }
-    } else {
-      if (early && !quote) break;
-      end++;
     }
+    if (early && !quote) return end;
+    end++;
   }
 
   return quote ? 0 : end;
@@ -679,7 +693,7 @@ if (BUGBUG) dprintf(255, "run_subshell %.*s\n", len, str);
 
     // marshall data to child
     close(254);
-    for (i = 0; i<TT.varlen; i++) {
+    for (i = 0; i<TT.varslen; i++) {
       char *s;
 
       if (TT.vars[i].flags&VAR_GLOBAL) continue;
@@ -867,14 +881,14 @@ if (BUGBUG) dprintf(255, "expand %s\n", str);
       }
     // both types of subshell work the same, so do $( here not in '$' below
 // TODO $((echo hello) | cat) ala $(( becomes $( ( retroactively
-    } else if (cc == '`' || (cc == '$' && str[ii] == '(')) {
+    } else if (cc == '`' || (cc == '$' && strchr("([", str[ii]))) {
       off_t pp = 0;
 
       s = str+ii-1;
-      kk = parse_word(str+ii-1, 1)-s;
-      if (*toybuf == 255) {
-        s += 3;
-        kk -= 5;
+      kk = parse_word(s, 1)-s;
+      if (str[ii] == '[' || *toybuf == 255) {
+        s += 2+(str[ii]!='[');
+        kk -= 3+2*(str[ii]!='[');
 dprintf(2, "TODO: do math for %.*s\n", kk, s);
       } else {
         // Run subshell and trim trailing newlines
@@ -907,12 +921,20 @@ dprintf(2, "TODO: do math for %.*s\n", kk, s);
       }
     } else if (cc == '$') {
 
-// *@#?-$!_0 "Special Paremeters" ($0 not affected by shift)
-
+// TODO: $_ is last arg of last command, and exported as path to exe run
+// TODO: $! is PID of most recent background job
       if (!(cc = str[ii++])) {
         new[oo++] = cc;
         break;
+      } else if (cc == '-') {
+        s = ifs = toybuf;
+        if (TT.options&OPT_I) *s++ = 'i';
+        if (TT.options&OPT_BRACE) *s++ = 'B';
+        if (TT.options&OPT_S) *s++ = 's';
+        if (TT.options&OPT_C) *s++ = 'c';
+        *s = 0;
       } else if (cc == '?') ifs = del = xmprintf("%d", toys.exitval);
+      else if (cc == '$') ifs = del = xmprintf("%d", TT.pid);
       else if (cc == '#') ifs = del = xmprintf("%d", TT.arg->c?TT.arg->c-1:0);
       else if (cc == '*' || cc == '@') {
         // If not doing word split, handle here
@@ -932,10 +954,12 @@ dprintf(2, "TODO: do math for %.*s\n", kk, s);
         } else at = 1;
       } else if(isdigit(cc)) {
         for (kk = 0, ii--; isdigit(cc = str[ii]); ii++) kk = (10*kk)+cc-'0';
+        if (kk) kk += TT.shift;
         if (kk<TT.arg->c) ifs = TT.arg->v[kk];
-
-      // TODO: ${ $(( $[ $'
-//      } else if (cc == '{') {
+      } else if (cc=='\'') {
+        for (s = str+ii; *s != '\''; oo += wcrtomb(new+oo, unescape2(&s, 0),0));
+        ii = s-str+1;
+      } else if (cc == '{') {
 
       // $VARIABLE
       } else {
@@ -1025,13 +1049,13 @@ static void expand_arg(struct sh_arg *arg, char *old, unsigned flags,
 {
   struct brace {
     struct brace *next, *prev, *stack;
-    int active, cnt, idx, commas[];
+    int active, cnt, idx, dots[2], commas[];
   } *bb = 0, *blist = 0, *bstk, *bnext;
   int i, j;
   char *s, *ss;
 
   // collect brace spans
-  if (!(flags&NO_BRACE)) for (i = 0; ; i++) {
+  if ((TT.options&OPT_BRACE) && !(flags&NO_BRACE)) for (i = 0; ; i++) {
     while ((s = parse_word(old+i, 1)) != old+i) i += s-(old+i);
     if (!bb && !old[i]) break;
     if (bb && (!old[i] || old[i] == '}')) {
@@ -1214,6 +1238,12 @@ static struct sh_process *expand_redir(struct sh_arg *arg, int envlen, int *urd)
 
     s = arg->v[j];
 
+    if (!strcmp(s, "!")) {
+      pp->not ^= 1;
+
+      continue;
+    }
+
     // Handle <() >() redirectionss
     if ((*s == '<' || *s == '>') && s[1] == '(') {
       int new = pipe_subshell(s+2, strlen(s+2)-1, *s == '>');
@@ -1345,7 +1375,7 @@ notfd:
       else if (strstr(ss, ">>")) from = O_CREAT|O_APPEND|O_WRONLY;
       else {
         from = (*ss == '<') ? O_RDONLY : O_CREAT|O_WRONLY|O_TRUNC;
-        if (!strcmp(ss, ">") && (TT.options&SH_NOCLOBBER)) {
+        if (!strcmp(ss, ">") && (TT.options&OPT_NOCLOBBER)) {
           struct stat st;
 
           // Not _just_ O_EXCL: > /dev/null allowed
@@ -1884,7 +1914,7 @@ static int wait_pipeline(struct sh_process *pp)
       pp->pid = 0;
     }
     // TODO handle set -o pipefail here
-    rc = pp->exit;
+    rc = pp->not ? !pp->exit : pp->exit;
   }
 
   return rc;
@@ -1973,7 +2003,7 @@ if (BUGBUG) dprintf(255, "%d runtype=%d %s %s\n", getpid(), pl->type, s, ctl);
 
       // Skip disabled block
       if (blk && !blk->run) {
-        while (pl->next && !pl->next->type) pl = pl->next;
+        pl = pl->next;
         continue;
       }
       if (pipe_segments(ctl, pipes, &urd)) break;
@@ -2214,7 +2244,7 @@ static void do_prompt(char *prompt)
   char *s, *ss, c, cc, *pp = toybuf;
   int len, ll;
 
-  if (!prompt) prompt = "\\$ ";
+  if (!prompt) return;
   while ((len = sizeof(toybuf)-(pp-toybuf))>0 && *prompt) {
     c = *(prompt++);
 
@@ -2276,7 +2306,7 @@ static struct sh_vars *initlocal(char *name, char *val)
 // export malloced name=value string
 static void export(char *str)
 {
-  struct sh_vars *shv;
+  struct sh_vars *shv = 0;
   char *s;
 
   // Make sure variable exists and is updated
@@ -2311,7 +2341,6 @@ static void subshell_setup(void)
 {
   struct passwd *pw = getpwuid(getuid());
   int ii, to, from, pid, ppid, zpid, myppid = getppid(), len;
-// TODO: you can unset readonly and these first 4 aren't malloc()
   char *s, *ss, *magic[] = {"SECONDS","RANDOM","LINENO","GROUPS"},
     *readonly[] = {xmprintf("EUID=%d", geteuid()), xmprintf("UID=%d", getuid()),
                    xmprintf("PPID=%d", myppid)};
@@ -2345,6 +2374,7 @@ static void subshell_setup(void)
   initlocal("OPTERR", "1"); // TODO: test if already exported?
   if (readlink0("/proc/self/exe", toybuf, sizeof(toybuf)))
     initlocal("BASH", toybuf);
+  initlocal("PS2", "> ");
 
   // Ensure environ copied and toys.envc set, and clean out illegal entries
   TT.ifs = " \t\n";
@@ -2356,6 +2386,7 @@ static void subshell_setup(void)
       sscanf(s, "@%d,%d%n", &pid, &ppid, &len);
       if (s[len]) pid = ppid = 0;
       if (*s == '$' && s[1] == '=') zpid = atoi(s+2);
+// TODO marshall $- to subshell like $$
     }
 
     // Filter out non-shell variable names from inherited environ.
@@ -2421,12 +2452,13 @@ void sh_main(void)
 {
   char *new, *cc = TT.sh.c;
   struct sh_function scratch;
-  int prompt = 0, ii = FLAG(i);
+  int prompt = 0;
   struct string_list *sl = 0;
   struct sh_arg arg;
   FILE *f;
 
   signal(SIGPIPE, SIG_IGN);
+  TT.options = OPT_BRACE;
 
   TT.pid = getpid();
   TT.SECONDS = time(0);
@@ -2444,22 +2476,28 @@ void sh_main(void)
 
   // if (!FLAG(noprofile)) { }
 
-if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); dup2(fd, 255); close(fd); }
+if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); if (fd == -1) fd = open("/dev/console", O_RDWR); dup2(fd, 255); close(fd); }
   // Is this an interactive shell?
-  if (ii || (!FLAG(c)&&(FLAG(s)||!toys.optc) && isatty(0))) {
-    ii = 1;
-    // TODO Set up signal handlers and grab control of this tty.
-  }
+  if (FLAG(s) || (!FLAG(c) && !toys.optc)) TT.options |= OPT_S;
+  if (FLAG(i) || (!FLAG(c) && (TT.options&OPT_S) && isatty(0)))
+    TT.options |= OPT_I;
+  if (FLAG(c)) TT.options |= OPT_C;
 
   // Read environment for exports from parent shell. Note, calls run_sh()
   // which blanks argument sections of TT and this, so parse everything
   // we need from shell command line before that.
   subshell_setup();
+  if (TT.options&OPT_I) {
+    if (!getvar("PS1")) setvarval("PS1", getpid() ? "\\$ " : "# ");
+    // TODO Set up signal handlers and grab control of this tty.
+  }
+
   memset(&scratch, 0, sizeof(scratch));
 
 // TODO unify fmemopen() here with sh_run
   if (cc) f = fmemopen(cc, strlen(cc), "r");
-  else if (*toys.optargs) {
+  else if (TT.options&OPT_S) f = stdin;
+  else {
 // TODO: syntax_err should exit from shell scripts
     if (!(f = fopen(*toys.optargs, "r"))) {
       char *pp = getvar("PATH") ? : _PATH_DEFPATH;
@@ -2469,20 +2507,17 @@ if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); dup2(fd, 255); close(fd); }
       if (sl) llist_traverse(sl->next, free);
       else perror_exit_raw(*toys.optargs);
     }
-  } else f = stdin;
+  }
 
   // Loop prompting and reading lines
   for (;;) {
     TT.lineno++;
-    if (ii && f == stdin) {
-      char *s = getvar(prompt ? "PS2" : "PS1");
-
-      if (!s) s = prompt ? "> " : (getpid() ? "\\$ " : "# ");
-      do_prompt(s);
-    }
+    if ((TT.options&(OPT_I|OPT_S|OPT_C)) == (OPT_I|OPT_S))
+      do_prompt(getvar(prompt ? "PS2" : "PS1"));
 
 // TODO line editing/history, should set $COLUMNS $LINES and sigwinch update
     if (!(new = xgetline(f, 0))) break;
+if (BUGBUG) dprintf(255, "line=%s\n", new);
     if (sl) {
       if (*new == 0x7f) error_exit("'%s' is ELF", sl->str);
       free(sl);
@@ -2524,6 +2559,7 @@ void cd_main(void)
 
   // expand variables
   if (dest) dd = expand_one_arg(dest, FORCE_COPY|NO_SPLIT, 0);
+// TODO: no expand here
   if (!dd || !*dd) {
     free(dd);
     dd = xstrdup("/");
@@ -2640,9 +2676,9 @@ void export_main(void)
 void eval_main(void)
 {
   int len = 1;
-  char *s = merge_args("", toys.optc+1, toys.argv, " ", &len, "");
+  char *s;
 
-  sh_run(s);
+  sh_run(s = merge_args("", toys.optc+1, toys.argv, " ", &len, ""));
   free(s);
 }
 
@@ -2652,7 +2688,7 @@ void eval_main(void)
 
 void exec_main(void)
 {
-  char *ee[1] = {0}, *cc, *pp = getvar("PATH");
+  char *ee[1] = {0}, **env = FLAG(c) ? ee : environ, *cc, *pp = getvar("PATH");
   struct string_list *sl;
 
   // discard redirects and return if nothing to exec
@@ -2664,10 +2700,21 @@ void exec_main(void)
   cc = *toys.optargs;
   if (TT.exec.a || FLAG(l))
     *toys.optargs = xmprintf("%s%s", FLAG(l)?"-":"", TT.exec.a?TT.exec.a:cc);
-  for (sl = find_in_path(pp?pp:_PATH_DEFPATH, cc); sl; free(llist_pop(&sl)))
-    execve(sl->str, toys.optargs, FLAG(c) ? ee : environ);
+  if (strchr(cc, '/')) execve(cc, toys.optargs, env);
+  else for (sl = find_in_path(pp?:_PATH_DEFPATH, cc); sl; free(llist_pop(&sl)))
+    execve(sl->str, toys.optargs, env);
 
   // report error (usually ENOENT) and return
   perror_msg("%s", cc);
   toys.exitval = 127;
+}
+
+void shift_main(void)
+{
+  long long by = 1;
+
+  if (toys.optc) by = atolx(*toys.optargs);
+  by += TT.shift;
+  if (by<0 || by>= TT.arg->c) toys.exitval++;
+  else TT.shift = by;
 }

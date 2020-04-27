@@ -70,6 +70,8 @@
 #define USE_BASENAME(...) __VA_ARGS__
 #define CFG_BC 0
 #define USE_BC(...)
+#define CFG_BLKDISCARD 0
+#define USE_BLKDISCARD(...)
 #define CFG_BLKID 0
 #define USE_BLKID(...)
 #define CFG_BLOCKDEV 0

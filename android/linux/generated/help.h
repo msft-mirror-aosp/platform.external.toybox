@@ -182,6 +182,8 @@
 
 #define HELP_setfattr "usage: setfattr [-h] [-x|-n NAME] [-v VALUE] FILE...\n\nWrite POSIX extended attributes.\n\n-h	Do not dereference symlink\n-n	Set given attribute\n-x	Remove given attribute\n-v	Set value for attribute -n (default is empty)"
 
+#define HELP_rtcwake "usage: rtcwake [-aluv] [-d FILE] [-m MODE] [-s SECS] [-t UNIX]\n\nEnter the given sleep state until the given time.\n\n-a	RTC uses time specified in /etc/adjtime\n-d FILE	Device to use (default /dev/rtc)\n-l	RTC uses local time\n-m	Mode (--list-modes to see those supported by your kernel):\n	  standby  S1: default              mem     S3: suspend to RAM\n	  disk     S4: suspend to disk      off     S5: power off\n	  disable  Cancel current alarm     freeze  stop processes/processors\n	  no       just set wakeup time     on      just poll RTC for alarm\n	  show     just show current alarm\n-s SECS	Wake SECS seconds from now\n-t UNIX	Wake UNIX seconds from epoch\n-u	RTC uses UTC\n-v	Verbose"
+
 #define HELP_rmmod "usage: rmmod [-wf] [MODULE]\n\nUnload the module named MODULE from the Linux kernel.\n-f	Force unload of a module\n-w	Wait until the module is no longer used"
 
 #define HELP_rev "usage: rev [FILE...]\n\nOutput each line reversed, when no files are given stdin is used."
@@ -312,6 +314,8 @@
 
 #define HELP_blkid "usage: blkid [-s TAG] [-UL] DEV...\n\nPrint type, label and UUID of filesystem on a block device or image.\n\n-U	Show UUID only (or device with that UUID)\n-L	Show LABEL only (or device with that LABEL)\n-s TAG	Only show matching tags (default all)"
 
+#define HELP_blkdiscard "usage: blkdiscard [-olszf] DEVICE\n\nDiscard device sectors.\n\n-o, --offset OFF	Byte offset to start discarding at (default 0)\n-l, --length LEN	Bytes to discard (default all)\n-s, --secure		Perform secure discard\n-z, --zeroout		Zero-fill rather than discard\n-f, --force		Disable check for mounted filesystem\n\nOFF and LEN must be aligned to the device sector size.\nBy default entire device is discarded.\nWARNING: All discarded data is permanently lost!"
+
 #define HELP_base64 "usage: base64 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base64.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
 
 #define HELP_ascii "usage: ascii\n\nDisplay ascii character set."
@@ -348,6 +352,8 @@
 
 #define HELP_stty "usage: stty [-ag] [-F device] SETTING...\n\nGet/set terminal configuration.\n\n-F	Open device instead of stdin\n-a	Show all current settings (default differences from \"sane\")\n-g	Show all current settings usable as input to stty\n\nSpecial characters (syntax ^c or undef): intr quit erase kill eof eol eol2\nswtch start stop susp rprnt werase lnext discard\n\nControl/input/output/local settings as shown by -a, '-' prefix to disable\n\nCombo settings: cooked/raw, evenp/oddp/parity, nl, ek, sane\n\nN	set input and output speed (ispeed N or ospeed N for just one)\ncols N	set number of columns\nrows N	set number of rows\nline N	set line discipline\nmin N	set minimum chars per read\ntime N	set read timeout\nspeed	show speed only\nsize	show size only"
 
+#define HELP_shift "usage: shift [N]\n\nSkip N (default 1) positional parameters, moving $1 and friends along the list.\nDoes not affect $0."
+
 #define HELP_export "usage: export [-n] [NAME[=VALUE]...]\n\nMake variables available to child processes. NAME exports existing local\nvariable(s), NAME=VALUE sets and exports.\n\n-n	Unexport. Turn listed variable(s) into local variables.\n\nWith no arguments list exported variables/attributes as \"declare\" statements."
 
 #define HELP_exec "usage: exec [-cl] [-a NAME] COMMAND...\n\n-a	set argv[0] to NAME\n-c	clear environment\n-l	prepend - to argv[0]"
@@ -361,8 +367,6 @@
 #define HELP_cd "usage: cd [-PL] [path]\n\nChange current directory.  With no arguments, go $HOME.\n\n-P	Physical path: resolve symlinks in path\n-L	Local path: .. trims directories off $PWD (default)"
 
 #define HELP_sh "usage: sh [-c command] [script]\n\nCommand shell.  Runs a shell script, or reads input interactively\nand responds to it.\n\n-c	command line to execute\n-i	interactive mode (default when STDIN is a tty)"
-
-#define HELP_rtcwake "usage: rtcwake [-aluv] [-d FILE] [-m MODE] [-s SECS] [-t UNIX]\n\nEnter the given sleep state until the given time.\n\n-a	RTC uses time specified in /etc/adjtime\n-d FILE	Device to use (default /dev/rtc)\n-l	RTC uses local time\n-m	Mode (--list-modes to see those supported by your kernel):\n	  disable  Cancel current alarm\n	  freeze   Freeze processes, idle processors\n	  disk     S4: suspend to disk\n	  mem      S3: suspend to RAM\n	  no       Don't suspend, just set wakeup time\n	  off      S5: power off\n	  on       Don't suspend, poll RTC for alarm\n	  show     Don't suspend, just show current alarm\n	  standby  S1: default\n-s SECS	Wake SECS seconds from now\n-t UNIX	Wake UNIX seconds from epoch\n-u	RTC uses UTC\n-v	Verbose"
 
 #define HELP_route "usage: route [-ne] [-A [46]] [add|del TARGET [OPTIONS]]\n\nDisplay, add or delete network routes in the \"Forwarding Information Base\".\n\n-n	Show numerical addresses (no DNS lookups)\n-e	display netstat fields\n\nRouting means sending packets out a network interface to an address.\nThe kernel can tell where to send packets one hop away by examining each\ninterface's address and netmask, so the most common use of this command\nis to identify a \"gateway\" that forwards other traffic.\n\nAssigning an address to an interface automatically creates an appropriate\nnetwork route (\"ifconfig eth0 10.0.2.15/8\" does \"route add 10.0.0.0/8 eth0\"\nfor you), although some devices (such as loopback) won't show it in the\ntable. For machines more than one hop away, you need to specify a gateway\n(ala \"route add default gw 10.0.2.2\").\n\nThe address \"default\" is a wildcard address (0.0.0.0/0) matching all\npackets without a more specific route.\n\nAvailable OPTIONS include:\nreject   - blocking route (force match failure)\ndev NAME - force packets out this interface (ala \"eth0\")\nnetmask  - old way of saying things like ADDR/24\ngw ADDR  - forward packets to gateway ADDR"
 
@@ -590,7 +594,7 @@
 
 #define HELP_cut "usage: cut [-Ds] [-bcfF LIST] [-dO DELIM] [FILE...]\n\nPrint selected parts of lines from each FILE to standard output.\n\nEach selection LIST is comma separated, either numbers (counting from 1)\nor dash separated ranges (inclusive, with X- meaning to end of line and -X\nfrom start). By default selection ranges are sorted and collated, use -D\nto prevent that.\n\n-b	Select bytes\n-c	Select UTF-8 characters\n-C	Select unicode columns\n-d	Use DELIM (default is TAB for -f, run of whitespace for -F)\n-D	Don't sort/collate selections or match -fF lines without delimiter\n-f	Select fields (words) separated by single DELIM character\n-F	Select fields separated by DELIM regex\n-O	Output delimiter (default one space for -F, input delim for -f)\n-s	Skip lines without delimiters"
 
-#define HELP_cpio "usage: cpio -{o|t|i|p DEST} [-v] [--verbose] [-F FILE] [--no-preserve-owner]\n       [ignored: -mdu -H newc]\n\nCopy files into and out of a \"newc\" format cpio archive.\n\n-F FILE	Use archive FILE instead of stdin/stdout\n-p DEST	Copy-pass mode, copy stdin file list to directory DEST\n-i	Extract from archive into file system (stdin=archive)\n-o	Create archive (stdin=list of files, stdout=archive)\n-t	Test files (list only, stdin=archive, stdout=list of files)\n-v	Verbose\n--no-preserve-owner (don't set ownership during extract)\n--trailer Add legacy trailer (prevents concatenation)"
+#define HELP_cpio "usage: cpio -{o|t|i|p DEST} [-v] [--verbose] [-F FILE] [--no-preserve-owner]\n       [ignored: -mdu -H newc]\n\nCopy files into and out of a \"newc\" format cpio archive.\n\n-F FILE	Use archive FILE instead of stdin/stdout\n-p DEST	Copy-pass mode, copy stdin file list to directory DEST\n-i	Extract from archive into file system (stdin=archive)\n-o	Create archive (stdin=list of files, stdout=archive)\n-t	Test files (list only, stdin=archive, stdout=list of files)\n-v	Verbose\n--no-preserve-owner (don't set ownership during extract)"
 
 #define HELP_install "usage: install [-dDpsv] [-o USER] [-g GROUP] [-m MODE] [SOURCE...] DEST\n\nCopy files and set attributes.\n\n-d	Act like mkdir -p\n-D	Create leading directories for DEST\n-g	Make copy belong to GROUP\n-m	Set permissions to MODE\n-o	Make copy belong to USER\n-p	Preserve timestamps\n-s	Call \"strip -p\"\n-v	Verbose"
 
