@@ -10,7 +10,6 @@
 #    DEBUG - Show every command run by test script.
 #    VERBOSE - Print the diff -u of each failed test case.
 #              If equal to "fail", stop after first failed test.
-#              "nopass" to not show successful tests
 #
 # The "testcmd" function takes five arguments:
 #	$1) Description to display when running command
@@ -57,7 +56,7 @@ fi
 
 optional()
 {
-  option=`printf %s "$OPTIONFLAGS" | egrep "(^|:)$1(:|\$)"`
+  option=`echo "$OPTIONFLAGS" | egrep "(^|:)$1(:|\$)"`
   # Not set?
   if [ -z "$1" ] || [ -z "$OPTIONFLAGS" ] || [ ${#option} -ne 0 ]
   then
@@ -75,22 +74,14 @@ skipnot()
   else
     eval "$@"
   fi
-  [ $? -eq 0 ] || SKIPNEXT=1
-}
-
-toyonly()
-{
-  IS_TOYBOX="$("$C" --version 2>/dev/null)"
-  [ "${IS_TOYBOX/toybox/}" == "$IS_TOYBOX" ] && SKIPNEXT=1
-
-  "$@"
+  [ $? -eq 0 ] || SKIPNOT=1
 }
 
 wrong_args()
 {
   if [ $# -ne 5 ]
   then
-    printf "%s\n" "Test $NAME has the wrong number of arguments ($# $*)" >&2
+    echo "Test $NAME has the wrong number of arguments ($# $*)" >&2
     exit
   fi
 }
@@ -106,10 +97,10 @@ testing()
 
   [ -n "$DEBUG" ] && set -x
 
-  if [ -n "$SKIP" -o -n "$SKIP_HOST" -a -n "$TEST_HOST" -o -n "$SKIPNEXT" ]
+  if [ -n "$SKIP" -o -n "$SKIP_HOST" -a -n "$TEST_HOST" -o -n "$SKIPNOT" ]
   then
-    [ ! -z "$VERBOSE" ] && printf "%s\n" "$SHOWSKIP: $NAME"
-    unset SKIPNEXT
+    [ ! -z "$VERBOSE" ] && echo "$SHOWSKIP: $NAME"
+    unset SKIPNOT
     return 0
   fi
 
@@ -121,20 +112,21 @@ testing()
   # Catch segfaults
   [ $RETVAL -gt 128 ] && [ $RETVAL -lt 255 ] &&
     echo "exited with signal (or returned $RETVAL)" >> actual
-  DIFF="$(diff -au${NOSPACE:+w} expected actual)"
+
+  DIFF="$(diff -au${NOSPACE:+b} expected actual)"
   if [ ! -z "$DIFF" ]
   then
-    FAILCOUNT=$(($FAILCOUNT+1))
-    printf "%s\n" "$SHOWFAIL: $NAME"
+    FAILCOUNT=$[$FAILCOUNT+1]
+    echo "$SHOWFAIL: $NAME"
     if [ -n "$VERBOSE" ]
     then
-      [ ! -z "$4" ] && printf "%s\n" "echo -ne \"$4\" > input"
-      printf "%s\n" "echo -ne '$5' |$EVAL $2"
-      printf "%s\n" "$DIFF"
+      [ ! -z "$4" ] && echo "echo -ne \"$4\" > input"
+      echo "echo -ne '$5' |$EVAL $2"
+      echo "$DIFF"
       [ "$VERBOSE" == fail ] && exit 1
     fi
   else
-    [ "$VERBOSE" != "nopass" ] && printf "%s\n" "$SHOWPASS: $NAME"
+    echo "$SHOWPASS: $NAME"
   fi
   rm -f input expected actual
 
@@ -149,7 +141,7 @@ testcmd()
 
   X="$1"
   [ -z "$X" ] && X="$CMDNAME $2"
-  testing "$X" "\"$C\" $2" "$3" "$4" "$5"
+  testing "$X" "$C $2" "$3" "$4" "$5"
 }
 
 # Recursively grab an executable and all the libraries needed to run it.

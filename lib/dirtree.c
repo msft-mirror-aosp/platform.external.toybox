@@ -27,34 +27,30 @@ int dirtree_notdotdot(struct dirtree *catch)
 
 struct dirtree *dirtree_add_node(struct dirtree *parent, char *name, int flags)
 {
-  struct dirtree *dt = 0;
+  struct dirtree *dt = NULL;
   struct stat st;
-  int len = 0, linklen = 0, statless = 0;
+  int len = 0, linklen = 0;
 
   if (name) {
     // open code this because haven't got node to call dirtree_parentfd() on yet
     int fd = parent ? parent->dirfd : AT_FDCWD;
 
-    if (fstatat(fd, name, &st,AT_SYMLINK_NOFOLLOW*!(flags&DIRTREE_SYMFOLLOW))) {
-      if (flags&DIRTREE_STATLESS) statless++;
-      else goto error;
-    }
+    if (fstatat(fd, name, &st, AT_SYMLINK_NOFOLLOW*!(flags&DIRTREE_SYMFOLLOW)))
+      goto error;
     if (S_ISLNK(st.st_mode)) {
       if (0>(linklen = readlinkat(fd, name, libbuf, 4095))) goto error;
       libbuf[linklen++]=0;
     }
     len = strlen(name);
   }
-
-  // Allocate/populate return structure
-  dt = xmalloc((len = sizeof(struct dirtree)+len+1)+linklen);
-  memset(dt, 0, statless ? offsetof(struct dirtree, again)
-    : offsetof(struct dirtree, st));
+  dt = xzalloc((len = sizeof(struct dirtree)+len+1)+linklen);
   dt->parent = parent;
-  dt->again = statless ? 2 : 0;
-  if (!statless) memcpy(&dt->st, &st, sizeof(struct stat));
-  strcpy(dt->name, name ? name : "");
-  if (linklen) dt->symlink = memcpy(len+(char *)dt, libbuf, linklen);
+  if (name) {
+    memcpy(&(dt->st), &st, sizeof(struct stat));
+    strcpy(dt->name, name);
+
+    if (linklen) dt->symlink = memcpy(len+(char *)dt, libbuf, linklen);
+  }
 
   return dt;
 
@@ -90,7 +86,7 @@ char *dirtree_path(struct dirtree *node, int *plen)
   len = (plen ? *plen : 0)+strlen(node->name)+1;
   path = dirtree_path(node->parent, &len);
   if (len && path[len-1] != '/') path[len++]='/';
-  len = stpcpy(path+len, node->name) - path;
+  len = (stpcpy(path+len, node->name) - path);
   if (plen) *plen = len;
 
   return path;
@@ -122,7 +118,7 @@ struct dirtree *dirtree_handle_callback(struct dirtree *new,
   // If this had children, it was callback's job to free them already.
   if (!(flags & DIRTREE_SAVE)) {
     free(new);
-    new = 0;
+    new = NULL;
   }
 
   return (flags & DIRTREE_ABORT)==DIRTREE_ABORT ? DIRTREE_ABORTVAL : new;
@@ -157,8 +153,6 @@ int dirtree_recurse(struct dirtree *node,
   while ((entry = readdir(dir))) {
     if ((flags&DIRTREE_PROC) && !isdigit(*entry->d_name)) continue;
     if (!(new = dirtree_add_node(node, entry->d_name, flags))) continue;
-    if (!new->st.st_blksize && !new->st.st_mode)
-      new->st.st_mode = entry->d_type<<12;
     new = dirtree_handle_callback(new, callback);
     if (new == DIRTREE_ABORTVAL) break;
     if (new) {
@@ -168,7 +162,7 @@ int dirtree_recurse(struct dirtree *node,
   }
 
   if (flags & DIRTREE_COMEAGAIN) {
-    node->again |= 1;
+    node->again++;
     flags = callback(node);
   }
 

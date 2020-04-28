@@ -15,25 +15,27 @@ config REV
 
 #include "toys.h"
 
-static void rev_line(char **pline, long len)
+static void do_rev(int fd, char *name)
 {
-  char *line;
-  long i;
+  char *c;
 
-  if (!pline) return;
-  line = *pline;
-  if (len && line[len-1]=='\n') line[--len] = 0;
+  for (;;) {
+    unsigned len, i;
 
-  if (len--) for (i = 0; i <= len/2; i++) {
-    char tmp = line[i];
+    if (!(c = get_line(fd))) break;
+    len = strlen(c);
+    if (len--) for (i = 0; i <= len/2; i++) {
+      char tmp = c[i];
 
-    line[i] = line[len-i];
-    line[len-i] = tmp;
+      c[i] = c[len-i];
+      c[len-i] = tmp;
+    }
+    xputs(c);
+    free(c);
   }
-  xputs(line);
 }
 
 void rev_main(void)
 {
-  loopfiles_lines(toys.optargs, rev_line);
+  loopfiles(toys.optargs, do_rev);
 }

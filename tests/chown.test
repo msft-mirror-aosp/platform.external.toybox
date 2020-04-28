@@ -11,11 +11,9 @@ fi
 
 # We chown between user "root" and the last user in /etc/passwd,
 # and group "root" and the last group in /etc/group.
+
 USR="$(sed -n '$s/:.*//p' /etc/passwd)"
 GRP="$(sed -n '$s/:.*//p' /etc/group)"
-# Or if that fails, we assume we're on Android...
-: "${USR:=shell}"
-: "${GRP:=daemon}"
 
 # Set up a little testing hierarchy
 
@@ -26,7 +24,7 @@ F=testdir/file
 
 # Wrapper to reset groups and return results
 
-OUT="&& stat --format '%U %G' $F"
+OUT="&& echo \$(ls -l testdir/file | awk '{print \$3,\$4}')"
 
 #testing "name" "command" "result" "infile" "stdin"
 

@@ -4,20 +4,18 @@
  *
  * See http://pubs.opengroup.org/onlinepubs/9699919799/utilities/file.html
 
-USE_FILE(NEWTOY(file, "<1bhLs[!hL]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_FILE(NEWTOY(file, "<1hL[!hL]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config FILE
   bool "file"
   default y
   help
-    usage: file [-bhLs] [file...]
+    usage: file [-hL] [file...]
 
     Examine the given files and describe their content types.
 
-    -b	Brief (no filename)
     -h	Don't follow symlinks (default)
     -L	Follow symlinks
-    -s	Show block/char device contents
 */
 
 #define FOR_file
@@ -176,20 +174,17 @@ static void do_elf_file(int fd)
         n_type = elf_int(note+8, 4);
         notesz = 3*4 + ((n_namesz+3)&~3) + ((n_descsz+3)&~3);
 
-        // Does the claimed size of this note actually fit in the section?
-        if (notesz > sh_size) goto bad;
-
         if (n_namesz==4 && !memcmp(note+12, "GNU", 4)) {
           if (n_type==3 /*NT_GNU_BUILD_ID*/) {
+            if (n_descsz+16>sh_size) goto bad;
             printf(", BuildID=");
             for (j = 0; j < n_descsz; ++j) printf("%02x", note[16 + j]);
           }
         } else if (n_namesz==8 && !memcmp(note+12, "Android", 8)) {
-          if (n_type==1 /*.android.note.ident*/ && n_descsz >= 4) {
+          if (n_type==1 /*.android.note.ident*/) {
+            if (n_descsz+24+64>sh_size) goto bad;
             printf(", for Android %d", (int)elf_int(note+20, 4));
-            // NDK r14 and later also include NDK version info. OS binaries
-            // and binaries built by older NDKs don't have this.
-            if (n_descsz >= 4+64+64)
+            if (n_descsz > 24)
               printf(", built by NDK %.64s (%.64s)", note+24, note+24+64);
           }
         }
@@ -218,7 +213,7 @@ static void do_regular_file(int fd, char *name)
   if (!len) xputs("empty");
   // 45 bytes: https://www.muppetlabs.com/~breadbox/software/tiny/teensy.html
   else if (len>=45 && strstart(&s, "\177ELF")) do_elf_file(fd);
-  else if (len>=8 && strstart(&s, "!<arch>\n")) xputs("ar archive");
+  else if (len>=8 && strstart(&s, "!<arch>\n")) xprintf("ar archive\n");
   else if (len>28 && strstart(&s, "\x89PNG\x0d\x0a\x1a\x0a")) {
     // PNG is big-endian: https://www.w3.org/TR/PNG/#7Integers-and-byte-order
     int chunk_length = peek_be(s, 4);
@@ -270,11 +265,10 @@ static void do_regular_file(int fd, char *name)
     xprintf("ASCII cpio archive (%s)\n", cpioformat);
   } else if (len>33 && (magic=peek(&s,2), magic==0143561 || magic==070707)) {
     if (magic == 0143561) printf("byte-swapped ");
-    xputs("cpio archive");
-  // tar archive (old, ustar/pax, or gnu)
-  } else if (len>500 && is_tar_header(s))
-    xprintf("%s tar archive%s\n", s[257] ? "POSIX" : "old",
-      strncmp(s+262,"  ",2)?"":" (GNU)");
+    xprintf("cpio archive\n");
+  // tar archive (ustar/pax or gnu)
+  } else if (len>500 && !strncmp(s+257, "ustar", 5))
+    xprintf("POSIX tar archive%s\n", strncmp(s+262,"  ",2)?"":" (GNU)");
   // zip/jar/apk archive, ODF/OOXML document, or such
   else if (len>5 && strstart(&s, "PK\03\04")) {
     int ver = toybuf[4];
@@ -284,8 +278,6 @@ static void do_regular_file(int fd, char *name)
     xputc('\n');
   } else if (len>4 && strstart(&s, "BZh") && isdigit(*s))
     xprintf("bzip2 compressed data, block size = %c00k\n", *s);
-  else if (len > 31 && peek_be(s, 7) == 0xfd377a585a0000)
-    xputs("xz compressed data");
   else if (len>10 && strstart(&s, "\x1f\x8b")) xputs("gzip compressed data");
   else if (len>32 && !memcmp(s+1, "\xfa\xed\xfe", 3)) {
     int bit = s[0]=='\xce'?32:64;
@@ -357,10 +349,6 @@ static void do_regular_file(int fd, char *name)
   } else if (len>12 && !memcmp(s, "ttcf\x00", 5)) {
     xprintf("TrueType font collection, version %d, %d fonts\n",
             (int)peek_be(s+4, 2), (int)peek_be(s+8, 4));
-
-  // https://docs.microsoft.com/en-us/typography/opentype/spec/otff
-  } else if (len>12 && !memcmp(s, "OTTO", 4)) {
-    xputs("OpenType font");
   } else if (len>4 && !memcmp(s, "BC\xc0\xde", 4)) {
     xputs("LLVM IR bitcode");
   } else if (strstart(&s, "-----BEGIN CERTIFICATE-----")) {
@@ -386,26 +374,6 @@ static void do_regular_file(int fd, char *name)
     int w = peek_le(s+0x12,4), h = peek_le(s+0x16,4), bpp = peek_le(s+0x1c,2);
 
     xprintf("BMP image, %d x %d, %d bpp\n", w, h, bpp);
-
-    // https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/perf.data-file-format.txt
-  } else if (len>=104 && !memcmp(s, "PERFILE2", 8)) {
-    xputs("Linux perf data");
-
-    // https://android.googlesource.com/platform/system/core/+/master/libsparse/sparse_format.h
-  } else if (len>28 && peek_le(s, 4) == 0xed26ff3a) {
-    xprintf("Android sparse image v%d.%d, %d %d-byte blocks (%d chunks)\n",
-        (int) peek_le(s+4, 2), (int) peek_le(s+6, 2), (int) peek_le(s+16, 4),
-        (int) peek_le(s+12, 4), (int) peek_le(s+20, 4));
-
-    // https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/master/include/bootimg/bootimg.h
-  } else if (len>1632 && !memcmp(s, "ANDROID!", 8)) {
-    xprintf("Android boot image v%d\n", (int) peek_le(s+40, 4));
-
-    // https://source.android.com/devices/architecture/dto/partitions
-  } else if (len>32 && peek_be(s, 4) == 0xd7b7ab1e) {
-    xprintf("Android DTB/DTBO v%d, %d entries\n", (int) peek_be(s+28, 4),
-        (int) peek_be(s+16, 4));
-
   } else {
     char *what = 0;
     int i, bytes;
@@ -447,20 +415,15 @@ void file_main(void)
 
   // Can't use loopfiles here because it doesn't call function when can't open
   for (arg = toys.optargs; *arg; arg++) {
-    char *name = *arg, *what = "unknown";
+    char *name = *arg, *what = "cannot open";
     struct stat sb;
     int fd = !strcmp(name, "-");
 
-    if (!FLAG(b))
-      xprintf("%s: %*s", name, (int)(TT.max_name_len - strlen(name)), "");
+    xprintf("%s: %*s", name, (int)(TT.max_name_len - strlen(name)), "");
 
     sb.st_size = 0;
-    if (fd || !(FLAG(L) ? stat : lstat)(name, &sb)) {
-      if (!fd && !FLAG(s) && (S_ISBLK(sb.st_mode) || S_ISCHR(sb.st_mode))) {
-        sprintf(what = toybuf, "%s special (%u/%u)",
-            S_ISBLK(sb.st_mode) ? "block" : "character",
-            dev_major(sb.st_rdev), dev_minor(sb.st_rdev));
-      } else if (fd || S_ISREG(sb.st_mode)) {
+    if (fd || !((toys.optflags & FLAG_L) ? stat : lstat)(name, &sb)) {
+      if (fd || S_ISREG(sb.st_mode)) {
         TT.len = sb.st_size;
         // This test identifies an empty file we don't have permission to read
         if (!fd && !sb.st_size) what = "empty";
@@ -470,16 +433,14 @@ void file_main(void)
           continue;
         }
       } else if (S_ISFIFO(sb.st_mode)) what = "fifo";
+      else if (S_ISBLK(sb.st_mode)) what = "block special";
+      else if (S_ISCHR(sb.st_mode)) what = "character special";
       else if (S_ISDIR(sb.st_mode)) what = "directory";
       else if (S_ISSOCK(sb.st_mode)) what = "socket";
-      else if (S_ISLNK(sb.st_mode)) {
-        char *lnk = xreadlink(name);
+      else if (S_ISLNK(sb.st_mode)) what = "symbolic link";
+      else what = "unknown";
+    }
 
-        sprintf(what = toybuf, "%ssymbolic link to %s",
-            stat(name, &sb) ? "broken " : "", lnk);
-        free(lnk);
-      }
-      xputs(what);
-    } else xprintf("cannot open: %s\n", strerror(errno));
+    xputs(what);
   }
 }

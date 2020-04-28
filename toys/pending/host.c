@@ -16,8 +16,8 @@ config HOST
     or an IPv4 dotted or IPv6 colon-separated address to reverse lookup.
     SERVER (if present) is the DNS server to use.
 
-    -a	-v -t ANY
-    -t TYPE	query records of type TYPE
+    -a	no idea
+    -t	not a clue
     -v	verbose
 */
 
@@ -68,13 +68,10 @@ static const char rct[16][32] = {
 void host_main(void)
 {
   int verbose=(toys.optflags & (FLAG_a|FLAG_v)), type,
-      i, j, ret, sec, count, rcode, qlen, alen, pllen = 0,
-      abuf_len = 65536; // Largest TCP response.
+      i, j, ret, sec, count, rcode, qlen, alen, pllen = 0;
   unsigned ttl, pri, v[5];
-  unsigned char *abuf = xmalloc(abuf_len);
-  char *rrname = xmalloc(MAXDNAME);
-  unsigned char qbuf[280], *p;
-  char *name, *nsname, plname[640], ptrbuf[128];
+  unsigned char qbuf[280], abuf[512], *p;
+  char *name, *nsname, rrname[256], plname[640], ptrbuf[128];
   struct addrinfo *ai, iplit_hints = { .ai_flags = AI_NUMERICHOST };
 
   name = *toys.optargs;
@@ -116,7 +113,7 @@ void host_main(void)
     if (type < 0) error_exit("Invalid query type: %s", TT.type_str);
   }
 
-  qlen = res_mkquery(0, name, 1, type, 0, 0, 0, qbuf, sizeof(qbuf));
+  qlen = res_mkquery(0, name, 1, type, 0, 0, 0, qbuf, sizeof qbuf);
   if (qlen < 0) error_exit("Invalid query parameters: %s", name);
 
   if (nsname) {
@@ -124,14 +121,15 @@ void host_main(void)
 
     if ((ret = getaddrinfo(nsname, "53", &ns_hints, &ai)) < 0)
       error_exit("Error looking up server name: %s", gai_strerror(ret));
-    int s = xsocket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-    xconnect(s, ai->ai_addr, ai->ai_addrlen);
+    int s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (s < 0 || connect(s, ai->ai_addr, ai->ai_addrlen) < 0)
+      perror_exit("Socket error");
     setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &(struct timeval){ .tv_sec = 5 },
       sizeof(struct timeval));
     printf("Using domain server %s:\n", nsname);
     send(s, qbuf, qlen, 0);
-    alen = recv(s, abuf, abuf_len, 0);
-  } else alen = res_send(qbuf, qlen, abuf, abuf_len);
+    alen = recv(s, abuf, sizeof abuf, 0);
+  } else alen = res_send(qbuf, qlen, abuf, sizeof abuf);
 
   if (alen < 12) error_exit("Host not found.");
 
@@ -153,7 +151,7 @@ void host_main(void)
         : "Additional information:");
 
     for (; count--; p += pllen) {
-      p += dn_expand(abuf, abuf+alen, p, rrname, MAXDNAME);
+      p += dn_expand(abuf, abuf+alen, p, rrname, sizeof(rrname));
       type = (p[0]<<8) + p[1];
       p += 4;
       if (!sec) continue;
@@ -162,18 +160,18 @@ void host_main(void)
       pllen = (p[0]<<8) + p[1];
       p += 2;
 
-      switch (type<ARRAY_LEN(rrt) ? rrt[type].pl : 0) {
+      switch (type<sizeof(rrt)/sizeof(*rrt) ? rrt[type].pl : 0) {
       case PL_IP:
-        inet_ntop(rrt[type].af, p, plname, sizeof(plname));
+        inet_ntop(rrt[type].af, p, plname, sizeof plname);
         break;
       case PL_NAME:
-        dn_expand(abuf, abuf+alen, p, plname, sizeof(plname));
+        dn_expand(abuf, abuf+alen, p, plname, sizeof plname);
         break;
       case PL_TEXT:
-        snprintf(plname, sizeof(plname), "\"%.*s\"", pllen, p);
+        snprintf(plname, sizeof plname, "\"%.*s\"", pllen, p);
         break;
       case PL_SOA:
-        i = dn_expand(abuf, abuf+alen, p, plname, sizeof(plname) - 1);
+        i = dn_expand(abuf, abuf+alen, p, plname, sizeof plname - 1);
         strcat(plname, " ");
         i += dn_expand(abuf, abuf+alen, p+i, plname+strlen(plname),
           sizeof(plname)-strlen(plname));
@@ -191,13 +189,13 @@ void host_main(void)
         pri = (p[0]<<8)+p[1];
         snprintf(plname, sizeof(plname), verbose ? "%d " : "(pri=%d) by ", pri);
         dn_expand(abuf, abuf+alen, p+2, plname+strlen(plname),
-          sizeof(plname) - strlen(plname));
+          sizeof plname - strlen(plname));
         break;
       case PL_SRV:
         for (j=0; j<3; j++) v[j] = (p[2*j]<<8) + p[1+2*j];
         snprintf(plname, sizeof(plname), "%u %u %u ", v[0], v[1], v[2]);
         dn_expand(abuf, abuf+alen, p+6, plname+strlen(plname),
-          sizeof(plname) - strlen(plname));
+          sizeof plname - strlen(plname));
         break;
       default:
         printf("%s unsupported RR type %u\n", rrname, type);
@@ -212,9 +210,5 @@ void host_main(void)
     if (!verbose && sec==1) break;
   }
 
-  if (CFG_TOYBOX_FREE) {
-    free(abuf);
-    free(rrname);
-  }
   toys.exitval = rcode;
 }

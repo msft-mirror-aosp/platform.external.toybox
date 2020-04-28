@@ -3,19 +3,19 @@
  * Copyright 2016 Lipi C.H. Lee <lipisoft@gmail.com>
  *
 
-USE_WGET(NEWTOY(wget, "(no-check-certificate)O:", TOYFLAG_USR|TOYFLAG_BIN))
+USE_WGET(NEWTOY(wget, "f:", TOYFLAG_USR|TOYFLAG_BIN))
 
 config WGET
   bool "wget"
   default n
   help
-    usage: wget -O filename URL
-    -O filename: specify output filename
-    URL: uniform resource location, FTP/HTTP only, not HTTPS
+    usage: wget -f filename URL
+    -f filename: specify the filename to be saved
+    URL: HTTP uniform resource location and only HTTP, not HTTPS
 
     examples:
-      wget -O index.html http://www.example.com
-      wget -O sample.jpg ftp://ftp.example.com:21/sample.jpg
+      wget -f index.html http://www.example.com
+      wget -f sample.jpg http://www.example.com:8080/sample.jpg
 */
 
 #define FOR_wget
@@ -55,10 +55,8 @@ static unsigned get_port(const char *url, char *port, unsigned url_i) {
 // get http infos in URL
 static void get_info(const char *url, char* hostname, char *port, char *path) {
   unsigned i = 7, len;
-  char ftp = !strncmp(url, "ftp://", 6);
 
-  if (ftp) i--;
-  else if (strncmp(url, "http://", i)) error_exit("only FTP/HTTP support");
+  if (strncmp(url, "http://", i)) error_exit("only HTTP support");
   len = get_hn(url+i, hostname);
   i += len;
 
@@ -74,8 +72,6 @@ static void get_info(const char *url, char* hostname, char *port, char *path) {
     if (strlen(url+i) < 1024) strcpy(path, url+i);
     else error_exit("too long path in URL");
   } else error_exit("wrong URL");
-
-  if (ftp) xexec((char *[]){"ftpget", hostname, TT.filename, path, 0});
 }
 
 // connect to any IPv4 or IPv6 server
@@ -100,7 +96,7 @@ static int conn_svr(const char *hostname, const char *port) {
       continue;
     }
     if (connect(sock, rp->ai_addr, rp->ai_addrlen) != -1)
-      break; // succeed in connecting to any server IP
+      break; // succeed in connecting to any server IP 
     else perror_msg("connect error");
     close(sock);
   }
@@ -131,62 +127,46 @@ static char *get_body(ssize_t len, ssize_t *body_len) {
 
 void wget_main(void)
 {
-  int sock, redirects = 10;
+  int sock;
   FILE *fp;
   ssize_t len, body_len;
-  char *body, *result, *rc, *r_str, *redir_loc = 0;
-  char ua[18] = "toybox wget", ver[6], hostname[1024], port[6], path[1024];
+  char *body, *result, *rc, *r_str;
+  char ua[18] = "toybox wget/", ver[6], hostname[1024], port[6], path[1024];
 
   // TODO extract filename to be saved from URL
-  if (!(toys.optflags & FLAG_O)) help_exit("no filename");
+  if (!(toys.optflags & FLAG_f)) help_exit("no filename");
   if (fopen(TT.filename, "r")) error_exit("'%s' already exists", TT.filename);
 
   if(!toys.optargs[0]) help_exit("no URL");
   get_info(toys.optargs[0], hostname, port, path);
 
+  sock = conn_svr(hostname, port);
 
-#ifdef TOYBOX_VERSION
-  strcat(ua, "/"), strncpy(ver, TOYBOX_VERSION, 5), strcat(ua, ver);
-#endif
-  for (;; redirects--) {
-    sock = conn_svr(hostname, port);
-    // compose HTTP request
-    sprintf(toybuf, "GET %s HTTP/1.1\r\n", path);
-    mk_fld("Host", hostname);
-    mk_fld("User-Agent", ua);
-    mk_fld("Connection", "close");
-    strcat(toybuf, "\r\n");
+  // compose HTTP request
+  sprintf(toybuf, "GET %s HTTP/1.1\r\n", path);
+  mk_fld("Host", hostname);
+  strncpy(ver, TOYBOX_VERSION, 5);
+  strcat(ua, ver);
+  mk_fld("User-Agent", ua); 
+  mk_fld("Connection", "close");
+  strcat(toybuf, "\r\n");
 
-    // send the HTTP request
-    len = strlen(toybuf);
-    if (write(sock, toybuf, len) != len) perror_exit("write error");
+  // send the HTTP request
+  len = strlen(toybuf);
+  if (write(sock, toybuf, len) != len) perror_exit("write error");
 
-    // read HTTP response
-    if ((len = read(sock, toybuf, 4096)) == -1) perror_exit("read error");
-    if (!strstr(toybuf, "\r\n\r\n")) error_exit("too long HTTP response");
-    body = get_body(len, &body_len);
-    redir_loc = strstr(toybuf, "Location: ");
-    result = strtok(toybuf, "\r");
-    strtok(result, " ");
-    rc = strtok(NULL, " ");
-    r_str = strtok(NULL, " ");
+  // read HTTP response
+  if ((len = read(sock, toybuf, 4096)) == -1) perror_exit("read error");
+  if (!strstr(toybuf, "\r\n\r\n")) error_exit("too long HTTP response");
+  body = get_body(len, &body_len);
+  result = strtok(toybuf, "\r");
+  strtok(result, " ");
+  rc = strtok(NULL, " ");
+  r_str = strtok(NULL, " ");
 
-    // HTTP res code check
-    if (!strcmp(rc, "301") || !strcmp(rc, "302")) {
-      char* eol = 0;
-      if ((eol = strchr(redir_loc, '\r')) > 0) *eol = 0;
-      else if (redir_loc) error_exit("Could not parse redirect URL");
-      if (redirects < 0) error_exit("Too many redirects");
-
-      printf("Redirection: %s %s \n", rc, r_str);
-      printf("%s \n", redir_loc);
-      redir_loc = redir_loc+strlen("Location: ");
-      close(sock);
-      get_info(redir_loc, hostname, port, path);
-    } else if (!strcmp(rc, "200")) break;
-    else error_exit("res: %s(%s)", rc, r_str);
-  }
-
+  // HTTP res code check
+  // TODO handle HTTP 302 Found(Redirection)
+  if (strcmp(rc, "200")) error_exit("res: %s(%s)", rc, r_str);
 
   if (!(fp = fopen(TT.filename, "w"))) perror_exit("fopen error");
   if (fwrite(body, 1, body_len, fp) != body_len)

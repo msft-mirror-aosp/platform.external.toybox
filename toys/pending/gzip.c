@@ -2,13 +2,12 @@
  *
  * Copyright 2017 The Android Open Source Project
  *
- * See http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/gzip.html
  * GZIP RFC: http://www.ietf.org/rfc/rfc1952.txt
  *
  * todo: qtv --rsyncable
 
 // gzip.net version allows all options for all commands.
-USE_GZIP(NEWTOY(gzip,    "ncdfk123456789[-123456789]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_GZIP(NEWTOY(gzip,     "cdfk123456789[-123456789]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_GUNZIP(NEWTOY(gunzip, "cdfk123456789[-123456789]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_ZCAT(NEWTOY(zcat,     "cdfk123456789[-123456789]", TOYFLAG_USR|TOYFLAG_BIN))
 
@@ -30,7 +29,7 @@ config GZIP
 
 config GUNZIP
   bool "gunzip"
-  default y
+  default n
   help
     usage: gunzip [-cfk] [FILE...]
 
@@ -44,7 +43,7 @@ config GUNZIP
 
 config ZCAT
   bool "zcat"
-  default y
+  default n
   help
     usage: zcat [FILE...]
 
@@ -65,7 +64,7 @@ GLOBALS(
 #if CFG_TOYBOX_LIBZ
 #include <zlib.h>
 
-// Read from in_fd, write to out_fd, decompress if dd else compress
+// Read fron in_fd, write to out_fd, decompress if dd else compress
 static int do_deflate(int in_fd, int out_fd, int dd, int level)
 {
   int len, err = 0;
@@ -111,42 +110,48 @@ static int do_deflate(int in_fd, int out_fd, int dd, int level)
 
 #endif
 
-static void do_gzip(int ifd, char *in)
+static void do_gzip(int in_fd, char *arg)
 {
   struct stat sb;
-  char *out = 0;
-  int ofd = 0;
+  int len, out_fd = 0;
+  char *out_name = 0;
 
   // Are we writing to stdout?
-  if (!ifd || FLAG(c)) ofd = 1;
-  if (isatty(ifd)) {
-    if (!FLAG(f)) return error_msg("%s:need -f to read TTY"+3*!!ifd, in);
-    else ofd = 1;
+  if (!in_fd || (toys.optflags&FLAG_c)) out_fd = 1;
+  if (isatty(in_fd)) {
+    if (!(toys.optflags&FLAG_f))
+      return error_msg("%s:need -f to read TTY"+3*!!in_fd, arg);
+    else out_fd = 1;
   }
 
   // Are we reading file.gz to write to file?
-  if (!ofd) {
-    if (fstat(ifd, &sb)) return perror_msg("%s", in);
+  if (!out_fd) {
+    if (fstat(in_fd, &sb)) return perror_msg("%s", arg);
 
-    // Add or remove .gz suffix as necessary
-    if (!FLAG(d)) out = xmprintf("%s%s", in, ".gz");
-    else if ((out = strend(in, ".gz"))>in) out = xstrndup(in, out-in);
-    else return error_msg("no .gz: %s", in);
+    if (!(toys.optflags&FLAG_d)) out_name = xmprintf("%s%s", arg, ".gz");
+    else {
+      // "gunzip x.gz" will decompress "x.gz" to "x".
+      if ((len = strlen(arg))<4 || strcmp(arg+len-3, ".gz"))
+        return error_msg("no .gz: %s", arg);
+      out_name = xstrdup(arg);
+      out_name[len-3] = 0;
+    }
 
-    ofd = xcreate(out, O_CREAT|O_WRONLY|WARN_ONLY|(O_EXCL*!FLAG(f)),sb.st_mode);
-    if (ofd == -1) return;
+    out_fd = xcreate(out_name,
+      O_CREAT|O_WRONLY|WARN_ONLY|(O_EXCL*!(toys.optflags&FLAG_f)), sb.st_mode);
+    if (out_fd == -1) return;
   }
 
-  if (do_deflate(ifd, ofd, FLAG(d), TT.level)) in = out;
+  if (do_deflate(in_fd, out_fd, toys.optflags&FLAG_d, TT.level) && out_name)
+    arg = out_name;
+  if (out_fd != 1) close(out_fd);
 
-  if (out) {
-    struct timespec times[] = {sb.st_atim, sb.st_mtim};
+  if (out_name) {
+    struct timespec times[] = { sb.st_atim, sb.st_mtim };
 
-    if (utimensat(AT_FDCWD, out, times, 0)) perror_exit("utimensat");
-    if (chmod(out, sb.st_mode)) perror_exit("chmod");
-    close(ofd);
-    if (!FLAG(k) && in && unlink(in)) perror_msg("unlink %s", in);
-    free(out);
+    if (utimensat(AT_FDCWD, out_name, times, 0)) perror_exit("utimensat");
+    if (!(toys.optflags&FLAG_k)) if (unlink(arg)) perror_msg("unlink %s", arg);
+    free(out_name);
   }
 }
 

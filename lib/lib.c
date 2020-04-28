@@ -162,10 +162,9 @@ off_t lskip(int fd, off_t offset)
   return offset;
 }
 
-// flags:
-// MKPATHAT_MKLAST  make last dir (with mode lastmode, else skips last part)
-// MKPATHAT_MAKE    make leading dirs (it's ok if they already exist)
-// MKPATHAT_VERBOSE Print what got created to stderr
+// flags: 1=make last dir (with mode lastmode, otherwise skips last component)
+//        2=make path (already exists is ok)
+//        4=verbose
 // returns 0 = path ok, 1 = error
 int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
 {
@@ -187,20 +186,20 @@ int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
     mode_t mode = (0777&~toys.old_umask)|0300;
 
     // find next '/', but don't try to mkdir "" at start of absolute path
-    if (*s == '/' && (flags&MKPATHAT_MAKE) && s != dir) {
+    if (*s == '/' && (flags&2) && s != dir) {
       save = *s;
       *s = 0;
     } else if (*s) continue;
 
     // Use the mode from the -m option only for the last directory.
     if (!save) {
-      if (flags&MKPATHAT_MKLAST) mode = lastmode;
+      if (flags&1) mode = lastmode;
       else break;
     }
 
     if (mkdirat(atfd, dir, mode)) {
-      if (!(flags&MKPATHAT_MAKE) || errno != EEXIST) return 1;
-    } else if (flags&MKPATHAT_VERBOSE)
+      if (!(flags&2) || errno != EEXIST) return 1;
+    } else if (flags&4)
       fprintf(stderr, "%s: created directory '%s'\n", toys.which->name, dir);
 
     if (!(*s = save)) break;
@@ -448,18 +447,7 @@ char *strend(char *str, char *suffix)
 // If *a starts with b, advance *a past it and return 1, else return 0;
 int strstart(char **a, char *b)
 {
-  char *c = *a;
-
-  while (*b && *c == *b) b++, c++;
-  if (!*b) *a = c;
-
-  return !*b;
-}
-
-// If *a starts with b, advance *a past it and return 1, else return 0;
-int strcasestart(char **a, char *b)
-{
-  int len = strlen(b), i = !strncasecmp(*a, b, len);
+  int len = strlen(b), i = !strncmp(*a, b, len);
 
   if (i) *a += len;
 
@@ -696,12 +684,12 @@ static void loopfile_lines_bridge(int fd, char *name)
 void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
 {
   do_lines_bridge = function;
-  // No O_CLOEXEC because we need to call fclose.
-  loopfiles_rw(argv, O_RDONLY|WARN_ONLY, 0, loopfile_lines_bridge);
+  loopfiles(argv, loopfile_lines_bridge);
 }
 
 // Slow, but small.
-char *get_line(int fd)
+
+char *get_rawline(int fd, long *plen, char end)
 {
   char c, *buf = NULL;
   long len = 0;
@@ -709,12 +697,20 @@ char *get_line(int fd)
   for (;;) {
     if (1>read(fd, &c, 1)) break;
     if (!(len & 63)) buf=xrealloc(buf, len+65);
-    if ((buf[len++]=c) == '\n') break;
+    if ((buf[len++]=c) == end) break;
   }
-  if (buf) {
-    buf[len]=0;
-    if (buf[--len]=='\n') buf[len]=0;
-  }
+  if (buf) buf[len]=0;
+  if (plen) *plen = len;
+
+  return buf;
+}
+
+char *get_line(int fd)
+{
+  long len;
+  char *buf = get_rawline(fd, &len, '\n');
+
+  if (buf && buf[--len]=='\n') buf[len]=0;
 
   return buf;
 }
@@ -821,16 +817,11 @@ void base64_init(char *p)
 
 int yesno(int def)
 {
-  return fyesno(stdin, def);
-}
-
-int fyesno(FILE *in, int def)
-{
   char buf;
 
   fprintf(stderr, " (%c/%c):", def ? 'Y' : 'y', def ? 'n' : 'N');
   fflush(stderr);
-  while (fread(&buf, 1, 1, in)) {
+  while (fread(&buf, 1, 1, stdin)) {
     int new;
 
     // The letter changes the value, the newline (or space) returns it.
@@ -840,6 +831,32 @@ int fyesno(FILE *in, int def)
 
   return def;
 }
+
+struct signame {
+  int num;
+  char *name;
+};
+
+// Signals required by POSIX 2008:
+// http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
+
+#define SIGNIFY(x) {SIG##x, #x}
+
+static struct signame signames[] = {
+  SIGNIFY(ABRT), SIGNIFY(ALRM), SIGNIFY(BUS),
+  SIGNIFY(FPE), SIGNIFY(HUP), SIGNIFY(ILL), SIGNIFY(INT), SIGNIFY(KILL),
+  SIGNIFY(PIPE), SIGNIFY(QUIT), SIGNIFY(SEGV), SIGNIFY(TERM),
+  SIGNIFY(USR1), SIGNIFY(USR2), SIGNIFY(SYS), SIGNIFY(TRAP),
+  SIGNIFY(VTALRM), SIGNIFY(XCPU), SIGNIFY(XFSZ),
+
+  // Start of non-terminal signals
+
+  SIGNIFY(CHLD), SIGNIFY(CONT), SIGNIFY(STOP), SIGNIFY(TSTP),
+  SIGNIFY(TTIN), SIGNIFY(TTOU), SIGNIFY(URG)
+};
+
+// not in posix: SIGNIFY(STKFLT), SIGNIFY(WINCH), SIGNIFY(IO), SIGNIFY(PWR)
+// obsolete: SIGNIFY(PROF) SIGNIFY(POLL)
 
 // Handler that sets toys.signal, and writes to toys.signalfd if set
 void generic_signal(int sig)
@@ -863,11 +880,15 @@ void exit_signal(int sig)
 // adds the handlers to a list, to be called in order.
 void sigatexit(void *handler)
 {
-  xsignal_all_killers(handler ? exit_signal : SIG_DFL);
+  struct arg_list *al;
+  int i;
+
+  for (i=0; signames[i].num != SIGCHLD; i++)
+    if (signames[i].num != SIGKILL)
+      xsignal(signames[i].num, handler ? exit_signal : SIG_DFL);
 
   if (handler) {
-    struct arg_list *al = xmalloc(sizeof(struct arg_list));
-
+    al = xmalloc(sizeof(struct arg_list));
     al->next = toys.xexit;
     al->arg = handler;
     toys.xexit = al;
@@ -877,19 +898,33 @@ void sigatexit(void *handler)
   }
 }
 
-// Output a nicely formatted 80-column table of all the signals.
-void list_signals()
+// Convert name to signal number.  If name == NULL print names.
+int sig_to_num(char *pidstr)
 {
-  int i = 0, count = 0;
-  char *name;
+  int i;
 
-  for (; i<=NSIG; i++) {
-    if ((name = num_to_sig(i))) {
-      printf("%2d) SIG%-9s", i, name);
-      if (++count % 5 == 0) putchar('\n');
-    }
+  if (pidstr) {
+    char *s;
+
+    i = estrtol(pidstr, &s, 10);
+    if (!errno && !*s) return i;
+
+    if (!strncasecmp(pidstr, "sig", 3)) pidstr+=3;
   }
-  putchar('\n');
+  for (i=0; i<ARRAY_LEN(signames); i++)
+    if (!pidstr) xputs(signames[i].name);
+    else if (!strcasecmp(pidstr, signames[i].name)) return signames[i].num;
+
+  return -1;
+}
+
+char *num_to_sig(int sig)
+{
+  int i;
+
+  for (i=0; i<ARRAY_LEN(signames); i++)
+    if (signames[i].num == sig) return signames[i].name;
+  return NULL;
 }
 
 // premute mode bits based on posix mode strings.
@@ -1005,6 +1040,17 @@ void mode_to_string(mode_t mode, char *buf)
   *buf = c;
 }
 
+// dirname() can modify its argument or return a pointer to a constant string
+// This always returns a malloc() copy of everyting before last (run of ) '/'.
+char *getdirname(char *name)
+{
+  char *s = xstrdup(name), *ss = strrchr(s, '/');
+
+  while (*ss && *ss == '/' && s != ss) *ss-- = 0;
+
+  return s;
+}
+
 // basename() can modify its argument or return a pointer to a constant string
 // This just gives after the last '/' or the whole stirng if no /
 char *getbasename(char *name)
@@ -1029,8 +1075,7 @@ char *fileunderdir(char *file, char *dir)
 }
 
 // Execute a callback for each PID that matches a process name from a list.
-void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
-    int scripts)
+void names_to_pid(char **names, int (*callback)(pid_t pid, char *name))
 {
   DIR *dp;
   struct dirent *entry;
@@ -1039,20 +1084,18 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
 
   while ((entry = readdir(dp))) {
     unsigned u = atoi(entry->d_name);
-    char *cmd = 0, *comm = 0, **cur;
+    char *cmd = 0, *comm, **cur;
     off_t len;
 
     if (!u) continue;
 
     // Comm is original name of executable (argv[0] could be #! interpreter)
     // but it's limited to 15 characters
-    if (scripts) {
-      sprintf(libbuf, "/proc/%u/comm", u);
-      len = sizeof(libbuf);
-      if (!(comm = readfileat(AT_FDCWD, libbuf, libbuf, &len)) || !len)
-        continue;
-      if (libbuf[len-1] == '\n') libbuf[--len] = 0;
-    }
+    sprintf(libbuf, "/proc/%u/comm", u);
+    len = sizeof(libbuf);
+    if (!(comm = readfileat(AT_FDCWD, libbuf, libbuf, &len)) || !len)
+      continue;
+    if (libbuf[len-1] == '\n') libbuf[--len] = 0;
 
     for (cur = names; *cur; cur++) {
       struct stat st1, st2;
@@ -1062,7 +1105,7 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
       // Fast path: only matching a filename (no path) that fits in comm.
       // `len` must be 14 or less because with a full 15 bytes we don't
       // know whether the name fit or was truncated.
-      if (scripts && len<=14 && bb==*cur && !strcmp(comm, bb)) goto match;
+      if (len<=14 && bb==*cur && !strcmp(comm, bb)) goto match;
 
       // If we have a path to existing file only match if same inode
       if (bb!=*cur && !stat(*cur, &st1)) {
@@ -1084,7 +1127,7 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
         cmd[len] = 0;
       }
       if (!strcmp(bb, getbasename(cmd))) goto match;
-      if (scripts && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
+      if (bb!=*cur && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
       continue;
 match:
       if (callback(u, *cur)) break;
@@ -1093,17 +1136,17 @@ match:
   closedir(dp);
 }
 
-// display first "dgt" many digits of number plus unit (kilo-exabytes)
-int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
+// display first few digits of number with power of two units
+int human_readable(char *buf, unsigned long long num, int style)
 {
   unsigned long long snap = 0;
   int len, unit, divisor = (style&HR_1000) ? 1000 : 1024;
 
   // Divide rounding up until we have 3 or fewer digits. Since the part we
   // print is decimal, the test is 999 even when we divide by 1024.
-  // We can't run out of units because 1<<64 is 18 exabytes.
-  for (unit = 0; snprintf(0, 0, "%llu", num)>dgt; unit++)
-    num = ((snap = num)+(divisor/2))/divisor;
+  // We can't run out of units because 2<<64 is 18 exabytes.
+  // test 5675 is 5.5k not 5.6k.
+  for (unit = 0; num > 999; unit++) num = ((snap = num)+(divisor/2))/divisor;
   len = sprintf(buf, "%llu", num);
   if (unit && len == 1) {
     // Redo rounding for 1.2M case, this works with and without HR_1000.
@@ -1123,12 +1166,6 @@ int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
   buf[len] = 0;
 
   return len;
-}
-
-// Give 3 digit estimate + units ala 999M or 1.7T
-int human_readable(char *buf, unsigned long long num, int style)
-{
-  return human_readable_long(buf, num, 3, style);
 }
 
 // The qsort man page says you can use alphasort, the posix committee
@@ -1269,7 +1306,7 @@ int readlinkat0(int dirfd, char *path, char *buf, int len)
   if (!len) return 0;
 
   len = readlinkat(dirfd, path, buf, len-1);
-  if (len<0) len = 0;
+  if (len<1) return 0;
   buf[len] = 0;
 
   return len;
@@ -1280,16 +1317,39 @@ int readlink0(char *path, char *buf, int len)
   return readlinkat0(AT_FDCWD, path, buf, len);
 }
 
-// Do regex matching with len argument to handle embedded NUL bytes in string
+// Do regex matching handling embedded NUL bytes in string (hence extra len
+// argument). Note that neither the pattern nor the match can currently include
+// NUL bytes (even with wildcards) and string must be null terminated at
+// string[len]. But this can find a match after the first NUL.
 int regexec0(regex_t *preg, char *string, long len, int nmatch,
-  regmatch_t *pmatch, int eflags)
+  regmatch_t pmatch[], int eflags)
 {
-  regmatch_t backup;
+  char *s = string;
 
-  if (!nmatch) pmatch = &backup;
-  pmatch->rm_so = 0;
-  pmatch->rm_eo = len;
-  return regexec(preg, string, nmatch, pmatch, eflags|REG_STARTEND);
+  for (;;) {
+    long ll = 0;
+    int rc;
+
+    while (len && !*s) {
+      s++;
+      len--;
+    }
+    while (s[ll] && ll<len) ll++;
+
+    rc = regexec(preg, s, nmatch, pmatch, eflags);
+    if (!rc) {
+      for (rc = 0; rc<nmatch && pmatch[rc].rm_so!=-1; rc++) {
+        pmatch[rc].rm_so += s-string;
+        pmatch[rc].rm_eo += s-string;
+      }
+
+      return 0;
+    }
+    if (ll==len) return rc;
+
+    s += ll;
+    len -= ll;
+  }
 }
 
 // Return user name or string representation of number, returned buffer
@@ -1338,6 +1398,19 @@ void do_lines(int fd, char delim, void (*call)(char **pline, long len))
   if (fd) fclose(fp);
 }
 
+// Returns the number of bytes taken by the environment variables. For use
+// when calculating the maximum bytes of environment+argument data that can
+// be passed to exec for find(1) and xargs(1).
+long environ_bytes()
+{
+  long bytes = sizeof(char *);
+  char **ev;
+
+  for (ev = environ; *ev; ev++) bytes += sizeof(char *) + strlen(*ev) + 1;
+
+  return bytes;
+}
+
 // Return unix time in milliseconds
 long long millitime(void)
 {
@@ -1359,6 +1432,40 @@ char *format_iso_time(char *buf, size_t len, struct timespec *ts)
   return buf;
 }
 
+// reset environment for a user, optionally clearing most of it
+void reset_env(struct passwd *p, int clear)
+{
+  int i;
+
+  if (clear) {
+    char *s, *stuff[] = {"TERM", "DISPLAY", "COLORTERM", "XAUTHORITY"};
+
+    for (i=0; i<ARRAY_LEN(stuff); i++)
+      stuff[i] = (s = getenv(stuff[i])) ? xmprintf("%s=%s", stuff[i], s) : 0;
+    clearenv();
+    for (i=0; i < ARRAY_LEN(stuff); i++) if (stuff[i]) putenv(stuff[i]);
+    if (chdir(p->pw_dir)) {
+      perror_msg("chdir %s", p->pw_dir);
+      xchdir("/");
+    }
+  } else {
+    char **ev1, **ev2;
+
+    // remove LD_*, IFS, ENV, and BASH_ENV from environment
+    for (ev1 = ev2 = environ;;) {
+      while (*ev2 && (strstart(ev2, "LD_") || strstart(ev2, "IFS=") ||
+        strstart(ev2, "ENV=") || strstart(ev2, "BASH_ENV="))) ev2++;
+      if (!(*ev1++ = *ev2++)) break;
+    }
+  }
+
+  setenv("PATH", _PATH_DEFPATH, 1);
+  setenv("HOME", p->pw_dir, 1);
+  setenv("SHELL", p->pw_shell, 1);
+  setenv("USER", p->pw_name, 1);
+  setenv("LOGNAME", p->pw_name, 1);
+}
+
 // Syslog with the openlog/closelog, autodetecting daemon status via no tty
 
 void loggit(int priority, char *format, ...)
@@ -1372,27 +1479,4 @@ void loggit(int priority, char *format, ...)
   vsyslog(priority, format, va);
   va_end(va);
   closelog();
-}
-
-// Calculate tar packet checksum, with cksum field treated as 8 spaces
-unsigned tar_cksum(void *data)
-{
-  unsigned i, cksum = 8*' ';
-
-  for (i = 0; i<500; i += (i==147) ? 9 : 1) cksum += ((char *)data)[i];
-
-  return cksum;
-}
-
-// is this a valid tar header?
-int is_tar_header(void *pkt)
-{
-  char *p = pkt;
-  int i = 0;
-
-  if (p[257] && memcmp("ustar", p+257, 5)) return 0;
-  if (p[148] != '0' && p[148] != ' ') return 0;
-  sscanf(p+148, "%8o", &i);
-
-  return i && tar_cksum(pkt) == i;
 }

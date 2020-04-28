@@ -10,14 +10,10 @@ config MODINFO
   bool "modinfo"
   default y
   help
-    usage: modinfo [-0] [-b basedir] [-k kernel] [-F field] [module|file...]
+    usage: modinfo [-0] [-b basedir] [-k kernrelease] [-F field] [modulename...]
 
-    Display module fields for modules specified by name or .ko path.
-
-    -F  Only show the given field
-    -0  Separate fields with NUL rather than newline
-    -b  Use <basedir> as root for /lib/modules/
-    -k  Look in given directory under /lib/modules/
+    Display module fields for all specified modules, looking in
+    <basedir>/lib/modules/<kernrelease>/ (kernrelease defaults to uname -r).
 */
 
 #define FOR_modinfo
@@ -27,7 +23,6 @@ GLOBALS(
   char *F, *k, *b;
 
   long mod;
-  int count;
 )
 
 static void output_field(char *field, char *value)
@@ -35,7 +30,7 @@ static void output_field(char *field, char *value)
   if (!TT.F) xprintf("%s:%*c", field, 15-(int)strlen(field), ' ');
   else if (strcmp(TT.F, field)) return;
   xprintf("%s", value);
-  xputc(FLAG(0) ? 0 : '\n');
+  xputc((toys.optflags & FLAG_0) ? 0 : '\n');
 }
 
 static void modinfo_file(char *full_name)
@@ -58,7 +53,6 @@ static void modinfo_file(char *full_name)
     return;
   }
 
-  TT.count++;
   output_field("filename", full_name);
 
   for (pos = buf; pos < buf+len; pos++) {
@@ -106,30 +100,19 @@ static int check_module(struct dirtree *new)
 
 void modinfo_main(void)
 {
-  struct utsname uts;
-
-  // Android (as shipped by Google) currently only has modules on /vendor.
-  // Android does not support multiple sets of modules for different kernels.
-  if (CFG_TOYBOX_ON_ANDROID) {
-   if (!TT.b) TT.b = "/vendor";
-   if (!TT.k) TT.k = "";
-  } else {
-   uname(&uts);
-   if (!TT.b) TT.b = "";
-   if (!TT.k) TT.k = uts.release;
-  }
-
-  for (TT.mod = 0; TT.mod<toys.optc; TT.mod++) {
+  for(TT.mod = 0; TT.mod<toys.optc; TT.mod++) {
     char *s = strstr(toys.optargs[TT.mod], ".ko");
 
     if (s && !s[3]) modinfo_file(toys.optargs[TT.mod]);
     else {
-      char *path = xmprintf("%s/lib/modules/%s", TT.b, TT.k);
+      struct utsname uts;
 
-      TT.count = 0;
-      dirtree_read(path, check_module);
-      if (!TT.count) error_msg("%s: not found", toys.optargs[TT.mod]);
-      free(path);
+      if (uname(&uts) < 0) perror_exit("bad uname");
+      if (snprintf(toybuf, sizeof(toybuf), "%s/lib/modules/%s",
+          (toys.optflags & FLAG_b) ? TT.b : "",
+          (toys.optflags & FLAG_k) ? TT.k : uts.release) >= sizeof(toybuf))
+            perror_exit("basedir/kernrelease too long");
+      dirtree_read(toybuf, check_module);
     }
   }
 }

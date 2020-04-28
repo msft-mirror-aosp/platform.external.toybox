@@ -143,8 +143,11 @@ static int listen_socket(void)
   if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&yes, sizeof(yes)) == -1) 
     perror_exit("setsockopt");
 
-  xbind(s, (struct sockaddr *)buf, ((af == AF_INET)?
-          (sizeof(struct sockaddr_in)):(sizeof(struct sockaddr_in6))));
+  if (bind(s, (struct sockaddr *)buf, ((af == AF_INET)?
+          (sizeof(struct sockaddr_in)):(sizeof(struct sockaddr_in6)))) == -1) {
+    close(s);
+    perror_exit("bind");
+  }
 
   if (listen(s, 1) < 0) perror_exit("listen");
   return s;

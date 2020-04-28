@@ -66,15 +66,15 @@ GLOBALS(
 // Callback from crunch_str to represent unprintable chars
 static int crunch_qb(FILE *out, int cols, int wc)
 {
-  int len = 1;
+  unsigned len = 1;
   char buf[32];
 
-  if (FLAG(q)) *buf = '?';
+  if (toys.optflags&FLAG_q) *buf = '?';
   else {
     if (wc<256) *buf = wc;
     // scrute the inscrutable, eff the ineffable, print the unprintable
-    else if ((len = wcrtomb(buf, wc, 0) ) == -1) len = 1;
-    if (FLAG(b)) {
+    else len = wcrtomb(buf, wc, 0);
+    if (toys.optflags&FLAG_b) {
       char *to = buf, *from = buf+24;
       int i, j;
 
@@ -105,8 +105,8 @@ static int strwidth(char *s)
 static char endtype(struct stat *st)
 {
   mode_t mode = st->st_mode;
-  if ((FLAG(F)||FLAG(p)) && S_ISDIR(mode)) return '/';
-  if (FLAG(F)) {
+  if ((toys.optflags&(FLAG_F|FLAG_p)) && S_ISDIR(mode)) return '/';
+  if (toys.optflags & FLAG_F) {
     if (S_ISLNK(mode)) return '@';
     if (S_ISREG(mode) && (mode&0111)) return '*';
     if (S_ISFIFO(mode)) return '|';
@@ -122,7 +122,7 @@ static int numlen(long long ll)
 
 static int print_with_h(char *s, long long value, int units)
 {
-  if (FLAG(h)) return human_readable(s, value*units, 0);
+  if (toys.optflags&FLAG_h) return human_readable(s, value*units, 0);
   else return sprintf(s, "%lld", value);
 }
 
@@ -160,13 +160,13 @@ static int compare(void *a, void *b)
 {
   struct dirtree *dta = *(struct dirtree **)a;
   struct dirtree *dtb = *(struct dirtree **)b;
-  int ret = 0, reverse = FLAG(r) ? -1 : 1;
+  int ret = 0, reverse = (toys.optflags & FLAG_r) ? -1 : 1;
 
-  if (FLAG(S)) {
+  if (toys.optflags & FLAG_S) {
     if (dta->st.st_size > dtb->st.st_size) ret = -1;
     else if (dta->st.st_size < dtb->st.st_size) ret = 1;
   }
-  if (FLAG(t)) {
+  if (toys.optflags & FLAG_t) {
     if (dta->st.st_mtime > dtb->st.st_mtime) ret = -1;
     else if (dta->st.st_mtime < dtb->st.st_mtime) ret = 1;
     else if (dta->st.st_mtim.tv_nsec > dtb->st.st_mtim.tv_nsec) ret = -1;
@@ -195,7 +195,7 @@ static int filter(struct dirtree *new)
       // fchmodat(), mknodat(), readlinkat() so we could do this without
       // even O_PATH? But no, this is 1990's tech.)
       int fd = openat(dirtree_parentfd(new), new->name,
-        O_PATH|(O_NOFOLLOW*!FLAG(L)));
+        O_PATH|(O_NOFOLLOW*!(toys.optflags&FLAG_L)));
 
       if (fd != -1) {
         if (-1 == lsm_fget_context(fd, (char **)&new->extra) && errno == EBADF)
@@ -237,7 +237,7 @@ static unsigned long next_column(unsigned long ul, unsigned long dtlen,
   unsigned height, widecols;
 
   // Horizontal sort is easy
-  if (!FLAG(C)) {
+  if (!(toys.optflags & FLAG_C)) {
     *xpos = ul % columns;
     return ul;
   }
@@ -283,15 +283,6 @@ static int color_from_mode(mode_t mode)
   return color;
 }
 
-static void zprint(int zap, char *pat, int len, unsigned long arg)
-{
-  char tmp[32];
-
-  sprintf(tmp, "%%*%s", zap ? "s" : pat);
-  if (zap && pat[strlen(pat)-1]==' ') strcat(tmp, " ");
-  printf(tmp, len, zap ? (unsigned long)"?" : arg);
-}
-
 // Display a list of dirtree entries, according to current format
 // Output types -1, -l, -C, or stream
 
@@ -330,7 +321,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
   // Read directory contents. We dup() the fd because this will close it.
   // This reads/saves contents to display later, except for in "ls -1f" mode.
   } else dirtree_recurse(indir, filter, dup(dirfd),
-      DIRTREE_STATLESS|DIRTREE_SYMFOLLOW*!!(flags&FLAG_L));
+      DIRTREE_SYMFOLLOW*!!(flags&FLAG_L));
 
   // Copy linked list to array and sort it. Directories go in array because
   // we visit them in sorted order too. (The nested loops let us measure and
@@ -384,8 +375,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
       memset(colsizes, 0, columns*sizeof(unsigned));
       for (ul=0; ul<dtlen; ul++) {
         entrylen(sort[next_column(ul, dtlen, columns, &c)], len);
-        // Add `2` to `totpad` to ensure two spaces between filenames
-        *len += totpad+2;
+        *len += totpad+1;
         if (c == columns) break;
         // Expand this column if necessary, break if that puts us over budget
         if (*len > colsizes[c]) {
@@ -402,15 +392,12 @@ static void listfiles(int dirfd, struct dirtree *indir)
   // Loop through again to produce output.
   width = 0;
   for (ul = 0; ul<dtlen; ul++) {
-    int ii, zap;
+    int ii;
     unsigned curcol, color = 0;
     unsigned long next = next_column(ul, dtlen, columns, &curcol);
     struct stat *st = &(sort[next]->st);
     mode_t mode = st->st_mode;
     char et = endtype(st), *ss;
-
-    // If we couldn't stat, output ? for most fields
-    zap = !st->st_blksize && !st->st_dev && !st->st_ino;
 
     // Skip directories at the top of the tree when -d isn't set
     if (S_ISDIR(mode) && !indir->parent && !(flags & FLAG_d)) continue;
@@ -434,26 +421,25 @@ static void listfiles(int dirfd, struct dirtree *indir)
     }
     width += *len;
 
-    if (flags & FLAG_i) zprint(zap, "lu ", totals[1], st->st_ino);
+    if (flags & FLAG_i) printf("%*lu ", totals[1], (unsigned long)st->st_ino);
 
     if (flags & FLAG_s) {
       print_with_h(tmp, st->st_blocks, 512);
-      zprint(zap, "s ", totals[6], (unsigned long)tmp);
+      printf("%*s ", totals[6], tmp);
     }
 
     if (flags & (FLAG_l|FLAG_o|FLAG_n|FLAG_g)) {
+      struct tm *tm;
 
       // (long) is to coerce the st types into something we know we can print.
       mode_to_string(mode, tmp);
-      if (zap) memset(tmp+1, '?', 9);
-      printf("%s", tmp);
-      zprint(zap, "ld", totals[2]+1, st->st_nlink);
+      printf("%s% *ld", tmp, totals[2]+1, (long)st->st_nlink);
 
       // print user
       if (!(flags&FLAG_g)) {
         putchar(' ');
         ii = -totals[3];
-        if (zap || (flags&FLAG_n)) zprint(zap, "lu", ii, st->st_uid);
+        if (flags&FLAG_n) printf("%*u", ii, (unsigned)st->st_uid);
         else draw_trim_esc(getusername(st->st_uid), ii, abs(ii), TT.escmore,
                            crunch_qb);
       }
@@ -462,37 +448,35 @@ static void listfiles(int dirfd, struct dirtree *indir)
       if (!(flags&FLAG_o)) {
         putchar(' ');
         ii = -totals[4];
-        if (zap || (flags&FLAG_n)) zprint(zap, "lu", ii, st->st_gid);
+        if (flags&FLAG_n) printf("%*u", ii, (unsigned)st->st_gid);
         else draw_trim_esc(getgroupname(st->st_gid), ii, abs(ii), TT.escmore,
                            crunch_qb);
       }
-    }
-    if (FLAG(Z))
-      printf(" %-*s "+!FLAG(l), -(int)totals[7], (char *)sort[next]->extra);
 
-    if (flags & (FLAG_l|FLAG_o|FLAG_n|FLAG_g)) {
-      struct tm *tm;
+      if (flags & FLAG_Z)
+        printf(" %-*s", -(int)totals[7], (char *)sort[next]->extra);
 
       // print major/minor, or size
-      if (!zap && (S_ISCHR(st->st_mode) || S_ISBLK(st->st_mode)))
+      if (S_ISCHR(st->st_mode) || S_ISBLK(st->st_mode))
         printf("% *d,% 4d", totals[5]-4, dev_major(st->st_rdev),
           dev_minor(st->st_rdev));
       else {
         print_with_h(tmp, st->st_size, 1);
-        zprint(zap, "s", totals[5]+1, (unsigned long)tmp);
+        printf("%*s", totals[5]+1, tmp);
       }
 
       // print time, always in --time-style=long-iso
       tm = localtime(&(st->st_mtime));
-      strftime(tmp, sizeof(tmp), " %F %H:%M", tm);
+      strftime(tmp, sizeof(tmp), "%F %H:%M", tm);
       if (TT.l>1) {
         char *s = tmp+strlen(tmp);
 
         s += sprintf(s, ":%02d.%09d ", tm->tm_sec, (int)st->st_mtim.tv_nsec);
         strftime(s, sizeof(tmp)-(s-tmp), "%z", tm);
       }
-      zprint(zap, "s ", 17+(TT.l>1)*13, (unsigned long)tmp);
-    }
+      printf(" %s ", tmp);
+    } else if (flags & FLAG_Z)
+      printf("%-*s ", (int)totals[7], (char *)sort[next]->extra);
 
     if (flags & FLAG_color) {
       color = color_from_mode(st->st_mode);
@@ -505,7 +489,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
 
     if ((flags & (FLAG_l|FLAG_o|FLAG_n|FLAG_g)) && S_ISLNK(mode)) {
       printf(" -> ");
-      if (!zap && (flags & FLAG_color)) {
+      if (flags & FLAG_color) {
         struct stat st2;
 
         if (fstatat(dirfd, sort[next]->symlink, &st2, 0)) color = 256+31;
@@ -514,8 +498,8 @@ static void listfiles(int dirfd, struct dirtree *indir)
         if (color) printf("\033[%d;%dm", color>>8, color&255);
       }
 
-      zprint(zap, "s", 0, (unsigned long)sort[next]->symlink);
-      if (!zap && color) printf("\033[0m");
+      printf("%s", sort[next]->symlink);
+      if (color) printf("\033[0m");
     }
 
     if (et) xputc(et);
@@ -548,30 +532,30 @@ void ls_main(void)
   char **s, *noargs[] = {".", 0};
   struct dirtree *dt;
 
-  if (FLAG(full_time)) {
+  if (toys.optflags&FLAG_full_time) {
     toys.optflags |= FLAG_l;
     TT.l = 2;
   }
 
   // Do we have an implied -1
   if (isatty(1)) {
-    if (!FLAG(show_control_chars)) toys.optflags |= FLAG_b;
+    if (!(toys.optflags&FLAG_show_control_chars)) toys.optflags |= FLAG_b;
     if (toys.optflags&(FLAG_l|FLAG_o|FLAG_n|FLAG_g)) toys.optflags |= FLAG_1;
     else if (!(toys.optflags&(FLAG_1|FLAG_x|FLAG_m))) toys.optflags |= FLAG_C;
   } else {
-    if (!FLAG(m)) toys.optflags |= FLAG_1;
+    if (!(toys.optflags & FLAG_m)) toys.optflags |= FLAG_1;
     if (TT.color) toys.optflags ^= FLAG_color;
   }
 
   TT.screen_width = 80;
   terminal_size(&TT.screen_width, NULL);
   if (TT.screen_width<2) TT.screen_width = 2;
-  if (FLAG(b)) TT.escmore = " \\";
+  if (toys.optflags&FLAG_b) TT.escmore = " \\";
 
   // The optflags parsing infrastructure should really do this for us,
   // but currently it has "switch off when this is set", so "-dR" and "-Rd"
   // behave differently
-  if (FLAG(d)) toys.optflags &= ~FLAG_R;
+  if (toys.optflags & FLAG_d) toys.optflags &= ~FLAG_R;
 
   // Iterate through command line arguments, collecting directories and files.
   // Non-absolute paths are relative to current directory. Top of tree is
@@ -582,15 +566,11 @@ void ls_main(void)
     int sym = !(toys.optflags&(FLAG_l|FLAG_d|FLAG_F))
       || (toys.optflags&(FLAG_L|FLAG_H));
 
-    dt = dirtree_add_node(0, *s, DIRTREE_STATLESS|DIRTREE_SYMFOLLOW*sym);
+    dt = dirtree_add_node(0, *s, DIRTREE_SYMFOLLOW*sym);
 
-    // note: double_list->prev temporarily goes in dirtree->parent
-    if (dt) {
-      if (dt->again&2) {
-        perror_msg_raw(*s);
-        free(dt);
-      } else dlist_add_nomalloc((void *)&TT.files->child, (void *)dt);
-    } else toys.exitval = 1;
+    // note: double_list->prev temporarirly goes in dirtree->parent
+    if (dt) dlist_add_nomalloc((void *)&TT.files->child, (void *)dt);
+    else toys.exitval = 1;
   }
 
   // Convert double_list into dirtree.

@@ -249,7 +249,10 @@ static void mode_raw()
   sockll.sll_family = AF_PACKET;
   sockll.sll_protocol = htons(ETH_P_IPV6);
   sockll.sll_ifindex = if_nametoindex(TT.interface_name);
-  xbind(TT.sock, (struct sockaddr *) &sockll, sizeof(sockll));
+  if (bind(TT.sock, (struct sockaddr *) &sockll, sizeof(sockll))) {
+    xclose(TT.sock);
+    error_exit("MODE RAW : Bind fail.\n");
+  } 
   if (setsockopt(TT.sock, SOL_PACKET, PACKET_HOST,&constone, sizeof(int)) < 0) {
     if (errno != ENOPROTOOPT) error_exit("MODE RAW : Bind fail.\n");
   }
@@ -572,7 +575,10 @@ void dhcp6_main(void)
   
   xsetsockopt(TT.sock1, SOL_SOCKET, SO_REUSEADDR, &constone, sizeof(constone));
   
-  xbind(TT.sock1, (struct sockaddr *)&sinaddr6, sizeof(sinaddr6));
+  if (bind(TT.sock1, (struct sockaddr *)&sinaddr6, sizeof(sinaddr6))) {
+    xclose(TT.sock1);
+    error_exit("bind failed");
+  }
   
   mode_raw();
   set_timeout(0);

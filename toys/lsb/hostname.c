@@ -5,7 +5,6 @@
  * http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/hostname.html
 
 USE_HOSTNAME(NEWTOY(hostname, ">1bdsfF:[!bdsf]", TOYFLAG_BIN))
-USE_DNSDOMAINNAME(NEWTOY(dnsdomainname, ">0", TOYFLAG_BIN))
 
 config HOSTNAME
   bool "hostname"
@@ -20,18 +19,9 @@ config HOSTNAME
     -f	Show fully-qualified name (host+domain, FQDN)
     -F	Set hostname to contents of FILENAME
     -s	Show short host name (no domain)
-
-config DNSDOMAINNAME
-  bool "dnsdomainname"
-  default y
-  help
-    usage: dnsdomainname
-
-    Show domain this system belongs to (same as hostname -d).
 */
 
 #define FOR_hostname
-#define FORCE_FLAGS
 #include "toys.h"
 
 GLOBALS(
@@ -40,17 +30,21 @@ GLOBALS(
 
 void hostname_main(void)
 {
-  char *hostname = toybuf, *dot;
+  char *hostname = *toys.optargs, *dot;
   struct hostent *h;
 
-  gethostname(toybuf, sizeof(toybuf)-1);
   if (TT.F && (hostname = xreadfile(TT.F, 0, 0))) {
     if (!*chomp(hostname)) {
       if (CFG_TOYBOX_FREE) free(hostname);
       if (!FLAG(b)) error_exit("empty '%s'", TT.F);
       hostname = 0;
     }
-  } else hostname  = (FLAG(b) && !*toybuf) ? "localhost" : *toys.optargs;
+  }
+
+  // Implement -b.
+  if (!hostname && FLAG(b))
+    if (gethostname(toybuf, sizeof(toybuf)-1) || !*toybuf)
+      hostname = "localhost";
 
   // Setting?
   if (hostname) {
@@ -59,19 +53,14 @@ void hostname_main(void)
     return;
   }
 
+  // Get the hostname.
+  if (gethostname(toybuf, sizeof(toybuf)-1)) perror_exit("gethostname");
   // We only do the DNS lookup for -d and -f.
   if (FLAG(d) || FLAG(f)) {
-    if (!(h = gethostbyname(toybuf)))
-      error_exit("gethostbyname: %s", hstrerror(h_errno));
+    if (!(h = gethostbyname(toybuf))) perror_exit("gethostbyname");
     snprintf(toybuf, sizeof(toybuf), "%s", h->h_name);
   }
-  dot = toybuf+strcspn(toybuf, ".");
-  if (FLAG(s)) *dot = '\0';
+  dot = strchr(toybuf, '.');
+  if (FLAG(s) && dot) *dot = '\0';
   xputs(FLAG(d) ? dot+1 : toybuf);
-}
-
-void dnsdomainname_main(void)
-{
-  toys.optflags = FLAG_d;
-  hostname_main();
 }

@@ -9,7 +9,7 @@
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.2"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.0"TOYBOX_VENDOR
 #endif
 
 // Populate toy_list[].
@@ -39,7 +39,7 @@ struct toy_list *toy_find(char *name)
   // If the name starts with "toybox" accept that as a match.  Otherwise
   // skip the first entry, which is out of order.
 
-  if (!strncmp(name, "toybox", 6)) return toy_list;
+  if (!strncmp(name,"toybox",6)) return toy_list;
   bottom = 1;
 
   // Binary search to find this command.
@@ -49,7 +49,7 @@ struct toy_list *toy_find(char *name)
     int result;
 
     middle = (top+bottom)/2;
-    if (middle<bottom || middle>top) return 0;
+    if (middle<bottom || middle>top) return NULL;
     result = strcmp(name,toy_list[middle].name);
     if (!result) return toy_list+middle;
     if (result<0) top = --middle;
@@ -84,7 +84,6 @@ static void toy_singleinit(struct toy_list *which, char *argv[])
   toys.argv = argv;
 
   if (CFG_TOYBOX_I18N) setlocale(LC_CTYPE, "C.UTF-8");
-  setlinebuf(stdout);
 
   // Parse --help and --version for (almost) all commands
   if (CFG_TOYBOX_HELP_DASHDASH && !(which->flags & TOYFLAG_NOHELP) && argv[1]) {
@@ -189,12 +188,8 @@ void toybox_main(void)
   // Try dereferencing one layer of symlink
   if (toys.argv[1]) {
     toy_exec(toys.argv+1);
-    if (0<readlink(toys.argv[1], libbuf, sizeof(libbuf))) {
-      struct toy_list *tl= toy_find(basename(libbuf));
-
-      if (tl == toy_list) unknown(basename(toys.argv[1]));
-      else toy_exec_which(tl, toys.argv+1);
-    }
+    if (0<readlink(toys.argv[1], libbuf, sizeof(libbuf)))
+      toy_exec_which(toy_find(basename(libbuf)), toys.argv);
   }
 
   // For early error reporting

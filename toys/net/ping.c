@@ -155,7 +155,7 @@ void ping_main(void)
     }
     xexit();
   }
-  if (TT.I) xbind(TT.sock, sa, sizeof(srcaddr));
+  if (TT.I && bind(TT.sock, sa, sizeof(srcaddr))) perror_exit("bind");
 
   if (toys.optflags&FLAG_m) {
       int mark = TT.m;

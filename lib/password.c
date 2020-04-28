@@ -110,9 +110,8 @@ int update_password(char *filename, char* username, char* entry)
   char *filenamesfx = NULL, *namesfx = NULL, *shadow = NULL,
        *sfx = NULL, *line = NULL;
   FILE *exfp, *newfp;
-  int ret = -1, found = 0, n;
+  int ret = -1, found = 0;
   struct flock lock;
-  size_t allocated_length;
 
   shadow = strstr(filename, "shadow");
   filenamesfx = xmprintf("%s+", filename);
@@ -150,8 +149,8 @@ int update_password(char *filename, char* username, char* entry)
 
   ret = 0;
   namesfx = xmprintf("%s:",username);
-  while ((n = getline(&line, &allocated_length, exfp)) > 0) {
-    line[n-1] = 0;
+  while ((line = get_line(fileno(exfp))) != NULL)
+  {
     if (strncmp(line, namesfx, strlen(namesfx)))
       fprintf(newfp, "%s\n", line);
     else if (entry) {
@@ -176,8 +175,8 @@ int update_password(char *filename, char* username, char* entry)
         fprintf(newfp, "%s\n", entry);
       }
     }
+    free(line);
   }
-  free(line);
   free(namesfx);
   if (!found && entry) fprintf(newfp, "%s\n", entry);
   fcntl(fileno(exfp), F_SETLK, &lock);

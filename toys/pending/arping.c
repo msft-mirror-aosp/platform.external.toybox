@@ -166,6 +166,7 @@ static void recv_from(struct sockaddr_ll *from, int *recv_len)
       gettimeofday(&tval, NULL);
       delta = (tval.tv_sec * 1000000ULL + (tval.tv_usec)) - TT.sent_at;
       xprintf(" %u.%03ums\n", delta / 1000, delta % 1000);
+      xflush();
     }
   }
   TT.rcvd_nr++;
@@ -242,13 +243,15 @@ void arping_main(void)
     saddr.sin_family = AF_INET;
     if (src_addr.s_addr) {
       saddr.sin_addr = src_addr;
-      xbind(p_fd, (struct sockaddr*)&saddr, sizeof(saddr));
+      if (bind(p_fd, (struct sockaddr*)&saddr, sizeof(saddr))) 
+        perror_exit("bind");
     } else {
       uint32_t oip;
 
       saddr.sin_port = htons(1025);
       saddr.sin_addr = dest_addr;
-      xconnect(p_fd, (struct sockaddr *) &saddr, sizeof(saddr));
+      if (connect(p_fd, (struct sockaddr *) &saddr, sizeof(saddr)))
+        perror_exit("cannot connect to remote host");
       get_interface(TT.iface, NULL, &oip, NULL);
       src_addr.s_addr = htonl(oip);
     }
@@ -257,7 +260,8 @@ void arping_main(void)
 
   src_pk.sll_family = AF_PACKET;
   src_pk.sll_protocol = htons(ETH_P_ARP);
-  xbind(TT.sockfd, (struct sockaddr *)&src_pk, sizeof(src_pk));
+  if (bind(TT.sockfd, (struct sockaddr *)&src_pk, sizeof(src_pk))) 
+    perror_exit("bind");
 
   socklen_t alen = sizeof(src_pk);
   getsockname(TT.sockfd, (struct sockaddr *)&src_pk, &alen);

@@ -4,35 +4,29 @@
  *
  * See http://opengroup.org/onlinepubs/9699919799/utilities/ln.html
 
-USE_LN(NEWTOY(ln, "<1t:Tvnfs", TOYFLAG_BIN))
+USE_LN(NEWTOY(ln, "<1vnfs", TOYFLAG_BIN))
 
 config LN
   bool "ln"
   default y
   help
-    usage: ln [-sfnv] [-t DIR] [FROM...] TO
+    usage: ln [-sfnv] [FROM...] TO
 
     Create a link between FROM and TO.
-    One/two/many arguments work like "mv" or "cp".
+    With only one argument, create link in current directory.
 
     -s	Create a symbolic link
     -f	Force the creation of the link, even if TO already exists
-    -n	Symlink at TO treated as file
-    -t	Create links in DIR
-    -T	TO always treated as file, max 2 arguments
+    -n	Symlink at destination treated as file
     -v	Verbose
 */
 
 #define FOR_ln
 #include "toys.h"
 
-GLOBALS(
-  char *t;
-)
-
 void ln_main(void)
 {
-  char *dest = TT.t ? TT.t : toys.optargs[--toys.optc], *new;
+  char *dest = toys.optargs[--toys.optc], *new;
   struct stat buf;
   int i;
 
@@ -42,14 +36,13 @@ void ln_main(void)
     dest=".";
   }
 
-  if (FLAG(T) && toys.optc>1) help_exit("Max 2 arguments");
   // Is destination a directory?
-  if (!((FLAG(n)||FLAG(T)) ? lstat : stat)(dest, &buf)) {
-    i = S_ISDIR(buf.st_mode);
-
-    if ((FLAG(T) && i) || (!i && (toys.optc>1 || TT.t)))
-      error_exit("'%s' %s a directory", dest, i ? "is" : "not");
-  } else buf.st_mode = 0;
+  if (((toys.optflags&FLAG_n) ? lstat : stat)(dest, &buf)
+    || !S_ISDIR(buf.st_mode))
+  {
+    if (toys.optc>1) error_exit("'%s' not a directory", dest);
+    buf.st_mode = 0;
+  }
 
   for (i=0; i<toys.optc; i++) {
     int rc;
@@ -62,7 +55,7 @@ void ln_main(void)
     // a temp version and renaming it over the old one, so we can retain the
     // old file in cases we can't replace it (such as hardlink between mounts).
     oldnew = new;
-    if (FLAG(f)) {
+    if (toys.optflags & FLAG_f) {
       new = xmprintf("%s_XXXXXX", new);
       rc = mkstemp(new);
       if (rc >= 0) {
@@ -71,8 +64,8 @@ void ln_main(void)
       }
     }
 
-    rc = FLAG(s) ? symlink(try, new) : link(try, new);
-    if (FLAG(f)) {
+    rc = (toys.optflags & FLAG_s) ? symlink(try, new) : link(try, new);
+    if (toys.optflags & FLAG_f) {
       if (!rc) {
         int temp;
 
@@ -84,9 +77,11 @@ void ln_main(void)
       free(new);
       new = oldnew;
     }
-    if (rc) perror_msg("cannot create %s link from '%s' to '%s'",
-                       FLAG(s) ? "symbolic" : "hard", try, new);
-    else if (FLAG(v)) fprintf(stderr, "'%s' -> '%s'\n", new, try);
+    if (rc)
+      perror_msg("cannot create %s link from '%s' to '%s'",
+        (toys.optflags & FLAG_s) ? "symbolic" : "hard", try, new);
+    else
+      if (toys.optflags & FLAG_v) fprintf(stderr, "'%s' -> '%s'\n", new, try);
 
     if (new != dest) free(new);
   }

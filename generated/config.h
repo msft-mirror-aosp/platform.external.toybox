@@ -54,8 +54,6 @@
 #define USE_TOYBOX_UTMPX(...)
 #define CFG_ACPI 1
 #define USE_ACPI(...) __VA_ARGS__
-#define CFG_ARCH 0
-#define USE_ARCH(...)
 #define CFG_ARPING 0
 #define USE_ARPING(...)
 #define CFG_ARP 0
@@ -168,8 +166,6 @@
 #define USE_DIRNAME(...) __VA_ARGS__
 #define CFG_DMESG 1
 #define USE_DMESG(...) __VA_ARGS__
-#define CFG_DNSDOMAINNAME 0
-#define USE_DNSDOMAINNAME(...)
 #define CFG_DOS2UNIX 1
 #define USE_DOS2UNIX(...) __VA_ARGS__
 #define CFG_DUMPLEASES 0
@@ -232,6 +228,8 @@
 #define USE_GETENFORCE(...) __VA_ARGS__
 #define CFG_GETFATTR 1
 #define USE_GETFATTR(...) __VA_ARGS__
+#define CFG_GETPROP 0
+#define USE_GETPROP(...)
 #define CFG_GETTY 0
 #define USE_GETTY(...)
 #define CFG_GREP 1
@@ -350,8 +348,6 @@
 #define USE_LS_Z(...) __VA_ARGS__
 #define CFG_MAKEDEVS 1
 #define USE_MAKEDEVS(...) __VA_ARGS__
-#define CFG_MAN 0
-#define USE_MAN(...)
 #define CFG_MCOOKIE 0
 #define USE_MCOOKIE(...)
 #define CFG_MD5SUM 1
@@ -502,6 +498,8 @@
 #define USE_SETENFORCE(...) __VA_ARGS__
 #define CFG_SETFATTR 1
 #define USE_SETFATTR(...) __VA_ARGS__
+#define CFG_SETPROP 1
+#define USE_SETPROP(...) __VA_ARGS__
 #define CFG_SETSID 1
 #define USE_SETSID(...) __VA_ARGS__
 #define CFG_SHA1SUM 1
@@ -536,8 +534,12 @@
 #define USE_SORT(...) __VA_ARGS__
 #define CFG_SPLIT 1
 #define USE_SPLIT(...) __VA_ARGS__
+#define CFG_START 1
+#define USE_START(...) __VA_ARGS__
 #define CFG_STAT 1
 #define USE_STAT(...) __VA_ARGS__
+#define CFG_STOP 1
+#define USE_STOP(...) __VA_ARGS__
 #define CFG_STRINGS 1
 #define USE_STRINGS(...) __VA_ARGS__
 #define CFG_STTY 1

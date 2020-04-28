@@ -248,7 +248,7 @@ static int create_bind_sock(char *host, struct sockaddr *haddr)
   sockfd = xsocket(rp->ai_family, TT.udp ?SOCK_DGRAM :SOCK_STREAM, 0);
   setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set));
   if (TT.udp) setsockopt(sockfd, IPPROTO_IP, IP_PKTINFO, &set, sizeof(set));
-  xbind(sockfd, rp->ai_addr, rp->ai_addrlen);
+  if ((bind(sockfd, rp->ai_addr, rp->ai_addrlen)) < 0) perror_exit("Bind failed");
   if(haddr) memcpy(haddr, rp->ai_addr, rp->ai_addrlen);
   freeaddrinfo(res);
   return sockfd;
@@ -386,7 +386,8 @@ void tcpsvd_main(void)
         free(serv);
         free(clie);
       }
-      if (TT.udp) xconnect(newfd, (struct sockaddr *)buf, sizeof(buf));
+      if (TT.udp && (connect(newfd, (struct sockaddr *)buf, sizeof(buf)) < 0))
+          perror_exit("connect");
 
       close(0);
       close(1);

@@ -37,7 +37,7 @@ struct addrinfo *xgetaddrinfo(char *host, char *port, int family, int socktype,
   return ai;
 }
 
-static int xconnbind(struct addrinfo *ai_arg, int dobind)
+int xconnbind(struct addrinfo *ai_arg, int dobind)
 {
   struct addrinfo *ai;
   int fd = -1, one = 1;
@@ -56,25 +56,15 @@ static int xconnbind(struct addrinfo *ai_arg, int dobind)
   return fd;
 }
 
-int xconnectany(struct addrinfo *ai)
+int xconnect(struct addrinfo *ai)
 {
   return xconnbind(ai, 0);
 }
 
 
-int xbindany(struct addrinfo *ai)
+int xbind(struct addrinfo *ai)
 {
   return xconnbind(ai, 1);
-}
-
-void xbind(int fd, const struct sockaddr *sa, socklen_t len)
-{
-  if (bind(fd, sa, len)) perror_exit("bind");
-}
-
-void xconnect(int fd, const struct sockaddr *sa, socklen_t len)
-{
-  if (connect(fd, sa, len)) perror_exit("connect");
 }
 
 int xpoll(struct pollfd *fds, int nfds, int timeout)

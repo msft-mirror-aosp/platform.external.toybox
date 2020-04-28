@@ -20,15 +20,14 @@ config STAT
 
     The valid format escape sequences for files:
     %a  Access bits (octal) |%A  Access bits (flags)|%b  Size/512
-    %B  Bytes per %b (512)  |%C  Security context   |%d  Device ID (dec)
-    %D  Device ID (hex)     |%f  All mode bits (hex)|%F  File type
-    %g  Group ID            |%G  Group name         |%h  Hard links
-    %i  Inode               |%m  Mount point        |%n  Filename
-    %N  Long filename       |%o  I/O block size     |%s  Size (bytes)
-    %t  Devtype major (hex) |%T  Devtype minor (hex)|%u  User ID
-    %U  User name           |%x  Access time        |%X  Access unix time
-    %y  Modification time   |%Y  Mod unix time      |%z  Creation time
-    %Z  Creation unix time
+    %B  Bytes per %b (512)  |%d  Device ID (dec)    |%D  Device ID (hex)
+    %f  All mode bits (hex) |%F  File type          |%g  Group ID
+    %G  Group name          |%h  Hard links         |%i  Inode
+    %m  Mount point         |%n  Filename           |%N  Long filename
+    %o  I/O block size      |%s  Size (bytes)       |%t  Devtype major (hex)
+    %T  Devtype minor (hex) |%u  User ID            |%U  User name
+    %x  Access time         |%X  Access unix time   |%y  Modification time
+    %Y  Mod unix time       |%z  Creation time      |%Z  Creation unix time
 
     The valid format escape sequences for filesystems:
     %a  Available blocks    |%b  Total blocks       |%c  Total inodes
@@ -83,12 +82,7 @@ static void print_stat(char type)
     strout(str);
   } else if (type == 'b') out('u', stat->st_blocks);
   else if (type == 'B') out('d', 512);
-  else if (type == 'C') {
-    char *context = NULL;
-
-    strout(lsm_get_context(TT.file, &context) != -1 ? context : "?");
-    free(context);
-  } else if (type == 'd') out('d', stat->st_dev);
+  else if (type == 'd') out('d', stat->st_dev);
   else if (type == 'D') out('x', stat->st_dev);
   else if (type == 'f') out('x', stat->st_mode);
   else if (type == 'F') {
@@ -114,10 +108,10 @@ static void print_stat(char type)
     }
     llist_traverse(mt, free);
   } else if (type == 'N') {
-    printf("%s", TT.file);
+    xprintf("%s", TT.file);
     if (S_ISLNK(stat->st_mode))
       if (readlink0(TT.file, toybuf, sizeof(toybuf)))
-        printf(" -> `%s'", toybuf);
+        xprintf(" -> `%s'", toybuf);
   } else if (type == 'o') out('u', stat->st_blksize);
   else if (type == 's') out('u', stat->st_size);
   else if (type == 't') out('x', dev_major(stat->st_rdev));
@@ -130,7 +124,7 @@ static void print_stat(char type)
   else if (type == 'Y') out('u', stat->st_mtime);
   else if (type == 'z') date_stat_format(&stat->st_ctim);
   else if (type == 'Z') out('u', stat->st_ctime);
-  else putchar('?');
+  else xprintf("?");
 }
 
 static void print_statfs(char type) {
@@ -141,15 +135,8 @@ static void print_statfs(char type) {
   else if (type == 'c') out('u', statfs->f_files);
   else if (type == 'd') out('u', statfs->f_ffree);
   else if (type == 'f') out('u', statfs->f_bfree);
-  else if (type == 'l') {
-#ifdef __APPLE__
-    // TODO: move this into portability.c somehow, or just use this everywhere?
-    // (glibc and bionic will just re-do the statfs and return f_namelen.)
-    out('d', pathconf(TT.file, _PC_NAME_MAX));
-#else
-    out('d', statfs->f_namelen);
-#endif
-  } else if (type == 't') out('x', statfs->f_type);
+  else if (type == 'l') out('d', statfs->f_namelen);
+  else if (type == 't') out('x', statfs->f_type);
   else if (type == 'T') {
     char *s = "unknown";
     struct {unsigned num; char *name;} nn[] = {
@@ -168,10 +155,9 @@ static void print_statfs(char type) {
       if (nn[i].num == statfs->f_type) s = nn[i].name;
     strout(s);
   } else if (type == 'i') {
-    int *val = (int *) &statfs->f_fsid;
     char buf[32];
 
-    sprintf(buf, "%08x%08x", val[0], val[1]);
+    sprintf(buf, "%08x%08x", statfs->f_fsid.__val[0], statfs->f_fsid.__val[1]);
     strout(buf);
   } else if (type == 's') out('d', statfs->f_frsize);
   else if (type == 'S') out('d', statfs->f_bsize);
@@ -180,43 +166,40 @@ static void print_statfs(char type) {
 
 void stat_main(void)
 {
-  int flagf = FLAG(f), i;
+  int flagf = toys.optflags & FLAG_f, i;
   char *format, *f;
 
-  if (FLAG(t)) format = flagf
-    ? "%n %i %l %t %s %S %b %f %a %c %d"
-    : "%n %s %b %f %u %g %D %i %h %t %T %X %Y %Z %o";
-  else format = flagf
+  if (toys.optflags&FLAG_t) {
+    format = flagf ? "%n %i %l %t %s %S %b %f %a %c %d" :
+                     "%n %s %b %f %u %g %D %i %h %t %T %X %Y %Z %o";
+  } else format = flagf
     ? "  File: \"%n\"\n    ID: %i Namelen: %l    Type: %T\n"
       "Block Size: %s    Fundamental block size: %S\n"
       "Blocks: Total: %b\tFree: %f\tAvailable: %a\n"
       "Inodes: Total: %c\tFree: %d"
-    : "  File: %N\n  Size: %s\t Blocks: %b\t IO Blocks: %B\t %F\n"
-      "Device: %Dh/%dd\t Inode: %i\t Links: %h\t Device type: %t,%T\n"
-      "Access: (%04a/%A)\tUid: (%5u/%8U)\tGid: (%5g/%8G)\n"
+    : "  File: %N\n  Size: %s\t Blocks: %b\t IO Blocks: %B\t%F\n"
+      "Device: %Dh/%dd\t Inode: %i\t Links: %h\n"
+      "Access: (0%a/%A)\tUid: (%5u/%8U)\tGid: (%5g/%8G)\n"
       "Access: %x\nModify: %y\nChange: %z";
 
-  if (FLAG(c)) format = TT.c;
+  if (toys.optflags & FLAG_c) format = TT.c;
 
-  // loop through files listed on command line
   for (i = 0; toys.optargs[i]; i++) {
+    int L = toys.optflags & FLAG_L;
 
-    // stat the file or filesystem
     TT.file = toys.optargs[i];
     if (flagf && !statfs(TT.file, (void *)&TT.stat));
-    else if (flagf || (FLAG(L) ? stat : lstat)(TT.file, (void *)&TT.stat)) {
+    else if (flagf || (L ? stat : lstat)(TT.file, (void *)&TT.stat)) {
       perror_msg("'%s'", TT.file);
       continue;
     }
 
-    // parse format and print what it says
     for (f = format; *f; f++) {
-      if (*f != '%' || !f[1]) putchar(*f);
-      else if (f[1]=='%') putchar(*f++);
+      if (*f != '%') putchar(*f);
       else {
         f = next_printf(f, &TT.pattern);
         TT.patlen = f-TT.pattern;
-        if (!*f || TT.patlen>99) error_exit("bad %s", TT.pattern);
+        if (TT.patlen>99) error_exit("bad %s", TT.pattern);
         if (*f == 'n') strout(TT.file);
         else if (flagf) print_statfs(*f);
         else print_stat(*f);

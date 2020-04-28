@@ -40,7 +40,7 @@ config SED
     apply only to the specified line(s). Commands without an address apply to
     every line. Addresses are of the form:
 
-      [ADDRESS[,ADDRESS]][!]COMMAND
+      [ADDRESS[,ADDRESS]]COMMAND
 
     The ADDRESS may be a decimal line number (starting at 1), a /regular
     expression/ within a pair of forward slashes, or the character "$" which
@@ -49,7 +49,7 @@ config SED
     address matches one line, a pair of comma separated addresses match
     everything from the first address to the second address (inclusive). If
     both addresses are regular expressions, more than one range of lines in
-    each file can match. The second address can be +N to end N lines later.
+    each file can match.
 
     REGULAR EXPRESSIONS in sed are started and ended by the same character
     (traditionally / but anything except a backslash or a newline works).
@@ -68,8 +68,6 @@ config SED
 
     Each COMMAND starts with a single character. The following commands take
     no arguments:
-
-      !  Run this command when the test _didn't_ match.
 
       {  Start a new command block, continuing until a corresponding "}".
          Command blocks may nest. If the block has an address, commands within
@@ -216,7 +214,7 @@ static int emit(char *line, long len, int eol)
   l = writeall(TT.fdout, line, len);
   if (eol) line[len-1] = old;
   if (l != len) {
-    if (TT.fdout != 1) perror_msg("short write");
+    perror_msg("short write");
 
     return 1;
   }
@@ -241,14 +239,14 @@ static char *extend_string(char **old, char *new, int oldlen, int newlen)
 }
 
 // An empty regex repeats the previous one
-static void *get_regex(void *command, int offset)
+static void *get_regex(void *trump, int offset)
 {
   if (!offset) {
     if (!TT.lastregex) error_exit("no previous regex");
     return TT.lastregex;
   }
 
-  return TT.lastregex = offset+(char *)command;
+  return TT.lastregex = offset+(char *)trump;
 }
 
 // Apply pattern to line from input file
@@ -306,23 +304,20 @@ static void sed_line(char **pline, long plen)
             if (line && !regexec0(rm, line, len, 0, 0, 0)) miss = 1;
           }
         } else if (lm > 0 && lm < TT.count) command->hit = 0;
-        else if (lm < -1 && TT.count == command->hit+(-lm-1)) command->hit = 0;
 
       // Start a new match?
       } else {
         if (!(lm = *command->lmatch)) {
           void *rm = get_regex(command, *command->rmatch);
 
-          if (line && !regexec0(rm, line, len, 0, 0, 0))
-            command->hit = TT.count;
-        } else if (lm == TT.count || (lm == -1 && !pline))
-          command->hit = TT.count;
+          if (line && !regexec0(rm, line, len, 0, 0, 0)) command->hit++;
+        } else if (lm == TT.count || (lm == -1 && !pline)) command->hit++;
 
         if (!command->lmatch[1] && !command->rmatch[1]) miss = 1;
       } 
 
       // Didn't match?
-      lm = !(command->not^!!command->hit);
+      lm = !(command->hit ^ command->not);
 
       // Deferred disable from regex end match
       if (miss || command->lmatch[1] == TT.count) command->hit = 0;
@@ -463,32 +458,28 @@ static void sed_line(char **pline, long plen)
       char *l = (c=='P') ? strchr(line, '\n') : 0;
 
       if (emit(line, l ? l-line : len, eol)) break;
-    } else if (c=='q' || c=='Q') {
+    } else if (c=='q') {
       if (pline) *pline = (void *)1;
       free(TT.nextline);
-      if (!toys.exitval && command->arg1)
-        toys.exitval = atoi(command->arg1+(char *)command);
       TT.nextline = 0;
       TT.nextlen = 0;
-      if (c=='Q') line = 0;
 
       break;
     } else if (c=='s') {
-      char *rline = line, *new = command->arg2 + (char *)command, *l2 = 0;
+      char *rline = line, *new = command->arg2 + (char *)command, *swap, *rswap;
       regmatch_t *match = (void *)toybuf;
       regex_t *reg = get_regex(command, command->arg1);
-      int mflags = 0, count = 0, l2used = 0, zmatch = 1, l2l = len, l2old = 0,
-        mlen, off, newlen;
+      int mflags = 0, count = 0, zmatch = 1, rlen = len, mlen, off, newlen;
 
-      // Loop finding match in remaining line (up to remaining len)
-      while (!regexec0(reg, rline, len-(rline-line), 10, match, mflags)) {
+      // Find match in remaining line (up to remaining len)
+      while (!regexec0(reg, rline, rlen, 10, match, mflags)) {
         mflags = REG_NOTBOL;
 
         // Zero length matches don't count immediately after a previous match
         mlen = match[0].rm_eo-match[0].rm_so;
         if (!mlen && !zmatch) {
-          if (rline-line == len) break;
-          l2[l2used++] = *rline++;
+          if (!rlen--) break;
+          rline++;
           zmatch++;
           continue;
         } else zmatch = 0;
@@ -496,9 +487,8 @@ static void sed_line(char **pline, long plen)
         // If we're replacing only a specific match, skip if this isn't it
         off = command->sflags>>3;
         if (off && off != ++count) {
-          memcpy(l2+l2used, rline, match[0].rm_eo);
-          l2used += match[0].rm_eo;
           rline += match[0].rm_eo;
+          rlen -= match[0].rm_eo;
 
           continue;
         }
@@ -519,15 +509,13 @@ static void sed_line(char **pline, long plen)
           newlen += match[cc].rm_eo-match[cc].rm_so;
         }
 
-        // Copy changed data to new string
-
-        // Adjust allocation size of new string, copy data we know we'll keep
-        l2l += newlen-mlen;
-        if ((l2l|0xfff) > l2old) l2 = xrealloc(l2, l2old = (l2l|0xfff)+1);
-        if (match[0].rm_so) {
-          memcpy(l2+l2used, rline, match[0].rm_so);
-          l2used += match[0].rm_so;
-        }
+        // Allocate new size, copy start/end around match. (Can't extend in
+        // place because backrefs may refer to text after it's overwritten.)
+        len += newlen-mlen;
+        swap = xmalloc(len+1);
+        rswap = swap+(rline-line)+match[0].rm_so;
+        memcpy(swap, line, (rline-line)+match[0].rm_so);
+        memcpy(rswap+newlen, rline+match[0].rm_eo, (rlen -= match[0].rm_eo)+1);
 
         // copy in new replacement text
         for (off = mlen = 0; new[off]; off++) {
@@ -536,38 +524,31 @@ static void sed_line(char **pline, long plen)
           if (new[off] == '\\') {
             cc = new[++off] - '0';
             if (cc<0 || cc>9) {
-              if (!(l2[l2used+mlen++] = unescape(new[off])))
-                l2[l2used+mlen-1] = new[off];
+              if (!(rswap[mlen++] = unescape(new[off])))
+                rswap[mlen-1] = new[off];
 
               continue;
             } else if (cc > reg->re_nsub) error_exit("no s//\\%d/", cc);
           } else if (new[off] != '&') {
-            l2[l2used+mlen++] = new[off];
+            rswap[mlen++] = new[off];
 
             continue;
           }
 
-          if (match[cc].rm_so != -1) {
+          if (match[cc].rm_so == -1) ll = 0; // Empty match.
+          else {
             ll = match[cc].rm_eo-match[cc].rm_so;
-            memcpy(l2+l2used+mlen, rline+match[cc].rm_so, ll);
-            mlen += ll;
+            memcpy(rswap+mlen, rline+match[cc].rm_so, ll);
           }
+          mlen += ll;
         }
-        l2used += newlen;
-        rline += match[0].rm_eo;
+
+        rline = rswap+newlen;
+        free(line);
+        line = swap;
 
         // Stop after first substitution unless we have flag g
         if (!(command->sflags & 2)) break;
-      }
-
-      // If we made any changes, finish off l2 and swap it for line
-      if (l2) {
-        // grab trailing unmatched data and null terminator, swap with original
-        mlen = len-(rline-line);
-        memcpy(l2+l2used, rline, mlen+1);
-        len = l2used + mlen;
-        free(line);
-        line = l2;
       }
 
       if (mflags) {
@@ -787,7 +768,8 @@ static void parse_pattern(char **pline, long len)
     }
     if (!*line) return;
 
-    // Start by writing data into toybuf.
+    // We start by writing data into toybuf. Later we'll allocate the
+    // ex
 
     errstart = line;
     memset(toybuf, 0, sizeof(struct sedcmd));
@@ -799,10 +781,7 @@ static void parse_pattern(char **pline, long len)
       if (*line == ',') line++;
       else if (i) break;
 
-      if (i && *line == '+' && isdigit(line[1])) {
-        line++;
-        command->lmatch[i] = -2-strtol(line, &line, 0);
-      } else if (isdigit(*line)) command->lmatch[i] = strtol(line, &line, 0);
+      if (isdigit(*line)) command->lmatch[i] = strtol(line, &line, 0);
       else if (*line == '$') {
         command->lmatch[i] = -1;
         line++;
@@ -823,18 +802,17 @@ static void parse_pattern(char **pline, long len)
     while (isspace(*line)) line++;
     if (!*line) break;
 
-    if (*line == '!') {
+    while (*line == '!') {
       command->not = 1;
       line++;
     }
     while (isspace(*line)) line++;
-    if (!*line) break;
 
     c = command->c = *(line++);
     if (strchr("}:", c) && i) break;
-    if (strchr("aiqQr=", c) && i>1) break;
+    if (strchr("aiqr=", c) && i>1) break;
 
-    // Allocate memory and copy out of toybuf now that we know how big it is
+    // Add step to pattern
     command = xmemdup(toybuf, reg-toybuf);
     reg = (reg-toybuf) + (char *)command;
 
@@ -959,7 +937,7 @@ writenow:
       if (len != strlen(s)) goto error;
       reg = extend_string((void *)&command, s, reg-(char*)command, len);
       free(s);
-    } else if (strchr("abcirtTqQw:", c)) {
+    } else if (strchr("abcirtTw:", c)) {
       int end;
 
       // trim leading spaces
@@ -970,19 +948,11 @@ writenow:
 resume_a:
       command->hit = 0;
 
-      // btTqQ: end with space or semicolon, aicrw continue to newline.
-      if (!(end = strcspn(line, strchr(":btTqQ", c) ? "}; \t\r\n\v\f" : "\n"))){
-        // Argument's optional for btTqQ
-        if (strchr("btTqQ", c)) continue;
+      // btT: end with space or semicolon, aicrw continue to newline.
+      if (!(end = strcspn(line, strchr(":btT", c) ? "}; \t\r\n\v\f" : "\n"))) {
+        // Argument's optional for btT
+        if (strchr("btT", c)) continue;
         else if (!command->arg1) break;
-      }
-      // Error checking: qQ can only have digits after them
-      if (c=='q' || c=='Q') {
-        for (i = 0; i<end && isdigit(line[i]); i++);
-        if (i != end) {
-          line += i;
-          break;
-        }
       }
 
       // Extend allocation to include new string. We use offsets instead of
@@ -1021,7 +991,7 @@ resume_a:
       } else line += end;
 
     // Commands that take no arguments
-    } else if (!strchr("{dDgGhHlnNpPx=", c)) break;
+    } else if (!strchr("{dDgGhHlnNpPqx=", c)) break;
   }
 
 error:

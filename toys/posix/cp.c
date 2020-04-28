@@ -208,7 +208,8 @@ static int cp_node(struct dirtree *try)
         if (!mkdirat(cfd, catch, try->st.st_mode | 0200) || errno == EEXIST)
           if (-1 != (try->extra = openat(cfd, catch, O_NOFOLLOW)))
             if (!fstat(try->extra, &st2) && S_ISDIR(st2.st_mode))
-              return DIRTREE_COMEAGAIN | (DIRTREE_SYMFOLLOW*!!FLAG(L));
+              return DIRTREE_COMEAGAIN
+                     | (DIRTREE_SYMFOLLOW*!!(toys.optflags&FLAG_L));
 
       // Hardlink
 
@@ -251,8 +252,7 @@ static int cp_node(struct dirtree *try)
         // make symlink, or make block/char/fifo/socket
         if (S_ISLNK(try->st.st_mode)
             ? ((i = readlinkat0(tfd, try->name, toybuf, sizeof(toybuf))) &&
-               ((!unlinkat(cfd, catch, 0) || ENOENT == errno) &&
-                !symlinkat(toybuf, cfd, catch)))
+               !symlinkat(toybuf, cfd, catch))
             : !mknodat(cfd, catch, try->st.st_mode, try->st.st_rdev))
         {
           err = 0;
@@ -278,20 +278,20 @@ static int cp_node(struct dirtree *try)
 
         // We only copy xattrs for files because there's no flistxattrat()
         if (TT.pflags&(_CP_xattr|_CP_context)) {
-          ssize_t listlen = xattr_flist(fdin, 0, 0), len;
+          ssize_t listlen = flistxattr(fdin, 0, 0), len;
           char *name, *value, *list;
 
           if (listlen>0) {
             list = xmalloc(listlen);
-            xattr_flist(fdin, list, listlen);
+            flistxattr(fdin, list, listlen);
             list[listlen-1] = 0; // I do not trust this API.
             for (name = list; name-list < listlen; name += strlen(name)+1) {
               if (!(TT.pflags&_CP_xattr) && strncmp(name, "security.", 9))
                 continue;
-              if ((len = xattr_fget(fdin, name, 0, 0))>0) {
+              if ((len = fgetxattr(fdin, name, 0, 0))>0) {
                 value = xmalloc(len);
-                if (len == xattr_fget(fdin, name, value, len))
-                  if (xattr_fset(fdout, name, value, len, 0))
+                if (len == fgetxattr(fdin, name, value, len))
+                  if (fsetxattr(fdout, name, value, len, 0))
                     perror_msg("%s setxattr(%s=%s)", catch, name, value);
                 free(value);
               }
@@ -368,18 +368,19 @@ void cp_main(void)
   char *destname = toys.optargs[--toys.optc];
   int i, destdir = !stat(destname, &TT.top) && S_ISDIR(TT.top.st_mode);
 
-  if ((toys.optc>1 || FLAG(D)) && !destdir)
+  if ((toys.optc>1 || (toys.optflags&FLAG_D)) && !destdir)
     error_exit("'%s' not directory", destname);
 
-  if (FLAG(a)||FLAG(p)) TT.pflags = _CP_mode|_CP_ownership|_CP_timestamps;
+  if (toys.optflags & (FLAG_a|FLAG_p))
+    TT.pflags = _CP_mode|_CP_ownership|_CP_timestamps;
 
   // Not using comma_args() (yet?) because interpeting as letters.
-  if (CFG_CP_PRESERVE && FLAG(preserve)) {
+  if (CFG_CP_PRESERVE && (toys.optflags & FLAG_preserve)) {
     char *pre = xstrdup(TT.c.preserve ? TT.c.preserve : "mot"), *s;
 
-    if (comma_remove(pre, "all")) TT.pflags = ~0;
+    if (comma_scan(pre, "all", 1)) TT.pflags = ~0;
     for (i=0; i<ARRAY_LEN(cp_preserve); i++)
-      while (comma_remove(pre, cp_preserve[i].name)) TT.pflags |= 1<<i;
+      if (comma_scan(pre, cp_preserve[i].name, 1)) TT.pflags |= 1<<i;
     if (*pre) {
 
       // Try to interpret as letters, commas won't set anything this doesn't.
@@ -401,19 +402,15 @@ void cp_main(void)
 
   // Loop through sources
   for (i=0; i<toys.optc; i++) {
-    char *src = toys.optargs[i], *trail = src;
+    char *src = toys.optargs[i];
     int rc = 1;
 
-    if (CFG_MV && toys.which->name[0] == 'm') {
-      while (*++trail);
-      if (*--trail == '/') *trail = 0;
-    }
-
     if (destdir) {
-      char *s = FLAG(D) ? dirname(src) : getbasename(src);
+      char *s = (toys.optflags&FLAG_D) ? getdirname(src) : getbasename(src);
 
       TT.destname = xmprintf("%s/%s", destname, s);
       if (FLAG(D)) {
+        free(s);
         if (!(s = fileunderdir(TT.destname, destname))) {
           error_msg("%s not under %s", TT.destname, destname);
           continue;
@@ -426,7 +423,7 @@ void cp_main(void)
 
     errno = EXDEV;
     if (CFG_MV && toys.which->name[0] == 'm') {
-      int force = FLAG(f), no_clobber = FLAG(n);
+      int force = toys.optflags & FLAG_f, no_clobber = toys.optflags & FLAG_n;
 
       if (!force || no_clobber) {
         struct stat st;
@@ -435,7 +432,7 @@ void cp_main(void)
         // Prompt if -i or file isn't writable.  Technically "is writable" is
         // more complicated (022 is not writeable by the owner, just everybody
         // _else_) but I don't care.
-        if (exists && (FLAG(i) || !(st.st_mode & 0222))) {
+        if (exists && ((toys.optflags & FLAG_i) || !(st.st_mode & 0222))) {
           fprintf(stderr, "%s: overwrite '%s'", toys.which->name, TT.destname);
           if (!yesno(1)) rc = 0;
           else unlink(TT.destname);
@@ -444,13 +441,12 @@ void cp_main(void)
         if (exists && no_clobber) rc = 0;
       }
       if (rc) rc = rename(src, TT.destname);
-      if (errno && !*trail) *trail = '/';
     }
 
     // Copy if we didn't mv, skipping nonexistent sources
     if (rc) {
       if (errno!=EXDEV || dirtree_flagread(src, DIRTREE_SHUTUP+
-        DIRTREE_SYMFOLLOW*!!(FLAG(H)||FLAG(L)), TT.callback))
+        DIRTREE_SYMFOLLOW*!!(toys.optflags&(FLAG_H|FLAG_L)), TT.callback))
           perror_msg("bad '%s'", src);
     }
     if (destdir) free(TT.destname);
@@ -485,8 +481,8 @@ static int install_node(struct dirtree *try)
   cp_node(try);
 
   // No -r so always one level deep, so destname as set by cp_node() is correct
-  if (FLAG(s) && xrun((char *[]){"strip", "-p", TT.destname, 0}))
-    toys.exitval = 1;
+  if (toys.optflags & FLAG_s)
+    if (xrun((char *[]){"strip", "-p", TT.destname, 0})) toys.exitval = 1;
 
   return 0;
 }
@@ -494,23 +490,23 @@ static int install_node(struct dirtree *try)
 void install_main(void)
 {
   char **ss;
+  int flags = toys.optflags;
 
   TT.uid = TT.i.o ? xgetuid(TT.i.o) : -1;
   TT.gid = TT.i.g ? xgetgid(TT.i.g) : -1;
 
-  if (FLAG(d)) {
+  if (flags & FLAG_d) {
     for (ss = toys.optargs; *ss; ss++) {
-      if (FLAG(v)) printf("%s\n", *ss);
-      if (mkpathat(AT_FDCWD, *ss, 0777, MKPATHAT_MKLAST | MKPATHAT_MAKE))
-        perror_msg_raw(*ss);
-      if (FLAG(g)||FLAG(o))
+      if (mkpathat(AT_FDCWD, *ss, 0777, MKPATHAT_MKLAST | MKPATHAT_MAKE)) perror_msg_raw(*ss);
+      if (flags & (FLAG_g|FLAG_o))
         if (lchown(*ss, TT.uid, TT.gid)) perror_msg("chown '%s'", *ss);
+      if (flags & FLAG_v) printf("%s\n", *ss);
     }
 
     return;
   }
 
-  if (FLAG(D)) {
+  if (toys.optflags & FLAG_D) {
     TT.destname = toys.optargs[toys.optc-1];
     if (mkpathat(AT_FDCWD, TT.destname, 0, MKPATHAT_MAKE))
       perror_exit("-D '%s'", TT.destname);
@@ -519,8 +515,9 @@ void install_main(void)
   if (toys.optc < 2) error_exit("needs 2 args");
 
   // Translate flags from install to cp
-  toys.optflags = cp_flag_F() + cp_flag_v()*!!FLAG(v)
-    + cp_flag_p()*!!(FLAG(p)|FLAG(o)|FLAG(g));
+  toys.optflags = cp_flag_F();
+  if (flags & FLAG_v) toys.optflags |= cp_flag_v();
+  if (flags & (FLAG_p|FLAG_o|FLAG_g)) toys.optflags |= cp_flag_p();
 
   TT.callback = install_node;
   cp_main();

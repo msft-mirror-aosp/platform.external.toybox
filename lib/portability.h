@@ -6,9 +6,6 @@
 
 // For musl
 #define _ALL_SOURCE
-#ifndef REG_STARTEND
-#define REG_STARTEND 0
-#endif
 
 #ifdef __APPLE__
 // macOS 10.13 doesn't have the POSIX 2008 direct access to timespec in
@@ -126,6 +123,8 @@ char *strcasestr(const char *haystack, const char *needle);
 #define bswap_32(x) OSSwapInt32(x)
 #define bswap_64(x) OSSwapInt64(x)
 
+int clearenv(void);
+
 #elif defined(__FreeBSD__)
 
 #include <sys/endian.h>
@@ -186,24 +185,8 @@ char *strcasestr(const char *haystack, const char *needle);
 #endif
 #endif
 
-#if defined(__APPLE__) || defined(__linux__)
-// Linux and macOS has both have getxattr and friends in <sys/xattr.h>, but
-// they aren't compatible.
+#ifndef __FreeBSD__
 #include <sys/xattr.h>
-ssize_t xattr_get(const char *, const char *, void *, size_t);
-ssize_t xattr_lget(const char *, const char *, void *, size_t);
-ssize_t xattr_fget(int fd, const char *, void *, size_t);
-ssize_t xattr_list(const char *, char *, size_t);
-ssize_t xattr_llist(const char *, char *, size_t);
-ssize_t xattr_flist(int, char *, size_t);
-ssize_t xattr_set(const char*, const char*, const void*, size_t, int);
-ssize_t xattr_lset(const char*, const char*, const void*, size_t, int);
-ssize_t xattr_fset(int, const char*, const void*, size_t, int);
-#endif
-
-// macOS doesn't have mknodat, but we can fake it.
-#ifdef __APPLE__
-int mknodat(int, const char*, mode_t, dev_t);
 #endif
 
 // Android is missing some headers and functions
@@ -267,6 +250,7 @@ pid_t xfork(void);
 // use toybox before they're ready to switch to host bionic.
 #ifdef __BIONIC__
 #include <android/log.h>
+#include <sys/system_properties.h>
 #else
 typedef enum android_LogPriority {
   ANDROID_LOG_UNKNOWN = 0,
@@ -283,11 +267,16 @@ static inline int __android_log_write(int pri, const char *tag, const char *msg)
 {
   return -1;
 }
+#define PROP_VALUE_MAX 92
+static inline int __system_property_set(const char *key, const char *value)
+{
+  return -1;
+}
 #endif
 
-// libprocessgroup is an Android platform library not included in the NDK.
-#if defined(__BIONIC__) && __has_include(<processgroup/sched_policy.h>)
-#include <processgroup/sched_policy.h>
+// libcutils is in AOSP but not Android NDK r18
+#if defined(__BIONIC__) && !defined(__ANDROID_NDK__)
+#include <cutils/sched_policy.h>
 #else
 static inline int get_sched_policy(int tid, void *policy) {return 0;}
 static inline char *get_sched_policy_name(int policy) {return "unknown";}
@@ -297,6 +286,7 @@ static inline char *get_sched_policy_name(int policy) {return "unknown";}
 // stub it out for now.
 #ifdef __ANDROID_NDK__
 #define __android_log_write(a, b, c) (0)
+#define adjtime(x, y) (0)
 #endif
 
 #ifndef SYSLOG_NAMES
@@ -316,27 +306,3 @@ int xgetrandom(void *buf, unsigned len, unsigned flags);
 #include <string.h>
 static inline void confstr(int a, char *b, int c) {strcpy(b, a ? "POSIXLY_CORRECT=1" : "/bin:/usr/bin");}
 #endif
-
-// Paper over the differences between BSD kqueue and Linux inotify for tail.
-
-struct xnotify {
-  char **paths;
-  int max, *fds, count, kq;
-};
-
-struct xnotify *xnotify_init(int max);
-int xnotify_add(struct xnotify *not, int fd, char *path);
-int xnotify_wait(struct xnotify *not, char **path);
-
-#ifdef __APPLE__
-#define f_frsize f_iosize
-#endif
-
-int sig_to_num(char *s);
-char *num_to_sig(int sig);
-
-struct signame {
-  int num;
-  char *name;
-};
-void xsignal_all_killers(void *handler);
