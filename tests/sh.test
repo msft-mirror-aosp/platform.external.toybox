@@ -32,30 +32,37 @@ shxpect "wait for <(exit)" I$'cat <(echo hello 1>&2)\n' E$'hello\n' E"$P"
 testing '-c "" exit status 0' '$SH -c "" && echo $?' '0\n' '' ''
 testing '-c args' "\$SH -c 'echo \$0,\$1,\$2,\$3' one two three four five" \
   "one,two,three,four\n" "" ""
+testing '-c args2' "\$SH -c 'echo \${10}' a b c d e f g h i j k l" "k\n" "" ""
 testing '-c arg split' \
   "$SH -c 'for i in a\"\$@\"b;do echo =\$i=;done;echo \$0' 123 456 789" \
   "=a456=\n=789b=\n123\n" "" ""
 testing '-c arg count' "$SH -c 'echo \$#' 9 8 7 6 1 2 3 4" "7\n" "" ""
 testing "exec3" '$C -c "{ exec readlink /proc/self/fd/0;} < /proc/self/exe"' \
   "$(readlink -f $C)\n" "" ""
+testing 'arg shift' "$SH -c '"'for i in "" 2 1 1 1; do echo $? $1; shift $i; done'"' one two three four five" \
+  "0 two\n0 three\n0 five\n0\n1\n" "" ""
+
+
 
 testing 'exec exitval' "$SH -c 'exec echo hello' && echo \$?" "hello\n0\n" "" ""
 testing 'simple script' '$SH input' 'input\n' 'echo $0' ''
 testing 'simple script2' '$SH ./input two;echo $?' './input+two\n42\n' \
   '\necho $0+$1\n\nexit 42' ''
-testing 'shift' "$SH -c '"'for i in "" 2 1 1 1; do echo $? $1; shift $i; done'"' one two three four five" \
-  "0 two\n0 three\n0 five\n0\n1\n" "" ""
 
 mkdir sub
 echo echo hello > sub/script
-testing 'simple script in PATH' "PATH='$PWD/sub:$PATH' $SH script" \
+testing 'simple script in $PATH' "PATH='$PWD/sub:$PATH' $SH script" \
   'hello\n' '' ''
 rm -rf sub
 
 testing "script file" "chmod +x input; ./input" "hello\n" "#!$C\necho hello" ""
 
-testing "IFS $*" "sh -c 'IFS=xy; echo \"\$*\"' one two tyree" "twoxtyree\n" \
+testing 'IFS $*' "$SH -c 'IFS=xy; echo \"\$*\"' one two tyree" "twoxtyree\n" \
   "" ""
+
+testing 'default exports' \
+  "env -i \"$(which $SH)\" --noprofile -norc -c env | sort" \
+  "PWD=$(pwd)\nSHLVL=1\n_=$(which env)\n" "" ""
 
 # Change EVAL to call sh -c for us, using "bash" explicitly for the host.
 export EVAL="$SH -c"
@@ -95,6 +102,8 @@ testing "redir10" 'echo hello 3<&3' "hello\n" "" ""
 testing "redir11" 'if :;then echo one;fi {abc}<input; cat <&$abc' \
   "one\npotato\n" "potato\n" ""
 rm -f out out2 ./-abc
+
+# expansion
 
 testing "tilde expansion" "echo ~" "$HOME\n" "" ""
 testing "tilde2" "echo ~/dir" "$HOME/dir\n" "" ""
@@ -241,9 +250,21 @@ NOSPACE=1 testing "curly brackets and pipe" \
 NOSPACE=1 testing "parentheses and pipe" \
   '(echo two;echo three)|tee blah.txt;wc blah.txt' \
   "two\nthree\n2 2 10 blah.txt\n" "" ""
-#testing "pipe into parentheses" \
-#  'echo hello | (read i <input; echo $i; read i; echo $i)' \
-#  "there\nhello\n" "there\n" ""
+testing "pipe into parentheses" \
+  'echo hello | (read i <input; echo $i; read i; echo $i)' \
+  "there\nhello\n" "there\n" ""
+
+testing "\$''" $'echo $\'abc\\\'def\\nghi\'' "abc'def\nghi\n" '' ''
+testing "shift shift" 'shift; shift; shift; echo $? hello' "1 hello\n" "" ""
+testing 'search cross $*' 'chicken() { echo ${*/b c/ghi}; }; chicken a b c d' \
+  "a b c d\n" "" ""
+testing 'eval $IFS' 'IFS=x; X=x; eval abc=a${X}b 2>/dev/null; echo $abc' \
+  "\n" '' ''
+testing '${@:3:5}' 'chicken() { for i in "${@:3:5}"; do echo =$i=; done; } ; chicken ab cd ef gh ij kl mn op qr' \
+  '=ef=\n=gh=\n=ij=\n=kl=\n=mn=\n' '' ''
+testing '${@:3:5}' 'chicken() { for i in "${*:3:5}"; do unset IFS; echo =$i=; done; } ; IFS=x chicken ab cd ef gh ij kl mn op qr' \
+  '=efxghxijxklxmn=\n' '' ''
+testing 'sequence check' 'IFS=x; X=abxcd; echo ${X/bxc/g}' 'agd\n' '' ''
 
 # TODO: The txpect plumbing does not work right yet even on TEST_HOST
 #txpect "backtick0" "$SS" "E$P" 'IX=fred; echo `echo \\\\$x`'$'\n' 'Ofred' "E$P" X0
@@ -261,8 +282,10 @@ testing 'here3' 'abc(){ cat <<< x"$@"yz;};abc one two "three  four"' \
 
 testing '${#}' 'X=abcdef; echo ${#X}' "6\n" "" ""
 
-# Race condition, can say 43.
-#testing 'SECONDS' 'SECONDS=41; sleep 1; echo $SECONDS' '42\n' '' ''
+shxpect '${/newline/}' I$'x=$\'\na\';echo ${x/\n' E'> ' I$'/b}\n' O$'ba\n' E'> '
+
+# Race condition (in bash, but not in toysh) can say 43.
+testing 'SECONDS' 'SECONDS=41; sleep 1; echo $SECONDS' '42\n' '' ''
 testing 'SECONDS2' 'readonly SECONDS; SECONDS=0; echo $SECONDS' '' '' '' # bash!
 testing 'SECONDS3' 'SECONDS=123+456; echo $SECONDS' '0\n' '' '' #bash!!
 testing 'LINENO' $'echo $LINENO\necho $LINENO' '0\n1\n' '' ''
