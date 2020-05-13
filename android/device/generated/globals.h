@@ -159,7 +159,7 @@ struct ifconfig_data {
 // toys/net/microcom.c
 
 struct microcom_data {
-  char *s;
+  long s;
 
   int fd;
   struct termios original_stdin_state, original_fd_state;
@@ -831,7 +831,7 @@ struct sh_data {
 
   // keep lineno here, we use it to work around a compiler bug
   long lineno;
-  char *ifs;
+  char *ifs, *isexec;
   struct double_list functions;
   unsigned options, jobcnt;
   int hfd, pid, varslen, shift, cdcount;
