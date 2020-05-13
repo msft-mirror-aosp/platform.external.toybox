@@ -268,14 +268,14 @@
 #undef FLAG_h
 #endif
 
-// chmod <2?vRf[-vf] <2?vRf[-vf]
+// chmod <2?vfR[-vf] <2?vfR[-vf]
 #undef OPTSTR_chmod
-#define OPTSTR_chmod "<2?vRf[-vf]"
+#define OPTSTR_chmod "<2?vfR[-vf]"
 #ifdef CLEANUP_chmod
 #undef CLEANUP_chmod
 #undef FOR_chmod
-#undef FLAG_f
 #undef FLAG_R
+#undef FLAG_f
 #undef FLAG_v
 #endif
 
@@ -1793,9 +1793,9 @@
 #undef FLAG_s
 #endif
 
-// microcom <1>1s:X <1>1s:X
+// microcom <1>1s#=115200X <1>1s#=115200X
 #undef OPTSTR_microcom
-#define OPTSTR_microcom "<1>1s:X"
+#define OPTSTR_microcom "<1>1s#=115200X"
 #ifdef CLEANUP_microcom
 #undef CLEANUP_microcom
 #undef FOR_microcom
@@ -1986,9 +1986,9 @@
 #undef FLAG_n
 #endif
 
-// netcat ^tlLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U] ^tlLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]
+// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tlLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
@@ -2004,6 +2004,7 @@
 #undef FLAG_w
 #undef FLAG_L
 #undef FLAG_l
+#undef FLAG_E
 #undef FLAG_t
 #endif
 
@@ -3725,8 +3726,8 @@
 #ifndef TT
 #define TT this.chmod
 #endif
-#define FLAG_f (1<<0)
-#define FLAG_R (1<<1)
+#define FLAG_R (1<<0)
+#define FLAG_f (1<<1)
 #define FLAG_v (1<<2)
 #endif
 
@@ -5183,7 +5184,8 @@
 #define FLAG_w (1<<9)
 #define FLAG_L (1<<10)
 #define FLAG_l (1<<11)
-#define FLAG_t (1<<12)
+#define FLAG_E (1<<12)
+#define FLAG_t (1<<13)
 #endif
 
 #ifdef FOR_netstat
