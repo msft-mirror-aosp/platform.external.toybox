@@ -1,5 +1,9 @@
-<html><head><title>toybox news</title>
+<html><head><title>toybox FAQ</title>
 <!--#include file="header.html" -->
+
+<h1>Frequently Asked Questions</h1>
+
+<h2>General Questions</h2>
 
 <ul>
 <li><h2><a href="#capitalize">Do you capitalize toybox?</a></h2></li>
@@ -7,6 +11,12 @@
 <li><h2><a href="#support_horizon">Why a 7 year support horizon?</a></h2></li>
 <li><h2><a href="#releases">Why time based releases?</a></h2></li>
 <li><h2><a href="#code">Where do I start understanding the toybox source code?</a></h2></li>
+</ul>
+
+<h2>Using toybox</h2>
+
+<ul>
+<li><h2><a href="#mkroot">How do you build a working Linux system with toybox?</a></h2></li>
 </ul>
 
 <a name="capitalize" />
@@ -67,12 +77,6 @@ hardware and distributions released up to 7 years ago, and feel ok dropping
 support for stuff older than that. (This is a little longer than Ubuntu's
 Long Term Support, but not by much.)</p>
 
-<p>If a kernel or libc feature is less than 7 years old, I try to have a
-build-time configure test for it and let the functionality cleanly drop out.
-I also keep old Ubuntu images around in VMs and perform the occasional
-defconfig build there to see what breaks. (I'm not perfect about this,
-but I accept bug reports.)</p>
-
 <p>My original theory was "4 to 5 18-month cycles of moore's law should cover
 the vast majority of the installed base of PC hardware", loosely based on some
 research I did <a href=http://www.catb.org/esr/halloween/halloween9.html#id2867629>back in 2003</a>
@@ -100,7 +104,7 @@ linear growth in hardware capabilities is
 feature is less than 7 years old, I try to have a build-time configure test
 for it and let the functionality cleanly drop out. I also keep old Ubuntu
 images around in VMs and perform the occasional defconfig build there to
-see what breaks.</p>
+see what breaks. (I'm not perfect about this, but I accept bug reports.)</p>
 
 <h2><a name="releases" />Q: Why time based releases?</h2>
 <p>A: Toybox targets quarterly releases (a similar schedule to the Linux
@@ -173,27 +177,33 @@ generated/unstripped for the debug versions), and "install" adds a bunch of
 symlinks to toybox under the various command names. Toybox determines which
 command to run based on the filename, or you can use the "toybox" name in which case the first
 argument is the command to run (ala "toybox ls -l"). <b>You can also build
-individual commands as standalone executables</b>, ala "make sed cat ls".</p>
+individual commands as standalone executables</b>, ala "make sed cat ls".
+(The "make change" target builds all of them, as in "change for a $20".)</p>
 
 <p><b>The main() function is in main.c at the top level</b>,
 along with setup plumbing and selecting which command to run this time.
-The function toybox_main() implements the "toybox" multiplexer command.</p>
+The function toybox_main() in the same file implements the "toybox"
+multiplexer command that lists and selects the other commands.</p>
 
 <p><b>The individual command implementations are under "toys"</b>, and are grouped
 into categories (mostly based on which standard they come from, posix, lsb,
 android...) The "pending" directory contains unfinished commands, and the
-"examples" directory contains examples. Commands in those two directories
-are _not_ selected by defconfig. (These days pending directory is mostly
-third party submissions that have not yet undergone proper code review.)</p>
+"examples" directory contains example code that aren't really useful commands.
+Commands in those two directories
+are _not_ selected by defconfig. (Most of the files in the pending directory
+are third party submissions that have not yet undergone
+<a href=cleanup.html>proper code review</a>.)</p>
 
 <p><b>Common infrastructure shared between commands is under "lib"</b>. Most
 commands call lib/args.c to parse their command line arguments before calling
 the command's own main() function, which uses the option string in
 the command's NEWTOY() macro. This is similar to the libc function getopt(),
-but more powerful, and is documented at the top of lib/args.c.</p>
+but more powerful, and is documented at the top of lib/args.c. A NULL option
+string prevents this code from being called for that command.</p>
 
 <p>Most of the actual <b>build/install infrastructure is shell scripts under
-"scripts"</b>. <b>These populate the "generated" directory</b> with headers
+"scripts"</b> (starting with scripts/make.sh and scripts/install.sh).
+<b>These populate the "generated" directory</b> with headers
 created from other files, which are <a href=code.html#generated>described</a>
 in the code walkthrough. All the
 build's temporary files live under generated, including the .o files built
@@ -201,7 +211,7 @@ from the .c files (in generated/obj). The "make clean" target deletes that
 directory. ("make distclean" also deletes your .config and deletes the
 kconfig binaries that process .config.)</p>
 
-<p>Each command's file contains all the information for that command, so
+<p>Each command's .c file contains all the information for that command, so
 <b>adding a command to toybox means adding a single file under "toys"</b>.
 Usually you <a href=code.html#adding>start a new command</a> by copying an
 existing command file to a new filename
@@ -209,12 +219,88 @@ existing command file to a new filename
 and toys/posix/true.c have all been used for this purpose) and then replacing
 all instances of its old name with the new name (which should match the
 new filename), and modifying the help text, argument string, and what the
-code does. You might have to "make distclean" before you new command
+code does. You might have to "make distclean" before your new command
 shows up in defconfig or menuconfig.</p>
 
-<p><b>The toybox test suite lives in the "tests" directory</b>. From the top
-level you can "make tests" to test everything, or "make test_sed" test a
-single command's standalone version (which should behave identically)
-but that's why we test.</p>
+<p><b>The toybox test suite lives in the "tests" directory</b>, and is
+driven by scripts/test.sh and scripts/runtest.sh. From the top
+level you can "make tests" to test everything, or "make test_sed" to test a
+single command's standalone version (which should behave identically,
+but that's why we test). You can set TEST_HOST=1 to test the host versionn
+instead of the toybox version (in theory they should work the same),
+and VERBOSE=1 to see diffs of the expected and actual output when a
+test fails (VERBOSE=fail to stop at the first such failure)</p>
+
+<a name="mkroot" />
+<h2>Q: How do you build a working Linux system with toybox?</h2>
+
+<p>A: To build a native chroot, "<b>make root</b>" then "<b>sudo chroot
+root/host/fs /init</b>". Type "exit" to get back out.</p>
+
+<p>You can also cross compile simple two package (toybox+linux) systems that
+boot to a shell prompt under <a href=https://qemu.org>qemu</a>, by specifying
+a target type with CROSS=
+(or setting CROSS_COMPILE= to a cross compiler prefix with optional absolute
+path), and pointing the build at a Linux kernel source directory, ala:</p>
+
+<blockquote><p><b>make root CROSS=sh4 LINUX=~/linux</b></p></blockquote>
+
+<p>Then you can <b>cd root/sh4; ./qemu-sh4.sh</b> to launch the emulator
+(you need the appropriate qemu-system-* binary installed). Type "exit"
+when done and it should shut down the emulator on the way out.</p>
+
+<p>The cross compilers I test this with are built from the musl-libc
+maintainer's
+<a href=https://github.com/richfelker/musl-cross-make>musl-cross-make</a>
+project, built by running toybox's scripts/mcm-buildall.sh in that directory,
+and then symlink the resulting "ccc" subdirectory into toybox where CROSS=
+can find them, ala:</p>
+
+<blockquote><pre>
+cd ~
+git clone https://github.com/landley/toybox
+git clone https://github.com/richfelker/musl-cross-make
+cd musl-cross-make
+../toybox/scripts/mcm-buildall.sh # this takes a while
+ln -s $(realpath ccc) ../toybox/ccc
+</pre></blockquote>
+
+<p>An unknown CROSS= should list all the available cross compilers under
+ccc. After the above musl-cross-make build and install,
+"<b>make root CROSS=help</b>" should say something like:
+<b>aarch64 armv4l armv5l armv7l armv7m armv7r i486 i686 m68k microblaze mips mips64 mipsel powerpc powerpc64 powerpc64le s390x sh2eb sh4 x32 x86_64</b>.
+(A long time ago I
+<a href=http://landley.net/aboriginal/architectures.html>tried to explain</a>
+what some of these architectures were.)</p>
+
+<p>You can build all the targets at once, and can add additonal packages
+to the build, by calling the script directly and listing packages on
+the command line:</p>
+
+<blockquote>
+<p><b>scripts/mkroot.sh CROSS=all LINUX=~/linux dropbear</b></p>
+</blockquote>
+
+<p>An example package build script (building the dropbear ssh server, adding a
+port forward from 127.0.0.1:2222 to the qemu command line, and providing a
+ssh2dropbear.sh convenience script to the output directory) is provided
+in the scripts/root directory. If you add your own scripts elsewhere, just
+give a path to them on the command line. (No, I'm not merging more package build
+scripts, I <a href=https://speakerdeck.com/landley/developing-for-non-x86-targets-using-qemu?slide=78>learned that lesson</a> long ago. But if you
+want to write your own, feel free.)</p>
+
+<p>(Note: if you don't have a <b>.config</b> it'll <b>make defconfig</b> and
+add CONFIG_SH and CONFIG_ROUTE to it. If you already have a <b>.config</b> that
+_doesn't_ have CONFIG_SH in it, you won't get a shell prompt or be able to run
+the init script without a shell. This is currently a problem because sh
+and route are still in pending and thus not in defconfig, and "make root"
+cheats when it adds them. I'm working on it. tl;dr if make root doesn't work
+"rm .config" and run it again, and all this should be fixed up in future when
+those two commands are promoted out of pending so "make defconfig" would have
+what you need anyway. It's designed to let yout tweak your config, which is
+why it uses the .config that's there when there is one, but the default is
+currently wrong because it's not quite finished yet.)</p>
+
+
 
 <!--#include file="footer.html" -->
