@@ -107,9 +107,9 @@
 #undef FLAG_i
 #endif
 
-// blkdiscard   <1>1f(force)l(length):o(offset):s(secure)z(zeroout)[!sz]
+// blkdiscard   <1>1f(force)l(length)#<0o(offset)#<0s(secure)z(zeroout)[!sz]
 #undef OPTSTR_blkdiscard
-#define OPTSTR_blkdiscard "<1>1f(force)l(length):o(offset):s(secure)z(zeroout)[!sz]"
+#define OPTSTR_blkdiscard "<1>1f(force)l(length)#<0o(offset)#<0s(secure)z(zeroout)[!sz]"
 #ifdef CLEANUP_blkdiscard
 #undef CLEANUP_blkdiscard
 #undef FOR_blkdiscard
@@ -2518,12 +2518,13 @@
 #undef FOR_runcon
 #endif
 
-// sed (help)(version)e*f*i:;nErz(null-data)[+Er] (help)(version)e*f*i:;nErz(null-data)[+Er]
+// sed (help)(version)e*f*i:;nErz(null-data)s[+Er] (help)(version)e*f*i:;nErz(null-data)s[+Er]
 #undef OPTSTR_sed
-#define OPTSTR_sed "(help)(version)e*f*i:;nErz(null-data)[+Er]"
+#define OPTSTR_sed "(help)(version)e*f*i:;nErz(null-data)s[+Er]"
 #ifdef CLEANUP_sed
 #undef CLEANUP_sed
 #undef FOR_sed
+#undef FLAG_s
 #undef FLAG_z
 #undef FLAG_r
 #undef FLAG_E
@@ -5622,15 +5623,16 @@
 #ifndef TT
 #define TT this.sed
 #endif
-#define FLAG_z (1<<0)
-#define FLAG_r (1<<1)
-#define FLAG_E (1<<2)
-#define FLAG_n (1<<3)
-#define FLAG_i (1<<4)
-#define FLAG_f (1<<5)
-#define FLAG_e (1<<6)
-#define FLAG_version (1<<7)
-#define FLAG_help (1<<8)
+#define FLAG_s (1<<0)
+#define FLAG_z (1<<1)
+#define FLAG_r (1<<2)
+#define FLAG_E (1<<3)
+#define FLAG_n (1<<4)
+#define FLAG_i (1<<5)
+#define FLAG_f (1<<6)
+#define FLAG_e (1<<7)
+#define FLAG_version (1<<8)
+#define FLAG_help (1<<9)
 #endif
 
 #ifdef FOR_sendevent
