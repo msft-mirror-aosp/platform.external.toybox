@@ -177,7 +177,7 @@ struct netcat_data {
 struct netstat_data {
   struct num_cache *inodes;
   int wpad;
-};;
+};
 
 // toys/net/ping.c
 
@@ -221,7 +221,7 @@ struct base64_data {
 // toys/other/blkdiscard.c
 
 struct blkdiscard_data {
-  char *o, *l;
+  long o, l;
 };
 
 // toys/other/blkid.c
@@ -507,11 +507,10 @@ struct bc_data {
 
 struct bootchartd_data {
   char buf[32];
-  long smpl_period_usec;
+  long msec;
   int proc_accounting;
-  int is_login;
 
-  pid_t cur_pid;
+  pid_t pid;
 };
 
 // toys/pending/brctl.c
@@ -553,7 +552,7 @@ struct dd_data {
     unsigned long long offset;
   } in, out;
   unsigned conv, iflag, oflag;
-};;
+};
 
 // toys/pending/dhcp.c
 
@@ -589,7 +588,7 @@ struct dhcp6_data {
 struct dhcpd_data {
     char *iface;
     long port;
-};;
+};
 
 // toys/pending/diff.c
 
@@ -798,7 +797,7 @@ struct more_data {
 // toys/pending/openvt.c
 
 struct openvt_data {
-  unsigned long vt_num;
+  long c;
 };
 
 // toys/pending/readelf.c
@@ -1185,7 +1184,7 @@ struct du_data {
 
 struct env_data {
   struct arg_list *u;
-};;
+};
 
 // toys/posix/expand.c
 

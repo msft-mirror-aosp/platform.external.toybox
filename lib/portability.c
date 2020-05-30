@@ -429,10 +429,21 @@ static const struct signame signames[] = {
   SIGNIFY(VTALRM), SIGNIFY(XCPU), SIGNIFY(XFSZ),
   // Non-POSIX signals that cause termination
   SIGNIFY(PROF), SIGNIFY(IO),
-#ifdef __linux__
-  SIGNIFY(STKFLT), SIGNIFY(POLL), SIGNIFY(PWR),
-#elif defined(__APPLE__)
-  SIGNIFY(EMT), SIGNIFY(INFO),
+  // signals only present/absent on some targets (mips and macos)
+#ifdef SIGEMT
+  SIGNIFY(EMT),
+#endif
+#ifdef SIGINFO
+  SIGNIFY(INFO),
+#endif
+#ifdef SIGPOLL
+  SIGNIFY(POLL),
+#endif
+#ifdef SIGPWR
+  SIGNIFY(PWR),
+#endif
+#ifdef SIGSTKFLT
+  SIGNIFY(STKFLT),
 #endif
 
   // Note: sigatexit relies on all the signals with a default disposition that
@@ -452,9 +463,9 @@ void xsignal_all_killers(void *handler)
 {
   int i;
 
-  for (i=0; signames[i].num != SIGCHLD; i++)
-    if (signames[i].num != SIGKILL)
-      xsignal(signames[i].num, handler ? exit_signal : SIG_DFL);
+  if (!handler) handler = SIG_DFL;
+  for (i = 0; signames[i].num != SIGCHLD; i++)
+    if (signames[i].num != SIGKILL) xsignal(signames[i].num, handler);
 }
 
 // Convert a string like "9", "KILL", "SIGHUP", or "SIGRTMIN+2" to a number.
