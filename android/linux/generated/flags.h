@@ -2282,7 +2282,7 @@
 #undef FLAG_0
 #endif
 
-// printf   <1?^
+// printf <1?^ <1?^
 #undef OPTSTR_printf
 #define OPTSTR_printf "<1?^"
 #ifdef CLEANUP_printf
