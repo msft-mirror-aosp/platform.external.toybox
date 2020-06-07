@@ -448,8 +448,8 @@
 #define USE_PMAP(...)
 #define CFG_PRINTENV 0
 #define USE_PRINTENV(...)
-#define CFG_PRINTF 0
-#define USE_PRINTF(...)
+#define CFG_PRINTF 1
+#define USE_PRINTF(...) __VA_ARGS__
 #define CFG_PS 1
 #define USE_PS(...) __VA_ARGS__
 #define CFG_PWDX 0
