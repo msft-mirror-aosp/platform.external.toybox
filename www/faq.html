@@ -1,5 +1,9 @@
-<html><head><title>toybox news</title>
+<html><head><title>toybox FAQ</title>
 <!--#include file="header.html" -->
+
+<h1>Frequently Asked Questions</h1>
+
+<h2>General Questions</h2>
 
 <ul>
 <li><h2><a href="#capitalize">Do you capitalize toybox?</a></h2></li>
@@ -7,6 +11,18 @@
 <li><h2><a href="#support_horizon">Why a 7 year support horizon?</a></h2></li>
 <li><h2><a href="#releases">Why time based releases?</a></h2></li>
 <li><h2><a href="#code">Where do I start understanding the toybox source code?</a></h2></li>
+</ul>
+
+<h2>Using toybox</h2>
+
+<ul>
+<!-- get binaries -->
+<li><h2><a href="#cross">How do I cross compile toybox?</h2></li>
+<li><h2><a href="#system">Where does toybox fit into the Linux/Android
+ecosystem?<br />
+(I.E. What part of the operating system does toybox provide,
+and what does it depend on?)</h2></li>
+<li><h2><a href="#mkroot">How do I build a working Linux system with toybox?</a></h2></li>
 </ul>
 
 <a name="capitalize" />
@@ -67,12 +83,6 @@ hardware and distributions released up to 7 years ago, and feel ok dropping
 support for stuff older than that. (This is a little longer than Ubuntu's
 Long Term Support, but not by much.)</p>
 
-<p>If a kernel or libc feature is less than 7 years old, I try to have a
-build-time configure test for it and let the functionality cleanly drop out.
-I also keep old Ubuntu images around in VMs and perform the occasional
-defconfig build there to see what breaks. (I'm not perfect about this,
-but I accept bug reports.)</p>
-
 <p>My original theory was "4 to 5 18-month cycles of moore's law should cover
 the vast majority of the installed base of PC hardware", loosely based on some
 research I did <a href=http://www.catb.org/esr/halloween/halloween9.html#id2867629>back in 2003</a>
@@ -100,7 +110,7 @@ linear growth in hardware capabilities is
 feature is less than 7 years old, I try to have a build-time configure test
 for it and let the functionality cleanly drop out. I also keep old Ubuntu
 images around in VMs and perform the occasional defconfig build there to
-see what breaks.</p>
+see what breaks. (I'm not perfect about this, but I accept bug reports.)</p>
 
 <h2><a name="releases" />Q: Why time based releases?</h2>
 <p>A: Toybox targets quarterly releases (a similar schedule to the Linux
@@ -173,27 +183,33 @@ generated/unstripped for the debug versions), and "install" adds a bunch of
 symlinks to toybox under the various command names. Toybox determines which
 command to run based on the filename, or you can use the "toybox" name in which case the first
 argument is the command to run (ala "toybox ls -l"). <b>You can also build
-individual commands as standalone executables</b>, ala "make sed cat ls".</p>
+individual commands as standalone executables</b>, ala "make sed cat ls".
+(The "make change" target builds all of them, as in "change for a $20".)</p>
 
 <p><b>The main() function is in main.c at the top level</b>,
 along with setup plumbing and selecting which command to run this time.
-The function toybox_main() implements the "toybox" multiplexer command.</p>
+The function toybox_main() in the same file implements the "toybox"
+multiplexer command that lists and selects the other commands.</p>
 
 <p><b>The individual command implementations are under "toys"</b>, and are grouped
 into categories (mostly based on which standard they come from, posix, lsb,
 android...) The "pending" directory contains unfinished commands, and the
-"examples" directory contains examples. Commands in those two directories
-are _not_ selected by defconfig. (These days pending directory is mostly
-third party submissions that have not yet undergone proper code review.)</p>
+"examples" directory contains example code that aren't really useful commands.
+Commands in those two directories
+are _not_ selected by defconfig. (Most of the files in the pending directory
+are third party submissions that have not yet undergone
+<a href=cleanup.html>proper code review</a>.)</p>
 
 <p><b>Common infrastructure shared between commands is under "lib"</b>. Most
 commands call lib/args.c to parse their command line arguments before calling
 the command's own main() function, which uses the option string in
 the command's NEWTOY() macro. This is similar to the libc function getopt(),
-but more powerful, and is documented at the top of lib/args.c.</p>
+but more powerful, and is documented at the top of lib/args.c. A NULL option
+string prevents this code from being called for that command.</p>
 
 <p>Most of the actual <b>build/install infrastructure is shell scripts under
-"scripts"</b>. <b>These populate the "generated" directory</b> with headers
+"scripts"</b> (starting with scripts/make.sh and scripts/install.sh).
+<b>These populate the "generated" directory</b> with headers
 created from other files, which are <a href=code.html#generated>described</a>
 in the code walkthrough. All the
 build's temporary files live under generated, including the .o files built
@@ -201,7 +217,7 @@ from the .c files (in generated/obj). The "make clean" target deletes that
 directory. ("make distclean" also deletes your .config and deletes the
 kconfig binaries that process .config.)</p>
 
-<p>Each command's file contains all the information for that command, so
+<p>Each command's .c file contains all the information for that command, so
 <b>adding a command to toybox means adding a single file under "toys"</b>.
 Usually you <a href=code.html#adding>start a new command</a> by copying an
 existing command file to a new filename
@@ -209,12 +225,260 @@ existing command file to a new filename
 and toys/posix/true.c have all been used for this purpose) and then replacing
 all instances of its old name with the new name (which should match the
 new filename), and modifying the help text, argument string, and what the
-code does. You might have to "make distclean" before you new command
+code does. You might have to "make distclean" before your new command
 shows up in defconfig or menuconfig.</p>
 
-<p><b>The toybox test suite lives in the "tests" directory</b>. From the top
-level you can "make tests" to test everything, or "make test_sed" test a
-single command's standalone version (which should behave identically)
-but that's why we test.</p>
+<p><b>The toybox test suite lives in the "tests" directory</b>, and is
+driven by scripts/test.sh and scripts/runtest.sh. From the top
+level you can "make tests" to test everything, or "make test_sed" to test a
+single command's standalone version (which should behave identically,
+but that's why we test). You can set TEST_HOST=1 to test the host versionn
+instead of the toybox version (in theory they should work the same),
+and VERBOSE=1 to see diffs of the expected and actual output when a
+test fails (VERBOSE=fail to stop at the first such failure)</p>
+
+<a name="cross" />
+<h2>Q: How do I cross compile toybox?</h2>
+
+<p>A: toybox is tested against three C libraries (bionic, musl, glibc)
+with 2 compilers (llvm, gcc). The easy way to get coverage (if not every
+combination) is:</p>
+
+<p><b>1) gcc+glibc = host toolchain</b></p>
+
+<p>Most Linux distros come with that as a host compiler, just build normally
+(<b>make distclean defconfig toybox</b>, or <b>make menuconfig</b> followed
+by <b>make</b>).</p>
+
+<p>You can use LDFLAGS=--static if you want static binaries, but static
+glibc is hugely inefficient ("hello world" is 810k on x86-64) and throws a
+zillion linker warnings because one of its previous maintainers
+<a href=https://www.akkadia.org/drepper/no_static_linking.html>was insane</a>
+(which meant at the time he refused to fix
+<a href=https://elinux.org/images/2/2d/ELC2010-gc-sections_Denys_Vlasenko.pdf>obvious bugs</a>), plus it uses dlopen() at runtime to implement basic things like
+<a href=https://stackoverflow.com/questions/15165306/compile-a-static-binary-which-code-there-a-function-gethostbyname>DNS lookup</a> (which is impossible
+to support properly from a static binary because you wind up with two
+instances of malloc() managing two heaps which corrupt as soon as a malloc()
+from one is free()d into the other), although glibc added
+<a href=https://stackoverflow.com/questions/14289488/use-dlsym-on-a-static-binary>improper support</a> which still requires the shared libraries to be
+installed on the system alongside the static binary:
+<a href=https://www.youtube.com/watch?v=Ih-3vK2qLls>in brief, avoid</a>.)
+These days glibc is maintained by a committee instead of a single
+maintainer, if you consider that an improvement.</p>
+
+<p><b>2) gcc+musl = musl-cross-make</b>
+
+<p>The cross compilers I test this with are built from the
+<a href=http://musl.libc.org/>musl-libc</a> maintainer's
+<a href=https://github.com/richfelker/musl-cross-make>musl-cross-make</a>
+project, built by running toybox's scripts/mcm-buildall.sh in that directory,
+and then symlink the resulting "ccc" subdirectory into toybox where
+"make root CROSS=" can find them, ala:</p>
+
+<blockquote><b><pre>
+cd ~
+git clone https://github.com/landley/toybox
+git clone https://github.com/richfelker/musl-cross-make
+cd musl-cross-make
+../toybox/scripts/mcm-buildall.sh # this takes a while
+ln -s $(realpath ccc) ../toybox/ccc
+</pre></b></blockquote>
+
+<p>Instead of symlinking ccc, you can specify a CROSS_COMPILE= prefix
+in the same format the Linux kernel build uses. You can either provide a
+full path in the CROSS_COMPILE string, or add the appropriate bin directory
+to your $PATH. I.E:</p>
+
+<blockquote>
+<b><p>make LDFLAGS=--static CROSS_COMPILE=~/musl-cross-make/ccc/m68k-linux-musl-cross/bin/m68k-linux-musl- distclean defconfig toybox</p></b>
+</blockquote>
+
+<p>Is equivalent to:</p>
+
+<blockquote><b><p>
+export "PATH=~/musl-cross-make/ccc/m68k-linux-musl-cross/bin:$PATH"<br />
+LDFLAGS=--static make distclean defconfig toybox CROSS=m68k-linux-musl-
+</p></b></blockquote>
+
+<p>Note: a non-static build won't run unless you install musl on your host.
+In theory you could "make root" a dynamic root filesystem with musl by copying
+the shared libraries out of the toolchain, but I haven't bothered implementing
+that yet because a static linked musl hello world is 10k on x86
+(5k if stripped).</p>
+
+<p><b>3) llvm+bionic = Android NDK</b></p>
+
+<p>The <a href=https://developer.android.com/ndk/downloads>Android
+Native Development Kit</a> provides an llvm toolchain with the bionic
+libc used by Android. To turn it into something toybox can use, you
+just have to add an appropriately prefixed "cc" symlink to the other
+prefixed tools, ala:</p>
+
+<blockquote><b><pre>
+unzip android-ndk-r21b-linux-x86_64.zip
+cd android-ndk-21b/toolchains/llvm/prebuilt/linux-x86_64/bin
+ln -s x86_64-linux-android29-clang x86_64-linux-android-cc
+PATH="$PWD:$PATH"
+cd ~/toybox
+make distclean
+make LDFLAGS=--static CROSS_COMPILE=x86_64-linux-android- defconfig toybox
+</pre></b></blockquote>
+
+<p>Again, you need a static link unless you want to install bionic on your
+host. Binaries statically linked against bionic are almost as big as with
+glibc, but at least it doesn't have the dlopen() issues.</p>
+
+<p>Unfortunately, although the resulting toybox will run a bionic-based
+chroot will not, because even "hello world" statically linked
+against bionic will segfault before calling main() if /dev/null isn't
+present, and the init script written by mkroot.sh has to run a shell linked
+against bionic in order to mount devtmpfs on /dev to provide /dev/null.</p>
+
+<a name="system" />
+<h2>Q: Where does toybox fit into the Linux/Android ecosystem?<br />
+(I.E. What part
+of the operating system does toybox provide, and what does it depend on?)</h2>
+
+<p>A: Toybox is a set of standard Linux command line
+utilities, so that three packages (a Linux kernel, C library, and toybox)
+provide a complete bootable unix-style command line system. Toybox provides a command
+shell and over a hundred different commands to call from that command shell.</p>
+
+<p>Toybox is not a complete operating system, it's a program that runs under
+an operating system. Booting a simple system to a shell prompt requires
+an kernel (such as Linux, or BSD with a Linux emulation layer)
+to drive the hardware, one or more programs for the system to run (toybox),
+and a C library ("libc") to connect them together (toybox has been tested with
+musl, uClibc, glibc, and bionic).</p>
+
+<p>The C library is delivered as part of a "toolchain", which is an integrated
+suite of compiler, assembler, and linker, plus the standard headers and
+libraries necessary to build C programs. (And miscellaneous binaries like
+nm and objdump.)</p>
+
+<p>Static linking (with the --static option) copies the shared library contents
+into the program, resulting in larger but more portable programs, which
+can run even if they're the only file in the filesystem. Otherwise,
+the "dynamically" linked programs require the shared library files to be
+present on the target system, either copied from the toolchain or built
+again from source (with potential version skew if they don't match the toolchain
+versions exactly). See
+"<a href=https://www.man7.org/linux/man-pages/man1/ldd.1.html>man ldd</a>",
+"<a href=https://www.man7.org/linux/man-pages/man8/ld.so.8.html>man ld.so</a>",
+and "<a href=https://www.man7.org/linux/man-pages/man7/libc.7.html>man libc</a>" for details.</p>
+
+<p>Toybox has a policy of requiring no external dependencies other than the
+C library for defconfig builds. You can optionally enable support for
+additional libraries in menuconfig (such as openssl, zlib, or selinux),
+but toybox either provides its own built-in versions of such functionality
+(which the libraries provide larger, more complex, often assembly optimized
+alternatives to), or allows things like selinux support to cleanly drop
+out.</p>
+
+<p>Most embedded systems will add a fourth package to the kernel/libc/cmdline
+above containing dedicated "application" that the embedded system exists to
+run, plus any other packages that application depends on.
+Build systems will add a native version of the toolchain packages so
+they can build additional software on the resulting system. Desktop systems
+will add a GUI and additional application packages like web browsers
+and video players. A linux distro like Debian would add hundreds of packages.
+Android adds around a thousand.</p>
+
+<p>But all of these systems conceptually sit on a common three-package
+"kernel/libc/cmdline" base, and toybox aims to provide a simple, reproducible,
+auditable version of the cmdline portion of that base.</p>
+
+<a name="mkroot" />
+<h2>Q: How do you build a working Linux system with toybox?</h2>
+
+<p>A: Toybox has a built-in <a href=https://github.com/landley/toybox/blob/master/scripts/mkroot.sh>system builder</a>, which has a Makefile target.
+To build a native root filesystem you can chroot into,
+"<b>make root</b>" then "<b>sudo chroot
+root/host/fs /init</b>" to enter it. Type "exit" to get back out.</p>
+
+<p>You can also cross compile simple three package (toybox+libc+linux)
+systems that boot to a shell prompt under <a href=https://qemu.org>qemu</a>,
+by specifying a target type with CROSS=
+(or setting CROSS_COMPILE= to a cross compiler prefix with optional absolute
+path), and pointing the build at a Linux kernel source directory, ala:</p>
+
+<blockquote><p><b>make root CROSS=sh4 LINUX=~/linux</b></p></blockquote>
+
+<p>Then you can <b>cd root/sh4; ./qemu-sh4.sh</b> to launch the emulator
+(you need the appropriate qemu-system-* binary installed, it'll complain
+if it can't find it). Type "exit"
+when done and it should shut down the emulator on the way out.</p>
+
+<p>The build finds the <a href=#system>three packages</a> needed to produce
+this system because 1) you're in a toybox source directory, 2) your cross
+compiler has a libc built into it, 3) you tell it where to find a Linux kernel
+source directory with LINUX= on the command line. (If you don't say LINUX=,
+it skips that part of the build and just produces a root filesystem directory.)</p>
+
+<p>The CROSS= shortcut expects a "ccc" symlink in the toybox source directory
+pointing at a directory full of cross compilers. The ones I test this with are built from the musl-libc
+maintainer's
+<a href=https://github.com/richfelker/musl-cross-make>musl-cross-make</a>
+project, built by running toybox's scripts/mcm-buildall.sh in that directory,
+and then symlink the resulting "ccc" subdirectory into toybox where CROSS=
+can find them, ala:</p>
+
+<blockquote><b><pre>
+cd ~
+git clone https://github.com/landley/toybox
+git clone https://github.com/richfelker/musl-cross-make
+cd musl-cross-make
+../toybox/scripts/mcm-buildall.sh # this takes a while
+ln -s $(realpath ccc) ../toybox/ccc
+</pre></b></blockquote>
+
+<p>If you don't want to do that, you can download <a href=http://mkroot.musl.cc/latest/>prebuilt binary versions</a> (from Zach van Rijn's site) and
+just extract them into a "ccc" subdirectory under the toybox source.</p>
+
+<p>Once you've installed the cross compilers, "<b>make root CROSS=help</b>"
+should list all the available cross compilers it recognizes under ccc,
+something like:</p>
+
+<blockquote><b><p>
+aarch64 armv4l armv5l armv7l armv7m armv7r i486 i686 m68k microblaze mips mips64 mipsel powerpc powerpc64 powerpc64le s390x sh2eb sh4 x32 x86_64
+</p></b></blockquote>
+
+
+(A long time ago I
+<a href=http://landley.net/aboriginal/architectures.html>tried to explain</a>
+what some of these architectures were.)</p>
+
+<p>You can build all the targets at once, and can add additonal packages
+to the build, by calling the script directly and listing packages on
+the command line:</p>
+
+<blockquote>
+<p><b>scripts/mkroot.sh CROSS=all LINUX=~/linux dropbear</b></p>
+</blockquote>
+
+<p>An example package build script (building the dropbear ssh server, adding a
+port forward from 127.0.0.1:2222 to the qemu command line, and providing a
+ssh2dropbear.sh convenience script to the output directory) is provided
+in the scripts/root directory. If you add your own scripts elsewhere, just
+give a path to them on the command line. (No, I'm not merging more package build
+scripts, I <a href=https://speakerdeck.com/landley/developing-for-non-x86-targets-using-qemu?slide=78>learned that lesson</a> long ago. But if you
+want to write your own, feel free.)</p>
+
+<p>(Note: currently mkroot.sh cheats. If you don't have a .config it'll
+make defconfig and add CONFIG_SH and CONFIG_ROUTE to it, because the new
+root filesystem kinda needs those commands to function properly. If you already
+have a .config that
+_doesn't_ have CONFIG_SH in it, you won't get a shell prompt or be able to run
+the init script without a shell. This is currently a problem because sh
+and route are still in pending and thus not in defconfig, so "make root"
+cheats and adds them. I'm working on it. tl;dr if make root doesn't work
+"rm .config" and run it again, and all this should be fixed up in future when
+those two commands are promoted out of pending so "make defconfig" would have
+what you need anyway. It's designed to let yout tweak your config, which is
+why it uses the .config that's there when there is one, but the default is
+currently wrong because it's not quite finished yet. All this should be
+cleaned up in a future release, before 1.0.)</p>
+
+
 
 <!--#include file="footer.html" -->

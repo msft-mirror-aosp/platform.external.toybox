@@ -17,7 +17,6 @@
 # run sufficiently isolated shell child process to get predictable results
 SS="env -i PATH=${PATH@Q} PS1='\\$ ' $SH --noediting --noprofile --norc -is"
 
-
 shxpect() {
   X="$1"
   shift
@@ -33,33 +32,50 @@ shxpect "wait for <(exit)" I$'cat <(echo hello 1>&2)\n' E$'hello\n' E"$P"
 testing '-c "" exit status 0' '$SH -c "" && echo $?' '0\n' '' ''
 testing '-c args' "\$SH -c 'echo \$0,\$1,\$2,\$3' one two three four five" \
   "one,two,three,four\n" "" ""
+testing '-c args2' "\$SH -c 'echo \${10}' a b c d e f g h i j k l" "k\n" "" ""
 testing '-c arg split' \
   "$SH -c 'for i in a\"\$@\"b;do echo =\$i=;done;echo \$0' 123 456 789" \
   "=a456=\n=789b=\n123\n" "" ""
 testing '-c arg count' "$SH -c 'echo \$#' 9 8 7 6 1 2 3 4" "7\n" "" ""
 testing "exec3" '$C -c "{ exec readlink /proc/self/fd/0;} < /proc/self/exe"' \
   "$(readlink -f $C)\n" "" ""
+testing 'arg shift' "$SH -c '"'for i in "" 2 1 1 1; do echo $? $1; shift $i; done'"' one two three four five" \
+  "0 two\n0 three\n0 five\n0\n1\n" "" ""
+testing '(subshell)' '$SH -c "(echo hello)"' 'hello\n' '' ''
+testing 'syntax' '$SH -c "if true; then echo hello | fi" 2>/dev/null || echo x'\
+  'x\n' '' ''
+
+# The bash man page is lying when it says $_ starts with an absolute path.
+ln -s $(which $SH) bash
+testing 'non-absolute $_' "./bash -c 'echo \$_'" './bash\n' '' ''
+rm bash
 
 testing 'exec exitval' "$SH -c 'exec echo hello' && echo \$?" "hello\n0\n" "" ""
 testing 'simple script' '$SH input' 'input\n' 'echo $0' ''
 testing 'simple script2' '$SH ./input two;echo $?' './input+two\n42\n' \
   '\necho $0+$1\n\nexit 42' ''
+testing '$LINENO 1' "$SH input" "1\n" 'echo $LINENO' ''
 
 mkdir sub
 echo echo hello > sub/script
-testing 'simple script in PATH' "PATH='$PWD/sub:$PATH' $SH script" \
+testing 'simple script in $PATH' "PATH='$PWD/sub:$PATH' $SH script" \
   'hello\n' '' ''
 rm -rf sub
 
 testing "script file" "chmod +x input; ./input" "hello\n" "#!$C\necho hello" ""
 
-testing "IFS $*" "sh -c 'IFS=xy; echo \"\$*\"' one two tyree" "twoxtyree\n" \
+testing 'IFS $*' "$SH -c 'IFS=xy; echo \"\$*\"' one two tyree" "twoxtyree\n" \
   "" ""
+
+testing 'default exports' \
+  "env -i \"$(which $SH)\" --noprofile --norc -c env | sort" \
+  "PWD=$(pwd)\nSHLVL=1\n_=$(which env)\n" "" ""
 
 # Change EVAL to call sh -c for us, using "bash" explicitly for the host.
 export EVAL="$SH -c"
 
 testing "smoketest" "echo hello" "hello\n" "" ""
+testing "line break" $'ec\\\nho hello' 'hello\n' '' ''
 testing "eval" "eval echo hello" "hello\n" "" ""
 testing "eval2" "eval 'echo hello'; echo $?" "hello\n0\n" "" ""
 testing "eval3" 'X="echo hello"; eval "$X"' "hello\n" "" ""
@@ -90,7 +106,12 @@ testing "redir7" "ls out /not/exist |& wc -l" "2\n" "" ""
 testing "redir8" 'echo -n $(<input)' "boing" "boing\n" ""
 shxpect "redir9" I$'echo hello > out 2>/does/not/exist\n' E E"$P" \
   I$'wc -l < out\n' O$'0\n'
+testing "redir10" 'echo hello 3<&3' "hello\n" "" ""
+testing "redir11" 'if :;then echo one;fi {abc}<input; cat <&$abc' \
+  "one\npotato\n" "potato\n" ""
 rm -f out out2 ./-abc
+
+# expansion
 
 testing "tilde expansion" "echo ~" "$HOME\n" "" ""
 testing "tilde2" "echo ~/dir" "$HOME/dir\n" "" ""
@@ -111,7 +132,14 @@ testing "bracket+tilde" "echo {~,~root}/pwd" "$HOME/pwd $EXPECT/pwd\n" "" ""
 
 #testing "backtick1" 'X=fred; echo `echo $x`' 'fred\n' "" ""
 #testing "backtick2" 'X=fred; echo `x=y; echo $x`' 'y\n' "" ""
-testing '$(( ) )' 'echo $((echo hello) | tr e x)' "hxllo\n" "" ""
+testing '$(( ) )' 'echo ab$((echo hello) | tr e x)cd' "abhxllocd\n" "" ""
+
+# Loops and flow control
+testing "case" 'for i in A C J B; do case "$i" in A) echo got A ;; B) echo and B ;; C) echo then C ;; *) echo default ;; esac; done' \
+  "got A\nthen C\ndefault\nand B\n" "" ""
+
+testing "continue" 'for i in a b c; do for j in d e f; do echo $i $j; continue 2; done; done' \
+  "a d\nb d\nc d\n" "" ""
 
 # <glinda>A variable occurred</glinda>
 
@@ -127,11 +155,17 @@ testing "leading variable assignment" 'abc=def env | grep ^abc=; echo $abc' \
 testing "leading variable assignments" \
   "abc=def ghi=jkl env | egrep '^(abc|ghi)=' | sort; echo \$abc \$ghi" \
   "abc=def\nghi=jkl\n\n" "" ""
+testing "leading assignment fail" "1blah=123 echo hello 2>/dev/null || echo no"\
+  "no\n" "" ""
 
 testing "{1..5}" "echo {1..5}" "1 2 3 4 5\n" "" ""
 testing "{5..1}" "echo {5..1}" "5 4 3 2 1\n" "" ""
 testing "{5..1..2}" "echo {5..1..2}" "5 3 1\n" "" ""
 testing "{a..z..-3}" "echo {a..z..-3}" "a d g j m p s v y\n" "" ""
+
+testing 'background pipe block' \
+  'if true; then { sleep .25;bzcat "$FILES"/blkid/ntfs.bz2; }& fi | wc -c' \
+  '8388608\n' '' ''
 
 #$ IFS=x X=xyxz; for i in abc${X}def; do echo =$i=; done
 #=abc=
@@ -234,9 +268,21 @@ NOSPACE=1 testing "curly brackets and pipe" \
 NOSPACE=1 testing "parentheses and pipe" \
   '(echo two;echo three)|tee blah.txt;wc blah.txt' \
   "two\nthree\n2 2 10 blah.txt\n" "" ""
-#testing "pipe into parentheses" \
-#  'echo hello | (read i <input; echo $i; read i; echo $i)' \
-#  "there\nhello\n" "there\n" ""
+testing "pipe into parentheses" \
+  'echo hello | (read i <input; echo $i; read i; echo $i)' \
+  "there\nhello\n" "there\n" ""
+
+testing "\$''" $'echo $\'abc\\\'def\\nghi\'' "abc'def\nghi\n" '' ''
+testing "shift shift" 'shift; shift; shift; echo $? hello' "1 hello\n" "" ""
+testing 'search cross $*' 'chicken() { echo ${*/b c/ghi}; }; chicken a b c d' \
+  "a b c d\n" "" ""
+testing 'eval $IFS' 'IFS=x; X=x; eval abc=a${X}b 2>/dev/null; echo $abc' \
+  "\n" '' ''
+testing '${@:3:5}' 'chicken() { for i in "${@:3:5}"; do echo =$i=; done; } ; chicken ab cd ef gh ij kl mn op qr' \
+  '=ef=\n=gh=\n=ij=\n=kl=\n=mn=\n' '' ''
+testing '${@:3:5}' 'chicken() { for i in "${*:3:5}"; do unset IFS; echo =$i=; done; } ; IFS=x chicken ab cd ef gh ij kl mn op qr' \
+  '=efxghxijxklxmn=\n' '' ''
+testing 'sequence check' 'IFS=x; X=abxcd; echo ${X/bxc/g}' 'agd\n' '' ''
 
 # TODO: The txpect plumbing does not work right yet even on TEST_HOST
 #txpect "backtick0" "$SS" "E$P" 'IX=fred; echo `echo \\\\$x`'$'\n' 'Ofred' "E$P" X0
@@ -253,6 +299,44 @@ testing 'here3' 'abc(){ cat <<< x"$@"yz;};abc one two "three  four"' \
   "xone two three  fouryz\n" "" ""
 
 testing '${#}' 'X=abcdef; echo ${#X}' "6\n" "" ""
+
+shxpect '${/newline/}' I$'x=$\'\na\';echo ${x/\n' E'> ' I$'/b}\n' O$'ba\n' E'> '
+
+shxpect 'line continuation' I$'echo "hello" \\\n' E'> ' I$'> blah\n' E"$P" \
+  I$'wc blah\n' O$'1 1 6 blah\n'
+shxpect 'line continuation2' I$'echo ABC\\\n' E'> ' I$'DEF\n' O$'ABCDEF\n'
+
+# Race condition (in bash, but not in toysh) can say 43.
+testing 'SECONDS' 'SECONDS=41; sleep 1; echo $SECONDS' '42\n' '' ''
+testing 'SECONDS2' 'readonly SECONDS; SECONDS=0; echo $SECONDS' '' '' '' # bash!
+testing 'SECONDS3' 'SECONDS=123+456; echo $SECONDS' '0\n' '' '' #bash!!
+testing '$LINENO 2' $'echo $LINENO\necho $LINENO' '0\n1\n' '' ''
+testing '$EUID' 'echo $EUID' "$(id -u)\n" '' ''
+testing '$UID' 'echo $UID' "$(id -ur)\n" '' ''
+
+testing 'readonly for' \
+  'readonly i; for i in one two three; do echo $i; done 2>/dev/null; echo $?' \
+  '1\n' '' ''
+testing 'readonly {}<' \
+  'readonly i; echo hello 2>/dev/null {i}</dev/null; echo $?' '1\n' '' ''
+
+testing '$_ 1' 'echo walrus; echo $_' 'walrus\nwalrus\n' '' ''
+testing '$_ 2' 'unset _; echo $_' '_\n' '' ''
+
+# wildcards
+
+touch walrus wallpapers
+testing 'IFS wildcards' \
+  'IFS=xy; ABC=abcywal*sxdef; echo $ABC | tr " " "\n" | sort' \
+  'abc\ndef\nwallpapers\nwalrus\n' '' ''
+rm -f walrus wallpapers
+
+shxpect 'IFS +(extglob)' I$'shopt -s extglob\n' E"$P" \
+  I$'IFS=x; ABC=cxd; for i in +($ABC); do echo =$i=; done\n' \
+  O$'=+(c=\n' O$'=d)=\n'
+touch abc\)d
+
+# TODO finish variable list from shell init
 
 # $# $? $- $$ $! $0
 # always exported: PWD SHLVL _

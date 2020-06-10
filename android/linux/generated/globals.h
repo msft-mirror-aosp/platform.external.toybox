@@ -159,7 +159,7 @@ struct ifconfig_data {
 // toys/net/microcom.c
 
 struct microcom_data {
-  char *s;
+  long s;
 
   int fd;
   struct termios original_stdin_state, original_fd_state;
@@ -177,7 +177,7 @@ struct netcat_data {
 struct netstat_data {
   struct num_cache *inodes;
   int wpad;
-};;
+};
 
 // toys/net/ping.c
 
@@ -216,6 +216,12 @@ struct base64_data {
   long w;
 
   unsigned total;
+};
+
+// toys/other/blkdiscard.c
+
+struct blkdiscard_data {
+  long o, l;
 };
 
 // toys/other/blkid.c
@@ -373,6 +379,13 @@ struct oneit_data {
   char *c;
 };
 
+// toys/other/rtcwake.c
+
+struct rtcwake_data {
+  long t, s;
+  char *m, *d;
+};
+
 // toys/other/setfattr.c
 
 struct setfattr_data {
@@ -494,11 +507,10 @@ struct bc_data {
 
 struct bootchartd_data {
   char buf[32];
-  long smpl_period_usec;
+  long msec;
   int proc_accounting;
-  int is_login;
 
-  pid_t cur_pid;
+  pid_t pid;
 };
 
 // toys/pending/brctl.c
@@ -540,7 +552,7 @@ struct dd_data {
     unsigned long long offset;
   } in, out;
   unsigned conv, iflag, oflag;
-};;
+};
 
 // toys/pending/dhcp.c
 
@@ -576,7 +588,7 @@ struct dhcp6_data {
 struct dhcpd_data {
     char *iface;
     long port;
-};;
+};
 
 // toys/pending/diff.c
 
@@ -785,7 +797,7 @@ struct more_data {
 // toys/pending/openvt.c
 
 struct openvt_data {
-  unsigned long vt_num;
+  long c;
 };
 
 // toys/pending/readelf.c
@@ -804,13 +816,6 @@ struct route_data {
   char *family;
 };
 
-// toys/pending/rtcwake.c
-
-struct rtcwake_data {
-  long long t, s;
-  char *m, *d;
-};
-
 // toys/pending/sh.c
 
 struct sh_data {
@@ -825,10 +830,10 @@ struct sh_data {
 
   // keep lineno here, we use it to work around a compiler bug
   long lineno;
-  char *ifs;
+  char *ifs, *isexec;
   struct double_list functions;
   unsigned options, jobcnt;
-  int hfd, pid, varlen, cdcount;
+  int hfd, pid, varslen, shift, cdcount;
   unsigned long long SECONDS;
 
   struct sh_vars {
@@ -1179,7 +1184,7 @@ struct du_data {
 
 struct env_data {
   struct arg_list *u;
-};;
+};
 
 // toys/posix/expand.c
 
@@ -1544,6 +1549,7 @@ extern union global_union {
 	struct tunctl_data tunctl;
 	struct acpi_data acpi;
 	struct base64_data base64;
+	struct blkdiscard_data blkdiscard;
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
@@ -1565,6 +1571,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct shred_data shred;
 	struct stat_data stat;
@@ -1610,7 +1617,6 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct readelf_data readelf;
 	struct route_data route;
-	struct rtcwake_data rtcwake;
 	struct sh_data sh;
 	struct stty_data stty;
 	struct sulogin_data sulogin;

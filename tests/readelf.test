@@ -104,7 +104,8 @@ Program Headers:
 " "" ""
 
 # binutils doesn't line up the column headers for 64-bit ELF files.
-NOSPACE=1 testing "-d" "readelf -dW $elf-full" "
+# TODO: binutils readelf lies about trailing NULL entires binutils ld produces
+NOSPACE=1 toyonly testing "-d" "readelf -dW $elf-full" "
 Dynamic section at offset 0xd98 contains 33 entries:
   Tag                Type                 Name/Value
  0x0000000000000001 (NEEDED)             Shared library: [libc.so]
@@ -143,7 +144,7 @@ Dynamic section at offset 0xd98 contains 33 entries:
 " "" ""
 
 # toybox does a better job of decoding Android's ELF notes than binutils.
-SKIP_HOST=1 testing "-n" "readelf -nW $elf-short" "
+toyonly testing "-n" "readelf -nW $elf-short" "
 Displaying notes found in: .note.android.ident
   Owner                 Data size	Description
   Android              0x00000004	NT_VERSION	API level 28

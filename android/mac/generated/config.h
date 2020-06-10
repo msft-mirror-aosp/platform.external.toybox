@@ -70,6 +70,8 @@
 #define USE_BASENAME(...) __VA_ARGS__
 #define CFG_BC 0
 #define USE_BC(...)
+#define CFG_BLKDISCARD 0
+#define USE_BLKDISCARD(...)
 #define CFG_BLKID 0
 #define USE_BLKID(...)
 #define CFG_BLOCKDEV 0
@@ -446,8 +448,8 @@
 #define USE_PMAP(...)
 #define CFG_PRINTENV 0
 #define USE_PRINTENV(...)
-#define CFG_PRINTF 0
-#define USE_PRINTF(...)
+#define CFG_PRINTF 1
+#define USE_PRINTF(...) __VA_ARGS__
 #define CFG_PS 0
 #define USE_PS(...)
 #define CFG_PWDX 0

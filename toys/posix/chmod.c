@@ -4,7 +4,7 @@
  *
  * See http://opengroup.org/onlinepubs/9699919799/utilities/chmod.html
 
-USE_CHMOD(NEWTOY(chmod, "<2?vRf[-vf]", TOYFLAG_BIN))
+USE_CHMOD(NEWTOY(chmod, "<2?vfR[-vf]", TOYFLAG_BIN))
 
 config CHMOD
   bool "chmod"
@@ -45,15 +45,22 @@ static int do_chmod(struct dirtree *try)
 
   if (!dirtree_notdotdot(try)) return 0;
 
-  mode = string_to_mode(TT.mode, try->st.st_mode);
-  if (toys.optflags & FLAG_v) {
-    char *s = dirtree_path(try, 0);
-    printf("chmod '%s' to %04o\n", s, mode);
-    free(s);
-  }
-  wfchmodat(dirtree_parentfd(try), try->name, mode);
+  if (FLAG(R) && try->parent && S_ISLNK(try->st.st_mode)) {
+    // Ignore symlinks found during recursion. We'll only try to modify
+    // symlinks mentioned directly as arguments. We'll fail, of course,
+    // but that's what you asked for in that case.
+  } else {
+    mode = string_to_mode(TT.mode, try->st.st_mode);
+    if (FLAG(v)) {
+      char *s = dirtree_path(try, 0);
 
-  return (toys.optflags & FLAG_R) ? DIRTREE_RECURSE : 0;
+      printf("chmod '%s' to %s\n", s, TT.mode);
+      free(s);
+    }
+    wfchmodat(dirtree_parentfd(try), try->name, mode);
+  }
+
+  return FLAG(R)*DIRTREE_RECURSE;
 }
 
 void chmod_main(void)

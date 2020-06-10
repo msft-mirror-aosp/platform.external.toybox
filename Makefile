@@ -71,6 +71,7 @@ clean::
 # If singlemake was in generated/ "make clean; make test_ls" wouldn't work.
 distclean: clean root_clean
 	@rm -f toybox* .config* .singlemake
+	@-rm root_download
 	@echo removed .config
 
 tests:
@@ -80,8 +81,7 @@ root:
 	scripts/mkroot.sh $(MAKEFLAGS)
 
 run_root:
-	C=$$(basename "$$CROSS_COMPILE" | sed 's/-.*//'); \
-        cd root/"$${C:-host}" && ./qemu-*.sh $(MAKEFLAGS) || exit 1
+	cd root/"$${CROSS:-host}" && ./qemu-*.sh
 
 help::
 	@cat scripts/help.txt

@@ -436,6 +436,29 @@ int unescape(char c)
   return (idx == -1) ? 0 : to[idx];
 }
 
+// parse next character advancing pointer. echo requires leading 0 in octal esc
+int unescape2(char **c, int echo)
+{
+  int idx = *((*c)++), i, off;
+
+  if (idx != '\\' || !**c) return idx;
+  if (**c == 'c') return 31&*(++*c);
+  for (i = 0; i<4; i++) {
+    if (sscanf(*c, (char *[]){"0%3o%n"+!echo, "x%2x%n", "u%4x%n", "U%6x%n"}[i],
+        &idx, &off))
+    {
+      *c += off;
+
+      return idx;
+    }
+  }
+
+  if (-1 == (idx = stridx("\\abeEfnrtv'\"?0", **c))) return '\\';
+  ++*c;
+
+  return "\\\a\b\033\033\f\n\r\t\v'\"?"[idx];
+}
+
 // If string ends with suffix return pointer to start of suffix in string,
 // else NULL
 char *strend(char *str, char *suffix)
@@ -867,18 +890,15 @@ void exit_signal(int sig)
 // adds the handlers to a list, to be called in order.
 void sigatexit(void *handler)
 {
+  struct arg_list *al = 0;
+
   xsignal_all_killers(handler ? exit_signal : SIG_DFL);
-
   if (handler) {
-    struct arg_list *al = xmalloc(sizeof(struct arg_list));
-
+    al = xmalloc(sizeof(struct arg_list));
     al->next = toys.xexit;
     al->arg = handler;
-    toys.xexit = al;
-  } else {
-    llist_traverse(toys.xexit, free);
-    toys.xexit = 0;
-  }
+  } else llist_traverse(toys.xexit, free);
+  toys.xexit = al;
 }
 
 // Output a nicely formatted 80-column table of all the signals.
