@@ -262,7 +262,7 @@
 
 #define HELP_i2cdetect "usage: i2cdetect [-ary] BUS [FIRST LAST]\nusage: i2cdetect -F BUS\nusage: i2cdetect -l\n\nDetect i2c devices.\n\n-a	All addresses (0x00-0x7f rather than 0x03-0x77)\n-F	Show functionality\n-l	List all buses\n-r	Probe with SMBus Read Byte\n-y	Answer \"yes\" to confirmation prompts (for script use)"
 
-#define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
+#define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc0 (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
 
 #define HELP_hexedit "usage: hexedit FILENAME\n\nHexadecimal file editor. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows        Move left/right/up/down by one line/column\nPg Up/Pg Dn   Move up/down by one page\n0-9, a-f      Change current half-byte to hexadecimal value\nu             Undo\nq/^c/^d/<esc> Quit"
 
@@ -353,6 +353,8 @@
 #define HELP_stty "usage: stty [-ag] [-F device] SETTING...\n\nGet/set terminal configuration.\n\n-F	Open device instead of stdin\n-a	Show all current settings (default differences from \"sane\")\n-g	Show all current settings usable as input to stty\n\nSpecial characters (syntax ^c or undef): intr quit erase kill eof eol eol2\nswtch start stop susp rprnt werase lnext discard\n\nControl/input/output/local settings as shown by -a, '-' prefix to disable\n\nCombo settings: cooked/raw, evenp/oddp/parity, nl, ek, sane\n\nN	set input and output speed (ispeed N or ospeed N for just one)\ncols N	set number of columns\nrows N	set number of rows\nline N	set line discipline\nmin N	set minimum chars per read\ntime N	set read timeout\nspeed	show speed only\nsize	show size only"
 
 #define HELP_shift "usage: shift [N]\n\nSkip N (default 1) positional parameters, moving $1 and friends along the list.\nDoes not affect $0."
+
+#define HELP_jobs "usage: jobs [-lnprs] [%JOB | -x COMMAND...]\n\nList running/stopped background jobs.\n\n-l Include process ID in list\n-n Show only new/changed processes\n-p Show process IDs only\n-r Show running processes\n-s Show stopped processes"
 
 #define HELP_export "usage: export [-n] [NAME[=VALUE]...]\n\nMake variables available to child processes. NAME exports existing local\nvariable(s), NAME=VALUE sets and exports.\n\n-n	Unexport. Turn listed variable(s) into local variables.\n\nWith no arguments list exported variables/attributes as \"declare\" statements."
 
