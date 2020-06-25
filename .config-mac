@@ -237,7 +237,7 @@ CONFIG_PATCH=y
 # CONFIG_PKILL is not set
 # CONFIG_PMAP is not set
 # CONFIG_PRINTENV is not set
-# CONFIG_PRINTF is not set
+CONFIG_PRINTF=y
 # CONFIG_PS is not set
 # CONFIG_PWDX is not set
 CONFIG_PWD=y
