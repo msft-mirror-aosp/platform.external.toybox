@@ -4,7 +4,7 @@ source scripts/runtest.sh
 source scripts/portability.sh
 
 TOPDIR="$PWD"
-FILES="$PWD"/tests/files
+export FILES="$PWD"/tests/files
 
 trap 'kill $(jobs -p) 2>/dev/null; exit 1' INT
 
@@ -60,3 +60,5 @@ else
     do_test "$i"
   done
 fi
+
+[ $FAILCOUNT -eq 0 ]
