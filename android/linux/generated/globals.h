@@ -861,8 +861,7 @@ struct sh_data {
     // undo redirects, a=b at start, child PID, exit status, has !, job #
     int *urd, envlen, pid, exit, not, job;
     long long when; // when job backgrounded/suspended
-// TODO struct sh_arg *raw;  // for display
-    struct sh_arg arg;
+    struct sh_arg *raw, arg;
   } *pp; // currently running process
 
   struct sh_arg jobs, *arg;  // job list, command line args for $* etc
