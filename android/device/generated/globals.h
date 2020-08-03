@@ -1517,7 +1517,7 @@ struct xargs_data {
   long s, n, P;
   char *E;
 
-  long entries, bytes;
+  long entries, bytes, np;
   char delim;
   FILE *tty;
 };
