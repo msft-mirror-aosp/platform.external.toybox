@@ -3437,9 +3437,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^E:P#optrn#<1(max-args)s#0[!0E] ^E:P#optrn#<1(max-args)s#0[!0E]
+// xargs ^E:P#<0=1optrn#<1(max-args)s#0[!0E] ^E:P#<0=1optrn#<1(max-args)s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^E:P#optrn#<1(max-args)s#0[!0E]"
+#define OPTSTR_xargs "^E:P#<0=1optrn#<1(max-args)s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
