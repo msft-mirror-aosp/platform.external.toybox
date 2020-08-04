@@ -998,15 +998,6 @@ void xparsedate(char *str, time_t *t, unsigned *nano, int endian)
     xvali_date(0, str);
   }
 
-  // Trailing Z means UTC timezone, don't expect libc to know this.
-  // (Trimming it off here means it won't show up in error messages.)
-  if ((i = strlen(str)) && toupper(str[i-1])=='Z') {
-    str[--i] = 0;
-    oldtz = getenv("TZ");
-    if (oldtz) oldtz = xstrdup(oldtz);
-    setenv("TZ", "UTC0", 1);
-  }
-
   // Try each format
   for (i = 0; i<ARRAY_LEN(formats); i++) {
     localtime_r(&now, &tm);
@@ -1014,6 +1005,7 @@ void xparsedate(char *str, time_t *t, unsigned *nano, int endian)
     tm.tm_isdst = -endian;
 
     if ((p = strptime(s, formats[i], &tm))) {
+      // Handle optional fractional seconds.
       if (*p == '.') {
         p++;
         // If format didn't already specify seconds, grab seconds
@@ -1027,6 +1019,27 @@ void xparsedate(char *str, time_t *t, unsigned *nano, int endian)
           *nano *= 10;
           if (isdigit(*p)) *nano += *p++-'0';
         }
+      }
+
+      // Handle optional Z or +HH[[:]MM] timezone
+      if (*p && strchr("Z+-", *p)) {
+        unsigned hh, mm = 0, len;
+        char *tz, sign = *p++;
+
+        if (sign == 'Z') tz = "UTC0";
+        else if (sscanf(p, "%2u%2u%n",  &hh, &mm, &len) == 2
+              || sscanf(p, "%2u%n:%2u%n", &hh, &len, &mm, &len) > 0)
+        {
+          // flip sign because POSIX UTC offsets are backwards
+          sprintf(tz = libbuf, "UTC%c%02d:%02d", "+-"[sign=='+'], hh, mm);
+          p += len;
+        } else continue;
+
+        if (!oldtz) {
+          oldtz = getenv("TZ");
+          if (oldtz) oldtz = xstrdup(oldtz);
+        }
+        setenv("TZ", tz, 1);
       }
 
       if (!*p) break;
@@ -1048,7 +1061,7 @@ char *xgetline(FILE *fp, int *len)
 
   errno = 0;
   if (1>(ll = getline(&new, &linelen, fp))) {
-    if (errno) perror_msg("getline");
+    if (errno && errno != EINTR) perror_msg("getline");
     new = 0;
   } else if (new[ll-1] == '\n') new[--ll] = 0;
   if (len) *len = ll;
