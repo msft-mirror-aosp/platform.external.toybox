@@ -398,10 +398,16 @@ static int do_find(struct dirtree *new)
       } else if (!strcmp(s, "type")) {
         if (check) {
           int types[] = {S_IFBLK, S_IFCHR, S_IFDIR, S_IFLNK, S_IFIFO,
-                         S_IFREG, S_IFSOCK}, i = stridx("bcdlpfs", *ss[1]);
+                         S_IFREG, S_IFSOCK}, i;
+          char *t = ss[1];
 
-          if (i<0) error_exit("bad -type '%c'", *ss[1]);
-          if ((new->st.st_mode & S_IFMT) != types[i]) test = 0;
+          for (; *t; t++) {
+            if (*t == ',') continue;
+            i = stridx("bcdlpfs", *t);
+            if (i<0) error_exit("bad -type '%c'", *t);
+            if ((new->st.st_mode & S_IFMT) == types[i]) break;
+          }
+          test = *t;
         }
 
       } else if (strchr("acm", *s)
