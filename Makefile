@@ -13,13 +13,11 @@ all: toybox
 
 KCONFIG_CONFIG ?= .config
 
-toybox_stuff: $(KCONFIG_CONFIG) *.[ch] lib/*.[ch] toys/*/*.c scripts/*.sh
-
-toybox generated/unstripped/toybox: toybox_stuff
+toybox generated/unstripped/toybox: $(KCONFIG_CONFIG) *.[ch] lib/*.[ch] toys/*/*.c scripts/*.sh Config.in
 	scripts/make.sh
 
 .PHONY: clean distclean baseline bloatcheck install install_flat \
-	uinstall uninstall_flat tests help toybox_stuff change \
+	uinstall uninstall_flat tests help change \
 	list list_working list_pending root run_root
 
 include kconfig/Makefile
@@ -71,7 +69,6 @@ clean::
 # If singlemake was in generated/ "make clean; make test_ls" wouldn't work.
 distclean: clean root_clean
 	@rm -f toybox* .config* .singlemake
-	@-rm root_download
 	@echo removed .config
 
 tests:
