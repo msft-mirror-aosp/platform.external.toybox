@@ -669,11 +669,9 @@ struct getty_data {
   char *host_str; 
   long timeout;
   
-  char *tty_name;  
-  int  speeds[20];
-  int  sc;              
+  char *tty_name, buff[128];
+  int speeds[20], sc;
   struct termios termios;
-  char buff[128];
 };
 
 // toys/pending/groupadd.c
@@ -1140,7 +1138,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *p, *H;
+  char *F, *H;
 };
 
 // toys/posix/cut.c
