@@ -159,14 +159,8 @@ void xprintf(char *format, ...)
 // Put string with length (does not append newline)
 void xputsl(char *s, int len)
 {
-  int out;
-
-  while (len != (out = fwrite(s, 1, len, stdout))) {
-    if (out<1) perror_exit("write");
-    len -= out;
-    s += out;
-  }
-  xflush(0);
+  xflush(1);
+  xwrite(1, s, len);
 }
 
 // xputs with no newline
