@@ -5,13 +5,15 @@
  *
  * No Standard.
 
-USE_GETTY(NEWTOY(getty, "<2t#<0H:I:l:f:iwnmLh",TOYFLAG_SBIN))
+USE_GETTY(NEWTOY(getty, "<2t#<0H:I:l:f:iwnmLh", TOYFLAG_SBIN))
 
 config GETTY
   bool "getty"
   default n
   help
     usage: getty [OPTIONS] BAUD_RATE[,BAUD_RATE]... TTY [TERMTYPE]
+
+    Wait for a modem to dial into serial port, adjust baud rate, call login.
 
     -h    Enable hardware RTS/CTS flow control
     -L    Set CLOCAL (ignore Carrier Detect state)
@@ -25,9 +27,9 @@ config GETTY
     -I INITSTR  Send INITSTR before anything else
     -H HOST    Log HOST into the utmp file as the hostname
 */
+
 #define FOR_getty
 #include "toys.h"
-#include <utmp.h>
 
 GLOBALS(
   char *issue_str;
@@ -36,11 +38,9 @@ GLOBALS(
   char *host_str; 
   long timeout;
   
-  char *tty_name;  
-  int  speeds[20];
-  int  sc;              
+  char *tty_name, buff[128];
+  int speeds[20], sc;
   struct termios termios;
-  char buff[128];
 )
 
 #define CTL(x)        ((x) ^ 0100) 
@@ -101,19 +101,6 @@ static void get_speed(char *sp)
     if (TT.speeds[TT.sc] < 0) perror_exit("bad speed");
     if (++TT.sc > 10) perror_exit("too many speeds, max is 10");
   }
-}
-
-// Parse args and set TERM env. variable
-static void parse_arguments(void)
-{
-  if (isdigit(**toys.optargs)) {
-    get_speed(*toys.optargs);
-    if (*++toys.optargs) TT.tty_name = xmprintf("%s", *toys.optargs);
-  } else {
-    TT.tty_name = xmprintf("%s", *toys.optargs);
-    if (*++toys.optargs) get_speed(*toys.optargs);
-  } 
-  if (*++toys.optargs) setenv("TERM", *toys.optargs, 1);
 }
 
 // Get controlling terminal and redirect stdio 
@@ -259,76 +246,73 @@ static int read_login_name(void)
   return 1;
 }
 
-// Put hostname entry in utmp file
 static void utmp_entry(void)
 {
-  struct utmp entry;
-  struct utmp *utp_ptr;
-  pid_t pid = getpid();
-  char *utmperr = "can't make utmp entry, host length greater than UT_HOSTSIZE(256)";
+  struct utmpx entry = {.ut_pid = getpid()}, *ep;
+  int fd;
 
-  utmpname(_PATH_UTMP);
-  setutent(); // Starts from start
-  while ((utp_ptr = getutent())) 
-    if (utp_ptr->ut_pid == pid && utp_ptr->ut_type >= INIT_PROCESS) break;
-  if (!utp_ptr) { 
-    entry.ut_type = LOGIN_PROCESS;
-    entry.ut_pid = getpid();
-    xstrncpy(entry.ut_line, ttyname(STDIN_FILENO) + 
-        strlen("/dev/"), UT_LINESIZE);
-    time((time_t *)&entry.ut_time);
-    xstrncpy(entry.ut_user, "LOGIN", UT_NAMESIZE);
-    if (strlen(TT.host_str) > UT_HOSTSIZE) perror_msg_raw(utmperr);
-    else xstrncpy(entry.ut_host, TT.host_str, UT_HOSTSIZE);
-    setutent();
-    pututline(&entry);
-    return;
+  // We're responsible for ensuring that the utmp file exists.
+  if (access(_PATH_UTMP, F_OK) && (fd = open(_PATH_UTMP, O_CREAT, 0664)) != -1)
+    close(fd);
+
+  // Find any existing entry.
+  setutxent();
+  while ((ep = getutxent()))
+    if (ep->ut_pid == entry.ut_pid && ep->ut_type >= INIT_PROCESS) break;
+  if (ep) entry = *ep;
+  else entry.ut_type = LOGIN_PROCESS;
+
+  // Modify.
+  entry.ut_tv.tv_sec = time(0);
+  xstrncpy(entry.ut_user, "LOGIN", sizeof(entry.ut_user));
+  xstrncpy(entry.ut_line, ttyname(0) + strlen("/dev/"), sizeof(entry.ut_line));
+  if (FLAG(H)) {
+    if (strlen(TT.host_str) >= sizeof(entry.ut_host))
+      perror_msg_raw("hostname too long");
+    else xstrncpy(entry.ut_host, TT.host_str, sizeof(entry.ut_host));
   }
-  xstrncpy(entry.ut_line, ttyname(STDIN_FILENO) + strlen("/dev/"), UT_LINESIZE);
-  xstrncpy(entry.ut_user, "LOGIN", UT_NAMESIZE);
-  if (strlen(TT.host_str) > UT_HOSTSIZE) perror_msg_raw(utmperr);
-  else xstrncpy(entry.ut_host, TT.host_str, UT_HOSTSIZE);
-  time((time_t *)&entry.ut_time);
-  setutent();
-  pututline(&entry);
+
+  // Write.
+  pututxline(&entry);
+  endutxent();
 }
 
 void getty_main(void)
 {
-  pid_t pid = getpid();
-  char *ptr[3] = {"/bin/login", NULL, NULL}; //2 NULLs so we can add username
+  char ch, *ptr[3] = {"/bin/login", 0, 0}; // space to add username
 
-  if (!(toys.optflags & FLAG_f)) TT.issue_str = "/etc/issue";
-  if (toys.optflags & FLAG_l) ptr[0] = TT.login_str;
-  parse_arguments();
+  if (!FLAG(f)) TT.issue_str = "/etc/issue";
+  if (FLAG(l)) ptr[0] = TT.login_str;
+
+  // parse arguments and set $TERM
+  if (isdigit(**toys.optargs)) {
+    get_speed(*toys.optargs);
+    if (*++toys.optargs) TT.tty_name = xmprintf("%s", *toys.optargs);
+  } else {
+    TT.tty_name = xmprintf("%s", *toys.optargs);
+    if (*++toys.optargs) get_speed(*toys.optargs);
+  }
+  if (*++toys.optargs) setenv("TERM", *toys.optargs, 1);
+
   open_tty();
   termios_init();
-  tcsetpgrp(STDIN_FILENO, pid);
-  if (toys.optflags & FLAG_H) utmp_entry();
-  if (toys.optflags & FLAG_I) 
-    writeall(STDOUT_FILENO,TT.init_str,strlen(TT.init_str));
-  if (toys.optflags & FLAG_m) sense_baud();
-  if (toys.optflags & FLAG_t) alarm(TT.timeout);
-  if (toys.optflags & FLAG_w) {
-    char ch;
-
-    while (readall(STDIN_FILENO, &ch, 1) != 1)  
-      if (ch == '\n' || ch == '\r') break;
-  }
-  if (!(toys.optflags & FLAG_n)) {
+  tcsetpgrp(0, getpid());
+  utmp_entry();
+  if (FLAG(I)) writeall(0, TT.init_str, strlen(TT.init_str));
+  if (FLAG(m)) sense_baud();
+  if (FLAG(t)) alarm(TT.timeout);
+  if (FLAG(w)) while (readall(0, &ch, 1) != 1)  if (ch=='\n' || ch=='\r') break;
+  if (!FLAG(n)) {
     int index = 1; // 0th we already set.
 
-    while (1) {
-      int l = read_login_name();
-
-      if (l) break;
-      index = index % TT.sc;
+    for (;;) {
+      if (read_login_name()) break;
+      index %= TT.sc;
       cfsetspeed(&TT.termios, TT.speeds[index]); // Select from multiple speeds
       //Necessary after cfsetspeed
-      if (tcsetattr(STDIN_FILENO, TCSANOW, &TT.termios) < 0) 
-        perror_exit("tcsetattr"); 
+      if (tcsetattr(0, TCSANOW, &TT.termios) < 0) perror_exit("tcsetattr");
     }
-    ptr[1]=TT.buff; //put the username in the login command line
+    ptr[1] = TT.buff; //put the username in the login command line
   }
   xexec(ptr);
 }
