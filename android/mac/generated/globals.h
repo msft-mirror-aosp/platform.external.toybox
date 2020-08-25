@@ -1067,6 +1067,14 @@ struct vi_data {
   } *slices;
 };
 
+// toys/pending/watchdog.c
+
+struct watchdog_data {
+  long T, t;
+
+  int fd;
+};
+
 // toys/pending/wget.c
 
 struct wget_data {
@@ -1442,7 +1450,7 @@ struct tail_data {
 struct tar_data {
   char *f, *C;
   struct arg_list *T, *X;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1629,6 +1637,7 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
+	struct watchdog_data watchdog;
 	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;
