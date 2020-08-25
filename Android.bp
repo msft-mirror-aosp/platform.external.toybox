@@ -521,6 +521,11 @@ cc_binary {
         "libprocessgroup",
         "libselinux",
     ],
+    dist: {
+        targets: [
+            "ndk",
+        ],
+    },
 }
 
 //###########################################
