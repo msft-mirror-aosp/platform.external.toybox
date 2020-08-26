@@ -324,6 +324,8 @@
 
 #define HELP_wget "usage: wget -O filename URL\n-O filename: specify output filename\nURL: uniform resource location, FTP/HTTP only, not HTTPS\n\nexamples:\n  wget -O index.html http://www.example.com\n  wget -O sample.jpg ftp://ftp.example.com:21/sample.jpg"
 
+#define HELP_watchdog "usage: watchdog [-F] [-t SW_TIMER_S] [-T HW_TIMER_S] DEV\n\nStart the watchdog timer at DEV with optional timeout parameters.\n\n-F	run in the foreground (do not daemonize)\n-t	software timer (in seconds)\n-T	hardware timer (in seconds)"
+
 #define HELP_vi "usage: vi [-s script] FILE\n-s script: run script file\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical."
 
 #define HELP_userdel "usage: userdel [-r] USER\nusage: deluser [-r] USER\n\nDelete USER from the SYSTEM\n\n-r	remove home directory"
@@ -488,7 +490,7 @@
 
 #define HELP_tee "usage: tee [-ai] [FILE...]\n\nCopy stdin to each listed file, and also to stdout.\nFilename \"-\" is a synonym for stdout.\n\n-a	Append to files\n-i	Ignore SIGINT"
 
-#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude    --full-time   Show seconds with -tv\n--mode MODE      Adjust modes           --mtime TIME  Override timestamps\n--owner NAME     Set file owner to NAME --group NAME  Set file group to NAME\n--sparse         Record sparse files\n--restrict       All archive contents must extract under one subdirectory\n--numeric-owner  Save/use/display uid and gid, not user/group name\n--no-recursion   Don't store directory contents"
+#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude    --full-time   Show seconds with -tv\n--mode MODE      Adjust modes           --mtime TIME  Override timestamps\n--owner NAME     Set file owner to NAME --group NAME  Set file group to NAME\n--sparse         Record sparse files\n--restrict       All archive contents must extract under one subdirectory\n--numeric-owner  Save/use/display uid and gid, not user/group name\n--no-recursion   Don't store directory contents\n-I PROG          Filter through PROG to compress or PROG -d to decompress"
 
 #define HELP_tail "usage: tail [-n|c NUMBER] [-f] [FILE...]\n\nCopy last lines from files to stdout. If no files listed, copy from\nstdin. Filename \"-\" is a synonym for stdin.\n\n-n	Output the last NUMBER lines (default 10), +X counts from start\n-c	Output the last NUMBER bytes, +NUMBER counts from start\n-f	Follow FILE(s), waiting for more data to be appended"
 

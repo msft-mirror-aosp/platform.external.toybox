@@ -327,6 +327,7 @@ CONFIG_UNIX2DOS=y
 # CONFIG_VI is not set
 # CONFIG_VMSTAT is not set
 # CONFIG_WATCH is not set
+# CONFIG_WATCHDOG is not set
 CONFIG_WC=y
 # CONFIG_WGET is not set
 CONFIG_WHICH=y
