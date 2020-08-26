@@ -669,11 +669,9 @@ struct getty_data {
   char *host_str; 
   long timeout;
   
-  char *tty_name;  
-  int  speeds[20];
-  int  sc;              
+  char *tty_name, buff[128];
+  int speeds[20], sc;
   struct termios termios;
-  char buff[128];
 };
 
 // toys/pending/groupadd.c
@@ -828,42 +826,43 @@ struct sh_data {
     } exec;
   };
 
-  // keep lineno here, we use it to work around a compiler bug
+  // keep lineno here, we use it to work around a compiler limitation
   long lineno;
   char *ifs, *isexec;
-  struct double_list functions;
   unsigned options, jobcnt;
-  int hfd, pid, varslen, shift, cdcount;
-  unsigned long long SECONDS;
+  int hfd, pid, bangpid, varslen, shift, cdcount;
+  long long SECONDS;
 
   struct sh_vars {
     long flags;
     char *str;
   } *vars;
 
-  // Running jobs for job control.
-  struct sh_job {
-    struct sh_job *next, *prev;
-    unsigned jobno;
+  // Parsed function
+  struct sh_function {
+    char *name;
+    struct sh_pipeline {  // pipeline segments
+      struct sh_pipeline *next, *prev, *end;
+      int count, here, type; // TODO abuse type to replace count during parsing
+      struct sh_arg {
+        char **v;
+        int c;
+      } arg[1];
+    } *pipeline;
+    struct double_list *expect; // should be zero at end of parsing
+  } *functions;
 
-    // Every pipeline has at least one set of arguments or it's Not A Thing
-    struct sh_arg {
-      char **v;
-      int c;
-    } pipeline;
+// TODO ctrl-Z suspend should stop script
+  struct sh_process {
+    struct sh_process *next, *prev; // | && ||
+    struct arg_list *delete;   // expanded strings
+    // undo redirects, a=b at start, child PID, exit status, has !, job #
+    int *urd, envlen, pid, exit, not, job;
+    long long when; // when job backgrounded/suspended
+    struct sh_arg *raw, arg;
+  } *pp; // currently running process
 
-    // null terminated array of running processes in pipeline
-    struct sh_process {
-      struct sh_process *next, *prev;
-      struct arg_list *delete;   // expanded strings
-      // undo redirects, a=b at start, child PID, exit status, has !
-      int *urd, envlen, pid, exit, not;
-      struct sh_arg arg;
-    } *procs, *proc;
-  } *jobs, *job;
-
-  struct sh_process *pp;
-  struct sh_arg *arg;
+  struct sh_arg jobs, *arg;  // job list, command line args for $* etc
 };
 
 // toys/pending/stty.c
@@ -1068,6 +1067,14 @@ struct vi_data {
   } *slices;
 };
 
+// toys/pending/watchdog.c
+
+struct watchdog_data {
+  long T, t;
+
+  int fd;
+};
+
 // toys/pending/wget.c
 
 struct wget_data {
@@ -1139,7 +1146,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *p, *H;
+  char *F, *H;
 };
 
 // toys/posix/cut.c
@@ -1443,7 +1450,7 @@ struct tail_data {
 struct tar_data {
   char *f, *C;
   struct arg_list *T, *X;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1516,7 +1523,7 @@ struct xargs_data {
   long s, n, P;
   char *E;
 
-  long entries, bytes;
+  long entries, bytes, np;
   char delim;
   FILE *tty;
 };
@@ -1630,6 +1637,7 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
+	struct watchdog_data watchdog;
 	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;
