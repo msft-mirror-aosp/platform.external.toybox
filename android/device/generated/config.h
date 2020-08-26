@@ -650,6 +650,8 @@
 #define USE_VMSTAT(...) __VA_ARGS__
 #define CFG_WATCH 1
 #define USE_WATCH(...) __VA_ARGS__
+#define CFG_WATCHDOG 0
+#define USE_WATCHDOG(...)
 #define CFG_WC 1
 #define USE_WC(...) __VA_ARGS__
 #define CFG_WGET 0
