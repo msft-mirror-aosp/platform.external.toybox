@@ -523,7 +523,7 @@ cc_binary {
     ],
     dist: {
         targets: [
-            "ndk",
+            "sdk",
         ],
     },
 }
