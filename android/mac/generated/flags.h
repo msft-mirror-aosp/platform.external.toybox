@@ -549,16 +549,18 @@
 #undef FLAG_Z
 #endif
 
-// demo_number   D#=3<3hdbs
+// demo_number   D#=3<3M#<0hcdbs
 #undef OPTSTR_demo_number
-#define OPTSTR_demo_number "D#=3<3hdbs"
+#define OPTSTR_demo_number "D#=3<3M#<0hcdbs"
 #ifdef CLEANUP_demo_number
 #undef CLEANUP_demo_number
 #undef FOR_demo_number
 #undef FLAG_s
 #undef FLAG_b
 #undef FLAG_d
+#undef FLAG_c
 #undef FLAG_h
+#undef FLAG_M
 #undef FLAG_D
 #endif
 
@@ -3986,8 +3988,10 @@
 #define FLAG_s (FORCED_FLAG<<0)
 #define FLAG_b (FORCED_FLAG<<1)
 #define FLAG_d (FORCED_FLAG<<2)
-#define FLAG_h (FORCED_FLAG<<3)
-#define FLAG_D (FORCED_FLAG<<4)
+#define FLAG_c (FORCED_FLAG<<3)
+#define FLAG_h (FORCED_FLAG<<4)
+#define FLAG_M (FORCED_FLAG<<5)
+#define FLAG_D (FORCED_FLAG<<6)
 #endif
 
 #ifdef FOR_demo_scankey
