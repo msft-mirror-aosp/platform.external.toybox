@@ -7,7 +7,7 @@ struct log_data {
 // toys/example/demo_number.c
 
 struct demo_number_data {
-  long D;
+  long M, D;
 };
 
 // toys/example/hello.c
@@ -1381,7 +1381,7 @@ struct ps_data {
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
-  int kcount, forcek, sortpos;
+  int kcount, forcek, sortpos, pidlen;
   int (*match_process)(long long *slot);
   void (*show_process)(void *tb);
 };

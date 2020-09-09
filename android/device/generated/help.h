@@ -62,7 +62,7 @@
 
 #define HELP_demo_scankey "usage: demo_scankey\n\nMove a letter around the screen. Hit ESC to exit."
 
-#define HELP_demo_number "usage: demo_number [-hsbi] NUMBER...\n\n-b	Use \"B\" for single byte units (HR_B)\n-d	Decimal units\n-h	Human readable\n-s	Space between number and units (HR_SPACE)"
+#define HELP_demo_number "usage: demo_number [-hsbi] [-D LEN] NUMBER...\n\n-D	output field is LEN chars\n-M	input units (index into bkmgtpe)\n-c	Comma comma down do be do down down\n-b	Use \"B\" for single byte units (HR_B)\n-d	Decimal units\n-h	Human readable\n-s	Space between number and units (HR_SPACE)"
 
 #define HELP_demo_many_options "usage: demo_many_options -[a-zA-Z]\n\nPrint the optflags value of the command arguments, in hex."
 
