@@ -223,8 +223,11 @@ void dd_main()
   bs = TT.out.offset;
   if (!(TT.oflag & _DD_oflag_seek_bytes)) bs *= TT.out.sz;
   if (bs) {
+    struct stat st;
+
     xlseek(TT.out.fd, bs, SEEK_CUR);
-    if (trunc && ftruncate(TT.out.fd, bs)) perror_exit("ftruncate");
+    if (trunc && !fstat(TT.out.fd, &st) && S_ISREG(st.st_mode)
+      && ftruncate(TT.out.fd, bs)) perror_exit("unexpected ftruncate failure");
   }
 
   unsigned long long bytes_left = TT.c_count;
