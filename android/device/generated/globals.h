@@ -869,7 +869,7 @@ struct sh_data {
 // toys/pending/stty.c
 
 struct stty_data {
-  char *device;
+  char *F;
 
   int fd, col;
   unsigned output_cols;
