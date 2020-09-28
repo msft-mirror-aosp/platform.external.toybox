@@ -826,19 +826,20 @@ struct sh_data {
     } exec;
   };
 
-  // keep lineno here, we use it to work around a compiler limitation
+  // keep lineno here: used to work around compiler limitation in run_command()
   long lineno;
   char *ifs, *isexec;
   unsigned options, jobcnt;
   int hfd, pid, bangpid, varslen, shift, cdcount;
   long long SECONDS;
 
+  // global and local variables
   struct sh_vars {
     long flags;
     char *str;
   } *vars;
 
-  // Parsed function
+  // Parsed functions
   struct sh_function {
     char *name;
     struct sh_pipeline {  // pipeline segments
@@ -868,7 +869,7 @@ struct sh_data {
 // toys/pending/stty.c
 
 struct stty_data {
-  char *device;
+  char *F;
 
   int fd, col;
   unsigned output_cols;

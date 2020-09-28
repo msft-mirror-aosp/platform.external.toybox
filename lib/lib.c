@@ -1152,29 +1152,20 @@ int human_readable_long(char *buf, unsigned long long num, int dgt, int unit,
   int style)
 {
   unsigned long long snap = 0;
-  int len, commas = 0, off, ii, divisor = (style&HR_1000) ? 1000 : 1024;
+  int len, divisor = (style&HR_1000) ? 1000 : 1024;
 
   // Divide rounding up until we have 3 or fewer digits. Since the part we
   // print is decimal, the test is 999 even when we divide by 1024.
   // The largest unit we can detect is 1<<64 = 18 Exabytes, but we added
   // Zettabyte and Yottabyte in case "unit" starts above zero.
   for (;;unit++) {
-    len = snprintf(0, 0, "%llu", num);
-    if (style&HR_COMMAS) commas = (len>4)*((len-1)/3);
-    if (len<=(dgt-commas)) break;
+    if ((len = snprintf(0, 0, "%llu", num))<=dgt) break;
     num = ((snap = num)+(divisor/2))/divisor;
   }
   if (CFG_TOYBOX_DEBUG && unit>8) return sprintf(buf, "%.*s", dgt, "TILT");
 
   len = sprintf(buf, "%llu", num);
-  if (commas) {
-    for (ii = 0; ii<commas; ii++) {
-      off = len-3*(ii+1);
-      memmove(buf+off+commas-ii, buf+off, 3);
-      buf[off+commas-ii-1] = ',';
-    }
-    len += commas;
-  } else if (unit && len == 1) {
+  if (!(style & HR_NODOT) && unit && len == 1) {
     // Redo rounding for 1.2M case, this works with and without HR_1000.
     num = snap/divisor;
     snap -= num*divisor;
