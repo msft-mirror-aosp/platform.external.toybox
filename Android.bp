@@ -521,6 +521,11 @@ cc_binary {
         "libprocessgroup",
         "libselinux",
     ],
+    dist: {
+        targets: [
+            "sdk",
+        ],
+    },
 }
 
 //###########################################
@@ -534,7 +539,7 @@ sh_test {
     test_suites: ["general-tests"],
     host_supported: true,
     device_supported: false,
-    test_config: "toybox-tests.xml",
+    require_root:true,
     data: [
         "tests/**/*",
         "scripts/runtest.sh",

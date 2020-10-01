@@ -7,7 +7,7 @@ struct log_data {
 // toys/example/demo_number.c
 
 struct demo_number_data {
-  long D;
+  long M, D;
 };
 
 // toys/example/hello.c
@@ -669,11 +669,9 @@ struct getty_data {
   char *host_str; 
   long timeout;
   
-  char *tty_name;  
-  int  speeds[20];
-  int  sc;              
+  char *tty_name, buff[128];
+  int speeds[20], sc;
   struct termios termios;
-  char buff[128];
 };
 
 // toys/pending/groupadd.c
@@ -828,19 +826,20 @@ struct sh_data {
     } exec;
   };
 
-  // keep lineno here, we use it to work around a compiler limitation
+  // keep lineno here: used to work around compiler limitation in run_command()
   long lineno;
   char *ifs, *isexec;
   unsigned options, jobcnt;
   int hfd, pid, bangpid, varslen, shift, cdcount;
   long long SECONDS;
 
+  // global and local variables
   struct sh_vars {
     long flags;
     char *str;
   } *vars;
 
-  // Parsed function
+  // Parsed functions
   struct sh_function {
     char *name;
     struct sh_pipeline {  // pipeline segments
@@ -870,7 +869,7 @@ struct sh_data {
 // toys/pending/stty.c
 
 struct stty_data {
-  char *device;
+  char *F;
 
   int fd, col;
   unsigned output_cols;
@@ -1069,6 +1068,14 @@ struct vi_data {
   } *slices;
 };
 
+// toys/pending/watchdog.c
+
+struct watchdog_data {
+  long T, t;
+
+  int fd;
+};
+
 // toys/pending/wget.c
 
 struct wget_data {
@@ -1140,7 +1147,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *p, *H;
+  char *F, *H;
 };
 
 // toys/posix/cut.c
@@ -1375,7 +1382,7 @@ struct ps_data {
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
-  int kcount, forcek, sortpos;
+  int kcount, forcek, sortpos, pidlen;
   int (*match_process)(long long *slot);
   void (*show_process)(void *tb);
 };
@@ -1444,7 +1451,7 @@ struct tail_data {
 struct tar_data {
   char *f, *C;
   struct arg_list *T, *X;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1517,7 +1524,7 @@ struct xargs_data {
   long s, n, P;
   char *E;
 
-  long entries, bytes;
+  long entries, bytes, np;
   char delim;
   FILE *tty;
 };
@@ -1631,6 +1638,7 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
+	struct watchdog_data watchdog;
 	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;

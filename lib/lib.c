@@ -445,7 +445,7 @@ int unescape2(char **c, int echo)
   if (**c == 'c') return 31&*(++*c);
   for (i = 0; i<4; i++) {
     if (sscanf(*c, (char *[]){"0%3o%n"+!echo, "x%2x%n", "u%4x%n", "U%6x%n"}[i],
-        &idx, &off))
+        &idx, &off) > 0)
     {
       *c += off;
 
@@ -901,16 +901,19 @@ void sigatexit(void *handler)
   toys.xexit = al;
 }
 
-// Output a nicely formatted 80-column table of all the signals.
+// Output a nicely formatted table of all the signals.
 void list_signals()
 {
   int i = 0, count = 0;
+  unsigned cols = 80;
   char *name;
 
+  terminal_size(&cols, 0);
+  cols /= 16;
   for (; i<=NSIG; i++) {
     if ((name = num_to_sig(i))) {
       printf("%2d) SIG%-9s", i, name);
-      if (++count % 5 == 0) putchar('\n');
+      if (++count % cols == 0) putchar('\n');
     }
   }
   putchar('\n');
@@ -1145,18 +1148,24 @@ match:
 }
 
 // display first "dgt" many digits of number plus unit (kilo-exabytes)
-int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
+int human_readable_long(char *buf, unsigned long long num, int dgt, int unit,
+  int style)
 {
   unsigned long long snap = 0;
-  int len, unit, divisor = (style&HR_1000) ? 1000 : 1024;
+  int len, divisor = (style&HR_1000) ? 1000 : 1024;
 
   // Divide rounding up until we have 3 or fewer digits. Since the part we
   // print is decimal, the test is 999 even when we divide by 1024.
-  // We can't run out of units because 1<<64 is 18 exabytes.
-  for (unit = 0; snprintf(0, 0, "%llu", num)>dgt; unit++)
+  // The largest unit we can detect is 1<<64 = 18 Exabytes, but we added
+  // Zettabyte and Yottabyte in case "unit" starts above zero.
+  for (;;unit++) {
+    if ((len = snprintf(0, 0, "%llu", num))<=dgt) break;
     num = ((snap = num)+(divisor/2))/divisor;
+  }
+  if (CFG_TOYBOX_DEBUG && unit>8) return sprintf(buf, "%.*s", dgt, "TILT");
+
   len = sprintf(buf, "%llu", num);
-  if (unit && len == 1) {
+  if (!(style & HR_NODOT) && unit && len == 1) {
     // Redo rounding for 1.2M case, this works with and without HR_1000.
     num = snap/divisor;
     snap -= num*divisor;
@@ -1166,7 +1175,7 @@ int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
   }
   if (style & HR_SPACE) buf[len++] = ' ';
   if (unit) {
-    unit = " kMGTPE"[unit];
+    unit = " kMGTPEZY"[unit];
 
     if (!(style&HR_1000)) unit = toupper(unit);
     buf[len++] = unit;
@@ -1179,7 +1188,7 @@ int human_readable_long(char *buf, unsigned long long num, int dgt, int style)
 // Give 3 digit estimate + units ala 999M or 1.7T
 int human_readable(char *buf, unsigned long long num, int style)
 {
-  return human_readable_long(buf, num, 3, style);
+  return human_readable_long(buf, num, 3, 0, style);
 }
 
 // The qsort man page says you can use alphasort, the posix committee

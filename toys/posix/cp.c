@@ -38,7 +38,7 @@ config CP
     -L	Follow all symlinks
     -l	Hard link instead of copy
     -n	No clobber (don't overwrite DEST)
-    -P	Do not follow symlinks [default]
+    -P	Do not follow symlinks
     -p	Preserve timestamps, ownership, and mode
     -R	Recurse into subdirectories (DEST must be a directory)
     -r	Synonym for -R
@@ -166,7 +166,7 @@ static int cp_node(struct dirtree *try)
         fprintf(stderr, "%s: overwrite '%s'", toys.which->name,
           s = dirtree_path(try, 0));
         free(s);
-        if (!yesno(1)) return 0;
+        if (!yesno(0)) return 0;
       }
     }
 
@@ -238,7 +238,7 @@ static int cp_node(struct dirtree *try)
 
       // Do something _other_ than copy contents of a file?
       } else if (!S_ISREG(try->st.st_mode)
-                 && (try->parent || (flags & (FLAG_a|FLAG_r))))
+                 && (try->parent || (flags & (FLAG_a|FLAG_P|FLAG_r))))
       {
         int i;
 
@@ -432,9 +432,9 @@ void cp_main(void)
         // Prompt if -i or file isn't writable.  Technically "is writable" is
         // more complicated (022 is not writeable by the owner, just everybody
         // _else_) but I don't care.
-        if (exists && (FLAG(i) || !(st.st_mode & 0222))) {
+        if (exists && (FLAG(i) || (!(st.st_mode & 0222) && isatty(0)))) {
           fprintf(stderr, "%s: overwrite '%s'", toys.which->name, TT.destname);
-          if (!yesno(1)) rc = 0;
+          if (!yesno(0)) rc = 0;
           else unlink(TT.destname);
         }
         // if -n and dest exists, don't try to rename() or copy

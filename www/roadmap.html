@@ -27,8 +27,9 @@ of Linux no matter what Ubuntu says. This doesn't mean including the full
 set of Bash 4.x functionality, but does involve {various,features} &lt(beyond)
 posix.</p>
 
-<p>See the <a href=status.html>status page</a> for the combined list
-and progress towards implementing it.</p>
+<p>See the <a href=status.html>status page</a> for the categorized command list
+and progress towards implementing it. There's also a
+<a href=todo.html>historical todo list</a> from the project's 2011 relaunch.</p>
 
 <ul>
 <li><a href=#susv4>POSIX-2008/SUSv4</a></li>
@@ -52,7 +53,7 @@ and progress towards implementing it.</p>
 <p>The best standards describe reality rather than attempting to impose a
 new one. A good standard should document, not legislate.
 Standards which document existing reality tend to be approved by
-more than one standards body, such ANSI and ISO both approving C. That's why
+more than one standards body, such ANSI and ISO both approving <a href=https://landley.net/c99-draft.html>C99</a>. That's why
 the IEEE POSIX committee's 2008 standard, the Single Unix Specification version
 4, and the Open Group Base Specification edition 7 are all the same standard
 from three sources, but most people just call it "posix" (portable operating
@@ -93,7 +94,7 @@ we have to extensively filter posix to get a useful set of recommendations.</p>
 <p>Starting with the
 <a href="http://pubs.opengroup.org/onlinepubs/9699919799.2008edition/idx/utilities.html">full "utilities" list</a>,
 we first remove generally obsolete
-commands (compess ed ex pr uncompress uccp uustat uux), commands for the
+commands (compress ed ex pr uncompress uccp uustat uux), commands for the
 pre-CVS "SCCS" source control system (admin delta get prs rmdel sact sccs unget
 val what), fortran support (asa fort77), and batch processing support (batch
 qalter qdel qhold qmove qmsg qrerun qrls qselect qsig qstat qsub).</p>
@@ -1166,15 +1167,15 @@ vigr vipw, grpconv grpunconv pwconv pwunconv, chgpasswd gpasswd)</li>
 <li><b>psmisc</b>: killall [fuser] [pstree] [peekfd] [prtstat]
 (not: pslog pstree.x11)</li>
 <li><b>inetutils</b>: dnsdomainname [ftp] hostname ifconfig ping ping6 [telnet] [tftp] [traceroute] (not: talk)</li>
-<li><b>coreutils</b>: [ base64 basename true cat chgrp chmod chown chroot comm cp cut date
-dd df dirname du echo env expand factor false fmt fold groups head id install
+<li><b>coreutils</b>: [ base64 basename true cat chgrp chmod chown chroot cksum comm cp cut date
+dd df dirname du echo env expand factor false fmt fold groups head hostid id install
 link ln logname ls md5sum mkdir mkfifo mknod mktemp mv nice nl nohup nproc od
 paste printenv printf pwd readlink realpath rm rmdir seq sha1sum shred
 sleep sort split stat sync tac tail tee test timeout touch true truncate
 tty uname uniq unlink wc who whoami yes
 [expr] [fold] [join] [numfmt] [runcon] [sha224sum] [sha256sum] [sha384sum]
 [sha512sum] [stty] [b2sum] [tr] [unexpand]
-(not: b2sum base32 basenc chcon cksum csplit dir dircolors hostid pathchk
+(not: b2sum base32 basenc chcon csplit dir dircolors pathchk
 pinky pr ptx shuf stdbuf sum tsort users vdir, see also libstdbuf)</li>
 <li><b>util-linux</b>: blkid blockdev cal chrt dmesg eject fallocate flock hwclock
 ionice kill logger losetup mcookie mkswap more mount mountpoint nsenter
