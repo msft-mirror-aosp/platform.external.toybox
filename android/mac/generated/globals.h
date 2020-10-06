@@ -811,7 +811,7 @@ struct readelf_data {
 // toys/pending/route.c
 
 struct route_data {
-  char *family;
+  char *A;
 };
 
 // toys/pending/sh.c
@@ -828,7 +828,7 @@ struct sh_data {
 
   // keep lineno here: used to work around compiler limitation in run_command()
   long lineno;
-  char *ifs, *isexec;
+  char *ifs, *isexec, *wcpat;
   unsigned options, jobcnt;
   int hfd, pid, bangpid, varslen, shift, cdcount;
   long long SECONDS;
@@ -863,7 +863,8 @@ struct sh_data {
     struct sh_arg *raw, arg;
   } *pp; // currently running process
 
-  struct sh_arg jobs, *arg;  // job list, command line args for $* etc
+  // job list, command line for $*, scratch space for do_wildcard_files()
+  struct sh_arg jobs, *arg, *wcdeck;
 };
 
 // toys/pending/stty.c
