@@ -219,47 +219,6 @@ GLOBALS(
 // leading to function loop with run->parse->run
 static int sh_run(char *new);
 
-#define BUGBUG 0
-
-// call with NULL to just dump FDs
-static void dump_state(struct sh_function *sp, int err)
-{
-  struct sh_pipeline *pl;
-  long i;
-  int q = 0, fd = open("/proc/self/fd", O_RDONLY);
-  DIR *dir = fdopendir(fd);
-  char buf[256];
-
-  if (sp && sp->expect) {
-    struct double_list *dl;
-
-    for (dl = sp->expect; dl; dl = (dl->next == sp->expect) ? 0 : dl->next)
-      dprintf(err, "expecting %s\n", dl->data);
-    if (sp->pipeline)
-      dprintf(err, "pipeline count=%d here=%d\n", sp->pipeline->prev->count,
-        sp->pipeline->prev->here);
-  }
-
-  if (sp) for (pl = sp->pipeline; pl ; pl = (pl->next == sp->pipeline) ? 0 : pl->next) {
-    dprintf(err, "<%d> type=%d argc=%d", q++, pl->type, pl->arg->c);
-    for (i = 0; i<=pl->arg->c; i++)
-      if (i == pl->arg->c) dprintf(err, " term=%s", pl->arg->v ? pl->arg->v[pl->arg->c] : "");
-      else dprintf(err, " arg[%ld]=%s", i, pl->arg->v[i]);
-    dprintf(err, "\n");
-  }
-
-  if (dir) {
-    struct dirent *dd;
-
-    while ((dd = readdir(dir))) {
-      if (atoi(dd->d_name)!=fd && 0<readlinkat(fd, dd->d_name, buf,sizeof(buf)))
-        dprintf(err, "OPEN %d: %s = %s\n", getpid(), dd->d_name, buf);
-    }
-    closedir(dir);
-  }
-  close(fd);
-}
-
 // ordered for greedy matching, so >&; becomes >& ; not > &;
 // making these const means I need to typecast the const away later to
 // avoid endless warnings.
@@ -629,7 +588,7 @@ static int save_redirect(int **rd, int from, int to)
     if ((hfd = next_hfd())==-1) return 1;
     if (hfd != dup2(to, hfd)) hfd = -1;
     else fcntl(hfd, F_SETFD, FD_CLOEXEC);
-if (BUGBUG) dprintf(255, "%d redir from=%d to=%d hfd=%d\n", getpid(), from, to, hfd);
+
     // dup "to"
     if (from >= 0 && to != dup2(from, to)) {
       if (hfd >= 0) close(hfd);
@@ -637,7 +596,6 @@ if (BUGBUG) dprintf(255, "%d redir from=%d to=%d hfd=%d\n", getpid(), from, to, 
       return 1;
     }
   } else {
-if (BUGBUG) dprintf(255, "%d schedule close %d\n", getpid(), to);
     hfd = to;
     to = -1;
   }
@@ -670,7 +628,6 @@ static int run_subshell(char *str, int len)
 {
   pid_t pid;
 
-if (BUGBUG) dprintf(255, "run_subshell %.*s\n", len, str);
   // The with-mmu path is significantly faster.
   if (CFG_TOYBOX_FORK) {
     char *s;
@@ -726,13 +683,10 @@ static void unredirect(int *urd)
 
   if (!urd) return;
 
-  for (i = 0; i<*urd; i++, rr += 2) {
-if (BUGBUG) dprintf(255, "%d urd %d %d\n", getpid(), rr[0], rr[1]);
-    if (rr[0] != -1) {
-      // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
-      dup2(rr[0], rr[1]);
-      close(rr[0]);
-    }
+  for (i = 0; i<*urd; i++, rr += 2) if (rr[0] != -1) {
+    // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
+    dup2(rr[0], rr[1]);
+    close(rr[0]);
   }
   free(urd);
 }
@@ -915,16 +869,26 @@ static int wildcard_match(char *str, int len, char *pattern, int plen,
   return best;
 }
 
-// Skip to next slash in wildcard path. Needs deck to know what [ranges] to skip
-// idx = pointer to index in deck, updated as we pass wildcards
-char *wildcard_skipslash(char *pattern, struct sh_arg *deck, int *idx)
+// skip to next slash in wildcard path, passing count active ranges.
+// start at pattern[off] and deck[*idx], return pattern pos and update *idx
+char *wildcard_path(char *pattern, int off, struct sh_arg *deck, int *idx,
+  int count)
 {
-  char *p;
-  int i = 0;
+  char *p, *old;
+  int i = 0, j = 0;
 
-  for (p = pattern; *p && *p!='/'; p++) {
-    // Skip [] and nested () ranges within deck
+  // Skip [] and nested () ranges within deck until / or NUL
+  for (p = old = pattern+off;; p++) {
+
+    if (!*p) return p;
+    while (*p=='/') {
+      old = p++;
+      j = 0;
+    }
+
+    // Got wildcard? Return if start of name if out of count, else skip [] ()
     if (*idx<deck->c && p-pattern == (long)deck->v[*idx]) {
+      if (!j++ && !count--) return old;
       ++*idx;
       if (*p=='[') p = deck->v[(*idx)++];
       else if (*p=='(') while (*++p) if (p-pattern == (long)deck->v[*idx]) {
@@ -936,8 +900,6 @@ char *wildcard_skipslash(char *pattern, struct sh_arg *deck, int *idx)
       }
     }
   }
-
-  return p;
 }
 
 // TODO ** means this directory as well as ones below it, shopt -s globstar
@@ -948,41 +910,40 @@ char *wildcard_skipslash(char *pattern, struct sh_arg *deck, int *idx)
 int do_wildcard_files(struct dirtree *node)
 {
   struct dirtree *nn;
-  char *p, *pattern = TT.wcpat;
-  int lvl, ll, rc;
+  char *pattern, *patend;
+  int lvl, ll = 0, ii = 0, rc;
   struct sh_arg ant;
 
+  if (!node->parent) return DIRTREE_RECURSE;
+
   // Find active pattern range
-  for (nn = node, lvl = ll = 0;; lvl = ll, pattern = p) {
-    p = wildcard_skipslash(pattern, TT.wcdeck, &ll);
-    if (lvl != ll && !(nn = nn->parent)) break;
-    while (*p == '/') p++;
-  }
+  for (nn = node->parent->parent; nn; nn = nn->parent) ii++;
+  pattern = wildcard_path(TT.wcpat, 0, TT.wcdeck, &ll, ii)+1;
+  lvl = ll;
+  patend = wildcard_path(TT.wcpat, pattern-TT.wcpat, TT.wcdeck, &ll, 1);
 
   // Don't include . entries unless explicitly asked for them 
-  if (*node->name == '.' && *pattern != '.') return 0;
+  if (*node->name=='.' && *pattern!='.') return 0;
 
-  // Don't descend into non-directory (called with DIRTREE_SYMFOLLOW)
-  if (*p && !S_ISDIR(node->st.st_mode) && *node->name) return 0;
+  // Don't descend into non-directory (was called with DIRTREE_SYMFOLLOW)
+  if (*patend && !S_ISDIR(node->st.st_mode) && *node->name) return 0;
 
   // match this filename from pattern to p in deck from lvl to ll
   ant.c = ll-lvl;
   ant.v = TT.wcdeck->v+lvl;
-  rc = wildcard_match(node->name, strlen(node->name), pattern,p-pattern,&ant,0);
+  for (ii = 0; ii<ant.c; ii++) TT.wcdeck->v[lvl+ii] -= pattern-TT.wcpat;
+  rc = wildcard_match(node->name, strlen(node->name), pattern, patend-pattern,
+    &ant, 0);
+  for (ii = 0; ii<ant.c; ii++) TT.wcdeck->v[lvl+ii] += pattern-TT.wcpat;
   if (rc<0 || node->name[rc]) return 0;
 
   // We matched: recurse or save
-  if (!*p) return DIRTREE_SAVE;
-  lvl = ll;
-  pattern = p;
-  while (*p && lvl == ll) {
-    p = wildcard_skipslash(p, TT.wcdeck, &ll);
-    while (*p == '/') p++;
-  }
-  if (lvl == ll) {
-    p = xmprintf("%s%s", node->name, pattern);
-    rc = faccessat(dirtree_parentfd(node), p, F_OK, AT_SYMLINK_NOFOLLOW);
-    free(p);
+  if (!*patend) return DIRTREE_SAVE;
+  if (!*wildcard_path(TT.wcpat, patend-TT.wcpat, TT.wcdeck, &ll, 0)) {
+    pattern = xmprintf("%s%s", node->name, patend);
+    rc = faccessat(dirtree_parentfd(node), pattern, F_OK, AT_SYMLINK_NOFOLLOW);
+    free(pattern);
+
     return DIRTREE_SAVE*!rc;
   }
 
@@ -1060,29 +1021,21 @@ static void wildcard_add_files(struct sh_arg *arg, char *pattern,
 {
   struct dirtree *dt;
   char *p, *pp;
-  int lvl, ll;
-
-  collect_wildcards("", 0, deck);
+  int ll = 0;
 
   // fast path: when no wildcards, add pattern verbatim
+  collect_wildcards("", 0, deck);
   if (!deck->c) return arg_add(arg, pattern);
 
-  TT.wcdeck = deck;
-  TT.wcpat = pattern;
-
   // Find leading patternless path (if any)
-  for (p = pattern, lvl = ll = 1; ; p = pp) {
-    pp = wildcard_skipslash(p, deck, &ll);
-    if (ll != lvl) break;
-    while (*pp == '/') pp++;
-  }
+  p = wildcard_path(TT.wcpat = pattern, 0, TT.wcdeck = deck, &ll, 0);
+  if ((pp = (p==pattern) ? 0 : xstrndup(pattern, p-pattern))) p++;
 
-  // Traverse
-  pp = 0;
-  dt = dirtree_flagread((p==pattern) ? 0 : (pp = xstrndup(pattern, p-pattern)),
-    DIRTREE_STATLESS|DIRTREE_SYMFOLLOW, do_wildcard_files);
+  // Traverse. If no match, save pattern verbatim.
+  dt = dirtree_flagread(pp, DIRTREE_STATLESS|DIRTREE_SYMFOLLOW,
+    do_wildcard_files);
   free(pp);
-
+  deck->c = 0;
   if (!dt) return arg_add(arg, pattern);
 
   // traverse dirtree via child and parent pointers, consuming/freeing nodes
@@ -1095,9 +1048,6 @@ static void wildcard_add_files(struct sh_arg *arg, char *pattern,
       free(pp);
     } while (dt && !dt->child);
   }
-
-  deck->c = 0;
-
 // TODO: test .*/../
 }
 
@@ -1134,8 +1084,6 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
   char cc, qq = flags&NO_QUOTE, sep[6], *new = str, *s, *ss, *ifs, *slice;
   int ii = 0, oo = 0, xx, yy, dd, jj, kk, ll, mm;
   struct sh_arg deck = {0};
-
-if (BUGBUG) dprintf(255, "expand %s\n", str);
 
   // Tilde expansion
   if (!(flags&NO_TILDE) && *str == '~') {
@@ -1413,10 +1361,10 @@ barf:
             ifs[dd] = 0;
           }
         // ${x#y} remove shortest prefix ${x##y} remove longest prefix
-        } else if (*slice=='#') {
+        } else if (strchr("#%^,", *slice)) {
           struct sh_arg wild = {0};
 
-          s = slashcopy(slice+(xx = slice[1]=='#')+1, '}', &wild);
+          s = slashcopy(slice+(xx = slice[1]==*slice)+1, '}', &wild);
           dd = wildcard_match(ifs, strlen(ifs), s, strlen(s), &wild,
             WILD_SHORT*!xx);
           free(s);
@@ -1441,7 +1389,7 @@ barf:
 
 // TODO: $((a=42)) can change var, affect lifetime
 // must replace ifs AND any previous output arg[] within pointer strlen()
-
+// also x=;echo $x${x:=4}$x
       }
 
       // Nothing left to do?
@@ -1993,15 +1941,12 @@ static struct sh_process *run_command(struct sh_arg *arg)
   struct arg_list *delete = 0;
   struct toy_list *tl;
 
-if (BUGBUG) dprintf(255, "run_command %s\n", arg->v[0]);
-
   // Count leading variable assignments
   for (envlen = 0; envlen<arg->c; envlen++) {
     s = varend(arg->v[envlen]);
     if (s == arg->v[envlen] || *s != '=') break;
   }
 
-if (BUGBUG) { int i; dprintf(255, "envlen=%d arg->c=%d run=", envlen, arg->c); for (i=0; i<arg->c; i++) dprintf(255, "'%s' ", arg->v[i]); dprintf(255, "\n"); }
   // perform assignments locally if there's no command
   if (envlen == arg->c) {
     while (jj<envlen) {
@@ -2038,7 +1983,6 @@ if (BUGBUG) { int i; dprintf(255, "envlen=%d arg->c=%d run=", envlen, arg->c); f
 
   // expand arguments and perform redirects
   pp = expand_redir(arg, envlen, 0);
-if (BUGBUG) { int i; dprintf(255, "cooked arg->c=%d run=", arg->c); for (i=0; i<pp->arg.c; i++) dprintf(255, "'%s' ", pp->arg.v[i]); dprintf(255, "\n"); }
 
   // Do nothing if nothing to do
   if (pp->exit || !pp->arg.v);
@@ -2193,8 +2137,6 @@ static int parse_line(char *line, struct sh_function *sp)
       pl->count = 0;
       arg = pl->arg;
 
-if (BUGBUG>1) dprintf(255, "{%d:%s}\n", pl->type, ex ? ex : (sp->expect ? "*" : ""));
-
       // find arguments of the form [{n}]<<[-] with another one after it
       for (i = 0; i<arg->c; i++) {
         s = arg->v[i] + redir_prefix(arg->v[i]);
@@ -2228,7 +2170,6 @@ if (BUGBUG>1) dprintf(255, "{%d:%s}\n", pl->type, ex ? ex : (sp->expect ? "*" : 
     // Parse next word and detect overflow (too many nested quotes).
     if ((end = parse_word(start, 0, 0)) == (void *)1) goto flush;
 
-if (BUGBUG>1) dprintf(255, "[%d:%.*s:%s] ", pl ? pl->type : 0, end ? (int)(end-start) : 0, start, ex ? : "");
     // Is this a new pipeline segment?
     if (!pl) pl = add_pl(sp, &arg);
 
@@ -2714,7 +2655,6 @@ TODO: a | b | c needs subshell for builtins?
       if (pipe_segments(ctl, pipes, &urd)) break;
     }
 
-if (BUGBUG) dprintf(255, "%d runtype=%d %s %s\n", getpid(), pl->type, s, ctl);
     // Is this an executable segment?
     if (!pl->type) {
 
@@ -3143,8 +3083,6 @@ void sh_main(void)
 
   // if (!FLAG(noprofile)) { }
 
-if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); if (fd == -1) fd = open("/dev/console", O_RDWR); if (fd == -1) dup2(2, 255); else dup2(fd, 255); close(fd); }
-
   // Is this an interactive shell?
   if (FLAG(s) || (!FLAG(c) && !toys.optc)) TT.options |= OPT_S;
   if (FLAG(i) || (!FLAG(c) && (TT.options&OPT_S) && isatty(0)))
@@ -3195,7 +3133,6 @@ if (BUGBUG) { int fd = open("/dev/tty", O_RDWR); if (fd == -1) fd = open("/dev/c
 // SIGSTOP and SIGTSTP need need SA_RESTART, but child proc should stop
     }
 
-if (BUGBUG) dprintf(255, "line=%s\n", new);
     if (sl) {
       if (*new == 0x7f) error_exit("'%s' is ELF", sl->str);
       free(sl);
@@ -3204,9 +3141,7 @@ if (BUGBUG) dprintf(255, "line=%s\n", new);
 // TODO if (!isspace(*new)) add_to_history(line);
 
     // returns 0 if line consumed, command if it needs more data
-    prompt = parse_line(new, &scratch);
-if (BUGBUG) dprintf(255, "prompt=%d\n", prompt), dump_state(&scratch, 255);
-    if (prompt != 1) {
+    if (1 != (prompt = parse_line(new, &scratch))) {
 // TODO: ./blah.sh one two three: put one two three in scratch.arg
       if (!prompt) run_function(scratch.pipeline);
       free_function(&scratch);
