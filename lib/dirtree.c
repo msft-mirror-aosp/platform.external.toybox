@@ -52,13 +52,13 @@ struct dirtree *dirtree_add_node(struct dirtree *parent, char *name, int flags)
   }
 
   // Allocate/populate return structure
-  dt = xmalloc((len = sizeof(struct dirtree)+len+1)+linklen);
-  memset(dt, 0, statless ? offsetof(struct dirtree, again)
-    : offsetof(struct dirtree, st));
+  memset(dt = xmalloc((len = sizeof(struct dirtree)+len+1)+linklen), 0,
+    statless ? sizeof(struct dirtree) : offsetof(struct dirtree, st));
   dt->parent = parent;
   dt->again = statless ? 2 : 0;
   if (!statless) memcpy(&dt->st, &st, sizeof(struct stat));
-  strcpy(dt->name, name ? name : "");
+  if (name) strcpy(dt->name, name);
+  else *dt->name = 0, dt->st.st_mode = S_IFDIR;
   if (linklen) dt->symlink = memcpy(len+(char *)dt, libbuf, linklen);
 
   return dt;
@@ -75,7 +75,7 @@ error:
   return 0;
 }
 
-// Return path to this node, assembled recursively.
+// Return path to this node.
 
 // Initial call can pass in NULL to plen, or point to an int initialized to 0
 // to return the length of the path, or a value greater than 0 to allocate
@@ -87,8 +87,9 @@ char *dirtree_path(struct dirtree *node, int *plen)
   char *path;
   int ii, ll, len;
 
-  if (!node->parent) return xstrdup(node->name);
   ll = len = plen ? *plen : 0;
+  if (!node->parent)
+    return strcpy(xmalloc(strlen(node->name)+ll+1), node->name);
   for (nn = node; nn; nn = nn->parent)
     if ((ii = strlen(nn->name))) len += ii+1-(nn->name[ii-1]=='/');
   if (plen) *plen = len;
@@ -142,10 +143,12 @@ int dirtree_recurse(struct dirtree *node,
 {
   struct dirtree *new, **ddt = &(node->child);
   struct dirent *entry;
-  DIR *dir;
+  DIR *dir = 0;
 
-  node->dirfd = dirfd;
-  if (node->dirfd == -1 || !(dir = fdopendir(node->dirfd))) {
+  // Why doesn't fdopendir() support AT_FDCWD?
+  if (AT_FDCWD == (node->dirfd = dirfd)) dir = opendir(".");
+  else if (node->dirfd != -1) dir = fdopendir(node->dirfd);
+  if (!dir) {
     if (!(flags & DIRTREE_SHUTUP)) {
       char *path = dirtree_path(node, 0);
       perror_msg_raw(path);
