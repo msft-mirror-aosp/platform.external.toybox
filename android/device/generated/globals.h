@@ -392,6 +392,13 @@ struct setfattr_data {
   char *x, *v, *n;
 };
 
+// toys/other/sha3sum.c
+
+struct sha3sum_data {
+  long a;
+  unsigned long long rc[24];
+};
+
 // toys/other/shred.c
 
 struct shred_data {
@@ -1582,6 +1589,7 @@ extern union global_union {
 	struct oneit_data oneit;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
+	struct sha3sum_data sha3sum;
 	struct shred_data shred;
 	struct stat_data stat;
 	struct swapon_data swapon;
