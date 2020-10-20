@@ -518,6 +518,8 @@
 #define USE_SHA224SUM(...) __VA_ARGS__
 #define CFG_SHA256SUM 1
 #define USE_SHA256SUM(...) __VA_ARGS__
+#define CFG_SHA3SUM 0
+#define USE_SHA3SUM(...)
 #define CFG_SHA384SUM 1
 #define USE_SHA384SUM(...) __VA_ARGS__
 #define CFG_SHA512SUM 1
