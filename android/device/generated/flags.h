@@ -2730,6 +2730,14 @@
 #undef FLAG_g
 #endif
 
+// source   <1
+#undef OPTSTR_source
+#define OPTSTR_source "<1"
+#ifdef CLEANUP_source
+#undef CLEANUP_source
+#undef FOR_source
+#endif
+
 // split >2a#<1=2>9b#<1l#<1[!bl] >2a#<1=2>9b#<1l#<1[!bl]
 #undef OPTSTR_split
 #define OPTSTR_split ">2a#<1=2>9b#<1l#<1[!bl]"
@@ -5823,6 +5831,12 @@
 #define FLAG_T (1<<17)
 #define FLAG_S (1<<18)
 #define FLAG_g (1<<19)
+#endif
+
+#ifdef FOR_source
+#ifndef TT
+#define TT this.source
+#endif
 #endif
 
 #ifdef FOR_split
