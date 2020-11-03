@@ -487,6 +487,7 @@ cc_binary {
     defaults: ["toybox-shared-defaults"],
     host_supported: true,
     recovery_available: true,
+    vendor_ramdisk_available: true,
 }
 
 cc_binary {
