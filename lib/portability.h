@@ -4,8 +4,13 @@
 // in specific compiler, library, or OS versions, localize all that here
 // and in portability.c
 
+// Always use long file support.
+// This must come before we #include any system header file to take effect!
+#define _FILE_OFFSET_BITS 64
+
 // For musl
 #define _ALL_SOURCE
+#include <regex.h>
 #ifndef REG_STARTEND
 #define REG_STARTEND 0
 #endif
@@ -28,9 +33,6 @@
 #else
 #define printf_format
 #endif
-
-// Always use long file support.
-#define _FILE_OFFSET_BITS 64
 
 // This isn't in the spec, but it's how we determine what libc we're using.
 
