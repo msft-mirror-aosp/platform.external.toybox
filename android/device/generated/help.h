@@ -292,7 +292,7 @@
 
 #define HELP_dos2unix "usage: dos2unix [FILE...]\n\nConvert newline format from dos \"\\r\\n\" to unix \"\\n\".\nIf no files listed copy from stdin, \"-\" is a synonym for stdin."
 
-#define HELP_devmem "usage: devmem ADDR [WIDTH [DATA]]\n\nRead/write physical address via /dev/mem.\n\nWIDTH is 1, 2, 4, or 8 bytes (default 4)."
+#define HELP_devmem "usage: devmem ADDR [WIDTH [DATA]]\n\nRead/write physical address. WIDTH is 1, 2, 4, or 8 bytes (default 4).\nPrefix ADDR with 0x for hexadecimal, output is in same base as address."
 
 #define HELP_count "usage: count\n\nCopy stdin to stdout, displaying simple progress indicator to stderr."
 
