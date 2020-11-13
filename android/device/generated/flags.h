@@ -461,9 +461,9 @@
 #undef FLAG_b
 #endif
 
-// date d:D:r:u[!dr] d:D:r:u[!dr]
+// date d:D:r:u(utc)[!dr] d:D:r:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:r:u[!dr]"
+#define OPTSTR_date "d:D:r:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
