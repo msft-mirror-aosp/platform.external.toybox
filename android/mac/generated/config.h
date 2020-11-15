@@ -410,8 +410,8 @@
 #define USE_NETSTAT(...)
 #define CFG_NICE 0
 #define USE_NICE(...)
-#define CFG_NL 0
-#define USE_NL(...)
+#define CFG_NL 1
+#define USE_NL(...) __VA_ARGS__
 #define CFG_NOHUP 0
 #define USE_NOHUP(...)
 #define CFG_NPROC 0

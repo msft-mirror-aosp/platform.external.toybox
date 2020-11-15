@@ -2039,7 +2039,7 @@
 #undef FLAG_n
 #endif
 
-// nl   v#=1l#w#<0=6Eb:n:s:
+// nl v#=1l#w#<0=6Eb:n:s: v#=1l#w#<0=6Eb:n:s:
 #undef OPTSTR_nl
 #define OPTSTR_nl "v#=1l#w#<0=6Eb:n:s:"
 #ifdef CLEANUP_nl
@@ -5254,13 +5254,13 @@
 #ifndef TT
 #define TT this.nl
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
-#define FLAG_n (FORCED_FLAG<<1)
-#define FLAG_b (FORCED_FLAG<<2)
-#define FLAG_E (FORCED_FLAG<<3)
-#define FLAG_w (FORCED_FLAG<<4)
-#define FLAG_l (FORCED_FLAG<<5)
-#define FLAG_v (FORCED_FLAG<<6)
+#define FLAG_s (1<<0)
+#define FLAG_n (1<<1)
+#define FLAG_b (1<<2)
+#define FLAG_E (1<<3)
+#define FLAG_w (1<<4)
+#define FLAG_l (1<<5)
+#define FLAG_v (1<<6)
 #endif
 
 #ifdef FOR_nohup
