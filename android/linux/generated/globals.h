@@ -1171,7 +1171,7 @@ struct cut_data {
 // toys/posix/date.c
 
 struct date_data {
-  char *r, *D, *d;
+  char *r, *I, *D, *d;
 
   unsigned nano;
 };
