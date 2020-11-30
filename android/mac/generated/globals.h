@@ -392,6 +392,13 @@ struct setfattr_data {
   char *x, *v, *n;
 };
 
+// toys/other/sha3sum.c
+
+struct sha3sum_data {
+  long a;
+  unsigned long long rc[24];
+};
+
 // toys/other/shred.c
 
 struct shred_data {
@@ -457,6 +464,14 @@ struct watch_data {
   int n;
 
   pid_t pid, oldpid;
+};
+
+// toys/other/watchdog.c
+
+struct watchdog_data {
+  long T, t;
+
+  int fd;
 };
 
 // toys/other/xxd.c
@@ -804,14 +819,14 @@ struct readelf_data {
   char *x, *p;
 
   char *elf, *shstrtab, *f;
-  unsigned long long shoff, phoff, size;
+  unsigned long long shoff, phoff, size, shstrtabsz;
   int bits, endian, shnum, shentsize, phentsize;
 };
 
 // toys/pending/route.c
 
 struct route_data {
-  char *family;
+  char *A;
 };
 
 // toys/pending/sh.c
@@ -828,7 +843,7 @@ struct sh_data {
 
   // keep lineno here: used to work around compiler limitation in run_command()
   long lineno;
-  char *ifs, *isexec;
+  char *ifs, *isexec, *wcpat;
   unsigned options, jobcnt;
   int hfd, pid, bangpid, varslen, shift, cdcount;
   long long SECONDS;
@@ -863,13 +878,14 @@ struct sh_data {
     struct sh_arg *raw, arg;
   } *pp; // currently running process
 
-  struct sh_arg jobs, *arg;  // job list, command line args for $* etc
+  // job list, command line for $*, scratch space for do_wildcard_files()
+  struct sh_arg jobs, *arg, *wcdeck;
 };
 
 // toys/pending/stty.c
 
 struct stty_data {
-  char *device;
+  char *F;
 
   int fd, col;
   unsigned output_cols;
@@ -1068,14 +1084,6 @@ struct vi_data {
   } *slices;
 };
 
-// toys/pending/watchdog.c
-
-struct watchdog_data {
-  long T, t;
-
-  int fd;
-};
-
 // toys/pending/wget.c
 
 struct wget_data {
@@ -1163,7 +1171,7 @@ struct cut_data {
 // toys/posix/date.c
 
 struct date_data {
-  char *r, *D, *d;
+  char *r, *I, *D, *d;
 
   unsigned nano;
 };
@@ -1581,6 +1589,7 @@ extern union global_union {
 	struct oneit_data oneit;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
+	struct sha3sum_data sha3sum;
 	struct shred_data shred;
 	struct stat_data stat;
 	struct swapon_data swapon;
@@ -1589,6 +1598,7 @@ extern union global_union {
 	struct timeout_data timeout;
 	struct truncate_data truncate;
 	struct watch_data watch;
+	struct watchdog_data watchdog;
 	struct xxd_data xxd;
 	struct arp_data arp;
 	struct arping_data arping;
@@ -1638,7 +1648,6 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
-	struct watchdog_data watchdog;
 	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;

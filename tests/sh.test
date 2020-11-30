@@ -1,11 +1,15 @@
 #!/bin/echo no
 
+# TODO https://mywiki.wooledge.org/BashFAQ
+#   http://tiswww.case.edu/php/chet/bash/FAQ
+#   https://mywiki.wooledge.org/BashPitfalls#set_-euo_pipefail
+
 #        // ${#} ${#x} ${#@} ${#x[@]} ${#!} ${!#}
 #        // ${!} ${!@} ${!@Q} ${!x} ${!x@} ${!x@Q} ${!x#} ${!x[} ${!x[*]}
 
 # Looked like a prefix but wasn't: three chars (@ # -) are both paremeter name
 # and slice operator. When immediately followed by } it's parameter, otherwise
-# otherwise we did NOT have a prefix and it's an operator.
+# we did NOT have a prefix and it's an operator.
 #
 # ${#-} ${#-abc}
 # ${##} ${##0}
@@ -163,9 +167,29 @@ testing "brackets9" 'echo A{B{C,D}E{N,O},F{G,H}I}J{K,L}M' \
 for i in /root /var/root /; do [ -e $i ] && EXPECT=$i && break; done
 testing "bracket+tilde" "echo {~,~root}/pwd" "$HOME/pwd $EXPECT/pwd\n" "" ""
 
+# Slices
+
+testing '${x#prefix}' 'x=abcde; echo ${x#abc}' 'de\n' '' ''
+testing '${x#short} ${x##long}' 'x=banana; echo ${x#b*n} ${x##b*n}' \
+  'ana a\n' '' ''
+toyonly testing '${x#utf8}' 'x=aそcde; echo ${x##a?c}' 'de\n' '' ''
+testing '${x%y}' 'x=potato; echo ${x%t*o} ${x%%t*o}' 'pota po\n' '' ''
+testing '${x^y}' 'x=aaaaa; echo ${x^a}' 'Aaaaa\n' '' ''
+testing '${x^^y}' 'x=abccdec; echo ${x^^c}; x=abcdec; echo ${x^^c}' \
+  'abCCdeC\nabCdeC\n' '' ''
+testing '${x,y}' 'x=BBB; echo ${x,B}' 'bBB\n' '' ''
+testing '${x,,y}' 'x=POTATO; echo ${x,,} ${x,,?} ${x,,*} ${x,,T}' \
+  'potato potato potato POtAtO\n' '' ''
+
+mkdir -p abc/def/ghi
+touch www
+testing 'wildcards' 'echo w[v-x]w w[x-v]w abc/*/ghi' \
+  'www w[x-v]w abc/def/ghi\n' '' ''
+
 #testing "backtick1" 'X=fred; echo `echo $x`' 'fred\n' "" ""
 #testing "backtick2" 'X=fred; echo `x=y; echo $x`' 'y\n' "" ""
 testing '$(( ) )' 'echo ab$((echo hello) | tr e x)cd' "abhxllocd\n" "" ""
+testing '$((x=y)) lifetime' 'a=boing; echo $a $a$((a=4))$a $a' 'boing boing44 4\n' '' ''
 
 # Loops and flow control
 testing "case" 'for i in A C J B; do case "$i" in A) echo got A ;; B) echo and B ;; C) echo then C ;; *) echo default ;; esac; done' \
@@ -173,7 +197,8 @@ testing "case" 'for i in A C J B; do case "$i" in A) echo got A ;; B) echo and B
 testing "case newlines" \
   $'case i\n\nin\n\na) echo one\n\n;;\n\ni)\n\necho two\n\n;;\n\nesac' \
   "two\n" "" ""
-
+testing 'loop in && ||' \
+  'false && for i in a b c; do echo $i; done || echo no' 'no\n' '' ''
 testing "continue" 'for i in a b c; do for j in d e f; do echo $i $j; continue 2; done; done' \
   "a d\nb d\nc d\n" "" ""
 
@@ -450,6 +475,10 @@ shxpect '[+(]) overlap priority' I$'shopt -s extglob\n' E"$P" \
 # TODO: syntax error takes out ': ${a?b}; echo $?' (I.E. never runs echo)
 shxpect '${a?b} sets err, stops cmdline eval' \
   I$': ${a?b} ${c:=d}\n' E E"$P" I$'echo $?$c\n' O$'1\n'
+
+testing 'source file' 'source input' 'hello\n' 'echo hello \\\n' ''
+testing '. file' '. input' 'hello\n' 'echo hello \\\n' ''
+testing 'source no newline' 'source input' 'hello \\\n' 'echo hello \\' ''
 
 # TODO finish variable list from shell init
 
