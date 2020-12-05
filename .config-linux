@@ -111,7 +111,7 @@ CONFIG_EXPR=y
 # CONFIG_FALLOCATE is not set
 # CONFIG_FALSE is not set
 # CONFIG_FDISK is not set
-# CONFIG_FGREP is not set
+CONFIG_FGREP=y
 # CONFIG_FILE is not set
 CONFIG_FIND=y
 # CONFIG_FLOCK is not set
