@@ -196,8 +196,8 @@
 #define USE_FALSE(...)
 #define CFG_FDISK 0
 #define USE_FDISK(...)
-#define CFG_FGREP 0
-#define USE_FGREP(...)
+#define CFG_FGREP 1
+#define USE_FGREP(...) __VA_ARGS__
 #define CFG_FILE 0
 #define USE_FILE(...)
 #define CFG_FIND 1
