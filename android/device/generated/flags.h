@@ -461,14 +461,15 @@
 #undef FLAG_b
 #endif
 
-// date d:D:r:u(utc)[!dr] d:D:r:u(utc)[!dr]
+// date d:D:I(iso)(iso-8601):;r:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:r:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
 #undef FLAG_u
 #undef FLAG_r
+#undef FLAG_I
 #undef FLAG_D
 #undef FLAG_d
 #endif
@@ -791,15 +792,15 @@
 #undef FLAG_s
 #endif
 
-// env ^0iu* ^0iu*
+// env ^i0u* ^i0u*
 #undef OPTSTR_env
-#define OPTSTR_env "^0iu*"
+#define OPTSTR_env "^i0u*"
 #ifdef CLEANUP_env
 #undef CLEANUP_env
 #undef FOR_env
 #undef FLAG_u
-#undef FLAG_i
 #undef FLAG_0
+#undef FLAG_i
 #endif
 
 // eval    
@@ -2276,13 +2277,14 @@
 #undef FLAG_x
 #endif
 
-// printenv 0(null) 0(null)
+// printenv (null)0 (null)0
 #undef OPTSTR_printenv
-#define OPTSTR_printenv "0(null)"
+#define OPTSTR_printenv "(null)0"
 #ifdef CLEANUP_printenv
 #undef CLEANUP_printenv
 #undef FOR_printenv
 #undef FLAG_0
+#undef FLAG_null
 #endif
 
 // printf <1?^ <1?^
@@ -2589,9 +2591,9 @@
 #undef FLAG_w
 #endif
 
-// sh   (noediting)(noprofile)(norc)sc:i
+// sh   0(noediting)(noprofile)(norc)sc:i
 #undef OPTSTR_sh
-#define OPTSTR_sh "(noediting)(noprofile)(norc)sc:i"
+#define OPTSTR_sh "0(noediting)(noprofile)(norc)sc:i"
 #ifdef CLEANUP_sh
 #undef CLEANUP_sh
 #undef FOR_sh
@@ -2730,9 +2732,9 @@
 #undef FLAG_g
 #endif
 
-// source   <1
+// source   0<1
 #undef OPTSTR_source
-#define OPTSTR_source "<1"
+#define OPTSTR_source "0<1"
 #ifdef CLEANUP_source
 #undef CLEANUP_source
 #undef FOR_source
@@ -3926,8 +3928,9 @@
 #endif
 #define FLAG_u (1<<0)
 #define FLAG_r (1<<1)
-#define FLAG_D (1<<2)
-#define FLAG_d (1<<3)
+#define FLAG_I (1<<2)
+#define FLAG_D (1<<3)
+#define FLAG_d (1<<4)
 #endif
 
 #ifdef FOR_dd
@@ -4213,8 +4216,8 @@
 #define TT this.env
 #endif
 #define FLAG_u (1<<0)
-#define FLAG_i (1<<1)
-#define FLAG_0 (1<<2)
+#define FLAG_0 (1<<1)
+#define FLAG_i (1<<2)
 #endif
 
 #ifdef FOR_eval
@@ -5458,6 +5461,7 @@
 #define TT this.printenv
 #endif
 #define FLAG_0 (1<<0)
+#define FLAG_null (1<<1)
 #endif
 
 #ifdef FOR_printf
