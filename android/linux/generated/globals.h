@@ -124,7 +124,7 @@ struct pidof_data {
 struct seq_data {
   char *s, *f;
 
-  int precision;
+  int precision, buflen;
 };
 
 // toys/lsb/su.c
@@ -161,8 +161,8 @@ struct ifconfig_data {
 struct microcom_data {
   long s;
 
-  int fd;
-  struct termios original_stdin_state, original_fd_state;
+  int fd, stok;
+  struct termios old_stdin, old_fd;
 };
 
 // toys/net/netcat.c
@@ -214,8 +214,9 @@ struct acpi_data {
 
 struct base64_data {
   long w;
-
   unsigned total;
+  unsigned n;  // number of bits used in encoding. 5 for base32, 6 for base64
+  unsigned align;  // number of bits to align to
 };
 
 // toys/other/blkdiscard.c
@@ -377,6 +378,12 @@ struct nsenter_data {
 
 struct oneit_data {
   char *c;
+};
+
+// toys/other/pwgen.c
+
+struct pwgen_data {
+  char *r;
 };
 
 // toys/other/rtcwake.c
@@ -841,11 +848,10 @@ struct sh_data {
     } exec;
   };
 
-  // keep lineno here: used to work around compiler limitation in run_command()
-  long lineno;
+  // keep ifs here: used to work around compiler limitation in run_command()
   char *ifs, *isexec, *wcpat;
-  unsigned options, jobcnt;
-  int hfd, pid, bangpid, varslen, shift, cdcount;
+  unsigned options, jobcnt, LINENO;
+  int hfd, pid, bangpid, varslen, cdcount;
   long long SECONDS;
 
   // global and local variables
@@ -857,8 +863,9 @@ struct sh_data {
   // Parsed functions
   struct sh_function {
     char *name;
-    struct sh_pipeline {  // pipeline segments
+    struct sh_pipeline {  // pipeline segments: linked list of arg w/metadata
       struct sh_pipeline *next, *prev, *end;
+      unsigned lineno;
       int count, here, type; // TODO abuse type to replace count during parsing
       struct sh_arg {
         char **v;
@@ -878,8 +885,17 @@ struct sh_data {
     struct sh_arg *raw, arg;
   } *pp; // currently running process
 
+  struct sh_callstack {
+    struct sh_callstack *next;
+    struct sh_function scratch;
+    struct sh_arg arg;
+    struct arg_list *delete;
+    unsigned lineno;
+    long shift;
+  } *cc;
+
   // job list, command line for $*, scratch space for do_wildcard_files()
-  struct sh_arg jobs, *arg, *wcdeck;
+  struct sh_arg jobs, *wcdeck;
 };
 
 // toys/pending/stty.c
@@ -1492,6 +1508,7 @@ struct tar_data {
 
 struct tee_data {
   void *outputs;
+  int out;
 };
 
 // toys/posix/touch.c
@@ -1587,6 +1604,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct pwgen_data pwgen;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
