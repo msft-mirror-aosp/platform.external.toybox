@@ -19,7 +19,7 @@ config CHMOD
     Stanzas are applied in order: For each category (u = user,
     g = group, o = other, a = all three, if none specified default is a),
     set (+), clear (-), or copy (=), r = read, w = write, x = execute.
-    s = u+s = suid, g+s = sgid, o+s = sticky. (+t is an alias for o+s).
+    s = u+s = suid, g+s = sgid, +t = sticky. (o+s ignored so a+s doesn't set +t)
     suid/sgid: execute as the user/group who owns the file.
     sticky: can't delete files you don't own out of this directory
     X = x for directories or if any category already has x set.
@@ -50,7 +50,7 @@ static int do_chmod(struct dirtree *try)
     // symlinks mentioned directly as arguments. We'll fail, of course,
     // but that's what you asked for in that case.
   } else {
-    mode = string_to_mode(TT.mode, try->st.st_mode);
+    mode = string_to_mode(TT.mode, try->st.st_mode & ~S_IFMT);
     if (FLAG(v)) {
       char *s = dirtree_path(try, 0);
 

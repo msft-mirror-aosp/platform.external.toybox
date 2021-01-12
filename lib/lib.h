@@ -255,6 +255,7 @@ void delete_tempfile(int fdin, int fdout, char **tempname);
 void replace_tempfile(int fdin, int fdout, char **tempname);
 void crc_init(unsigned int *crc_table, int little_endian);
 void base64_init(char *p);
+void base32_init(char *p);
 int yesno(int def);
 int fyesno(FILE *fp, int def);
 int qstrcmp(const void *a, const void *b);
@@ -337,6 +338,7 @@ int terminal_probesize(unsigned *xx, unsigned *yy);
 #define KEY_ALT (1<<18)
 int scan_key(char *scratch, int timeout_ms);
 int scan_key_getsize(char *scratch, int timeout_ms, unsigned *xx, unsigned *yy);
+void xsetspeed(struct termios *tio, int speed);
 int set_terminal(int fd, int raw, int speed, struct termios *old);
 void xset_terminal(int fd, int raw, int speed, struct termios *old);
 void tty_esc(char *s);
