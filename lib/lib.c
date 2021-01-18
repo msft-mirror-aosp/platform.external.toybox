@@ -349,17 +349,18 @@ int stridx(char *haystack, char needle)
 // Convert wc to utf8, returning bytes written. Does not null terminate.
 int wctoutf8(char *s, unsigned wc)
 {
-  int len = (wc>0x7ff)+(wc>0xffff), mask = 12+len+!!len;
+  int len = (wc>0x7ff)+(wc>0xffff), i;
 
   if (wc<128) {
     *s = wc;
     return 1;
   } else {
+    i = len;
     do {
-      s[1+len] = 0x80+(wc&0x3f);
-      wc >>= 7;
-    } while (len--);
-    *s = wc|mask;
+      s[1+i] = 0x80+(wc&0x3f);
+      wc >>= 6;
+    } while (i--);
+    *s = (((signed char) 0x80) >> (len+1)) | wc;
   }
 
   return 2+len;
@@ -395,37 +396,41 @@ int utf8towc(wchar_t *wc, char *str, unsigned len)
   return str-s;
 }
 
+// Convert string to lower case, utf8 aware.
 char *strlower(char *s)
 {
   char *try, *new;
+  int len, mlen = (strlen(s)|7)+9;
+  wchar_t c;
 
-  if (!CFG_TOYBOX_I18N) {
-    try = new = xstrdup(s);
-    for (; *s; s++) *(new++) = tolower(*s);
-  } else {
-    // I can't guarantee the string _won't_ expand during reencoding, so...?
-    try = new = xmalloc(strlen(s)*2+1);
+  try = new = xmalloc(mlen);
 
-    while (*s) {
-      wchar_t c;
-      int len = utf8towc(&c, s, MB_CUR_MAX);
+  while (*s) {
 
-      if (len < 1) *(new++) = *(s++);
-      else {
-        s += len;
-        // squash title case too
-        c = towlower(c);
+    if (1>(len = utf8towc(&c, s, MB_CUR_MAX))) {
+      *(new++) = *(s++);
 
-        // if we had a valid utf8 sequence, convert it to lower case, and can't
-        // encode back to utf8, something is wrong with your libc. But just
-        // in case somebody finds an exploit...
-        len = wcrtomb(new, c, 0);
-        if (len < 1) error_exit("bad utf8 %x", (int)c);
-        new += len;
-      }
+      continue;
     }
-    *new = 0;
+
+    s += len;
+    // squash title case too
+    c = towlower(c);
+
+    // if we had a valid utf8 sequence, convert it to lower case, and can't
+    // encode back to utf8, something is wrong with your libc. But just
+    // in case somebody finds an exploit...
+    len = wcrtomb(new, c, 0);
+    if (len < 1) error_exit("bad utf8 %x", (int)c);
+    new += len;
+
+    // Case conversion can expand utf8 representation, but with extra mlen
+    // space above we should basically never need to realloc
+    if (mlen+4 > (len = new-try)) continue;
+    try = xrealloc(try, mlen = len+16);
+    new = try+len;
   }
+  *new = 0;
 
   return try;
 }
@@ -865,6 +870,18 @@ void base64_init(char *p)
   *(p++) = '/';
 }
 
+// Init base32 table
+
+void base32_init(char *p)
+{
+  int i;
+
+  for (i = 'A'; i != '8'; i++) {
+    if (i == 'Z'+1) i = '2';
+    *(p++) = i;
+  }
+}
+
 int yesno(int def)
 {
   return fyesno(stdin, def);
@@ -970,55 +987,51 @@ mode_t string_to_mode(char *modestr, mode_t mode)
       umask(amask = umask(0));
     }
 
-    if (!*str || !(s = strchr(hows, *str))) goto barf;
-    if (!(dohow = *(str++))) goto barf;
+    // Repeated "hows" are allowed; something like "a=r+w+s" is valid.
+    for (;;) {
+      if (-1 == stridx(hows, dohow = *str)) goto barf;
+      while (*++str && (s = strchr(whats, *str))) dowhat |= 1<<(s-whats);
 
-    while (*str && (s = strchr(whats, *str))) {
-      dowhat |= 1<<(s-whats);
-      str++;
-    }
+      // Convert X to x for directory or if already executable somewhere
+      if ((dowhat&32) && (S_ISDIR(mode) || (mode&0111))) dowhat |= 1;
 
-    // Convert X to x for directory or if already executable somewhere
-    if ((dowhat&32) &&  (S_ISDIR(mode) || (mode&0111))) dowhat |= 1;
+      // Copy mode from another category?
+      if (!dowhat && -1 != (i = stridx(whys, *str))) {
+        dowhat = (mode>>(3*i))&7;
+        str++;
+      }
 
-    // Copy mode from another category?
-    if (!dowhat && *str && (s = strchr(whys, *str))) {
-      dowhat = (mode>>(3*(s-whys)))&7;
-      str++;
-    }
+      // Loop through what=xwrs and who=ogu to apply bits to the mode.
+      for (i=0; i<4; i++) {
+        for (j=0; j<3; j++) {
+          mode_t bit = 0;
+          int where = 1<<((3*i)+j);
 
-    // Are we ready to do a thing yet?
-    if (*str && *(str++) != ',') goto barf;
+          if (amask & where) continue;
 
-    // Loop through what=xwrs and who=ogu to apply bits to the mode.
-    for (i=0; i<4; i++) {
-      for (j=0; j<3; j++) {
-        mode_t bit = 0;
-        int where = 1<<((3*i)+j);
+          // Figure out new value at this location
+          if (i == 3) {
+            // suid and sticky
+            if (!j) bit = dowhat&16; // o+s = t but a+s doesn't set t, hence t
+            else if ((dowhat&8) && (dowho&(8|(1<<j)))) bit++;
+          } else {
+            if (!(dowho&(8|(1<<i)))) continue;
+            else if (dowhat&(1<<j)) bit++;
+          }
 
-        if (amask & where) continue;
-
-        // Figure out new value at this location
-        if (i == 3) {
-          // suid and sticky
-          if (!j) bit = dowhat&16; // o+s = t
-          else if ((dowhat&8) && (dowho&(8|(1<<j)))) bit++;
-        } else {
-          if (!(dowho&(8|(1<<i)))) continue;
-          else if (dowhat&(1<<j)) bit++;
+          // When selection active, modify bit
+          if (dohow == '=' || (bit && dohow == '-')) mode &= ~where;
+          if (bit && dohow != '-') mode |= where;
         }
-
-        // When selection active, modify bit
-
-        if (dohow == '=' || (bit && dohow == '-')) mode &= ~where;
-        if (bit && dohow != '-') mode |= where;
+      }
+      if (!*str) return mode|extrabits;
+      if (*str == ',') {
+        str++;
+        break;
       }
     }
-
-    if (!*str) break;
   }
 
-  return mode|extrabits;
 barf:
   error_exit("bad mode '%s'", modestr);
 }
