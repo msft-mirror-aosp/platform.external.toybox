@@ -12,8 +12,6 @@
 
 #define HELP_toybox_free "When a program exits, the operating system will clean up after it\n(free memory, close files, etc). To save size, toybox usually relies\non this behavior. If you're running toybox under a debugger or\nwithout a real OS (ala newlib+libgloss), enable this to make toybox\nclean up after itself."
 
-#define HELP_toybox_i18n "Support for UTF-8 character sets, and some locale support."
-
 #define HELP_toybox_help_dashdash "Support --help argument in all commands, even ones with a NULL\noptstring. (Use TOYFLAG_NOHELP to disable.) Produces the same output\nas \"help command\". --version shows toybox version."
 
 #define HELP_toybox_help "Include help text for each command."
@@ -200,6 +198,8 @@
 
 #define HELP_readahead "usage: readahead FILE...\n\nPreload files into disk cache."
 
+#define HELP_pwgen "usage: pwgen [-cAn0yrsBhC1v] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. When output is to tty produces\na screenfull to defeat shoulder surfing (pick one and clear the screen).\n\n-c  --capitalize                  Permit capital letters.\n-A  --no-capitalize               Don't include capital letters.\n-n  --numerals                    Permit numbers.\n-0  --no-numerals                 Don't include numbers.\n-y  --symbols                     Permit special characters ($#%...).\n-r <chars>  --remove=<chars>      Don't include the given characters.\n-s  --secure                      Generate more random passwords.\n-B  --ambiguous                   Avoid ambiguous characters (e.g. 0, O).\n-h  --help                        Print this help message.\n-C                                Print the output in columns.\n-1                                Print the output one line each.\n-v                                Don't include vowels."
+
 #define HELP_pwdx "usage: pwdx PID...\n\nPrint working directory of processes listed on command line."
 
 #define HELP_printenv "usage: printenv [-0] [env_var...]\n\nPrint environment variables.\n\n-0	Use \\0 as delimiter instead of \\n"
@@ -318,6 +318,8 @@
 
 #define HELP_blkdiscard "usage: blkdiscard [-olszf] DEVICE\n\nDiscard device sectors.\n\n-o, --offset OFF	Byte offset to start discarding at (default 0)\n-l, --length LEN	Bytes to discard (default all)\n-s, --secure		Perform secure discard\n-z, --zeroout		Zero-fill rather than discard\n-f, --force		Disable check for mounted filesystem\n\nOFF and LEN must be aligned to the device sector size.\nBy default entire device is discarded.\nWARNING: All discarded data is permanently lost!"
 
+#define HELP_base32 "usage: base32 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base32.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
+
 #define HELP_base64 "usage: base64 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base64.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
 
 #define HELP_ascii "usage: ascii\n\nDisplay ascii character set."
@@ -333,6 +335,8 @@
 #define HELP_userdel "usage: userdel [-r] USER\nusage: deluser [-r] USER\n\nDelete USER from the SYSTEM\n\n-r	remove home directory"
 
 #define HELP_useradd "usage: useradd [-SDH] [-h DIR] [-s SHELL] [-G GRP] [-g NAME] [-u UID] USER [GROUP]\n\nCreate new user, or add USER to GROUP\n\n-D       Don't assign a password\n-g NAME  Real name\n-G GRP   Add user to existing group\n-h DIR   Home directory\n-H       Don't create home directory\n-s SHELL Login shell\n-S       Create a system user\n-u UID   User id"
+
+#define HELP_unicode "usage: unicode [[min]-max]\n\nConvert between Unicode code points and UTF-8, in both directions."
 
 #define HELP_traceroute "usage: traceroute [-46FUIldnvr] [-f 1ST_TTL] [-m MAXTTL] [-p PORT] [-q PROBES]\n[-s SRC_IP] [-t TOS] [-w WAIT_SEC] [-g GATEWAY] [-i IFACE] [-z PAUSE_MSEC] HOST [BYTES]\n\ntraceroute6 [-dnrv] [-m MAXTTL] [-p PORT] [-q PROBES][-s SRC_IP] [-t TOS] [-w WAIT_SEC]\n  [-i IFACE] HOST [BYTES]\n\nTrace the route to HOST\n\n-4,-6 Force IP or IPv6 name resolution\n-F    Set the don't fragment bit (supports IPV4 only)\n-U    Use UDP datagrams instead of ICMP ECHO (supports IPV4 only)\n-I    Use ICMP ECHO instead of UDP datagrams (supports IPV4 only)\n-l    Display the TTL value of the returned packet (supports IPV4 only)\n-d    Set SO_DEBUG options to socket\n-n    Print numeric addresses\n-v    verbose\n-r    Bypass routing tables, send directly to HOST\n-m    Max time-to-live (max number of hops)(RANGE 1 to 255)\n-p    Base UDP port number used in probes(default 33434)(RANGE 1 to 65535)\n-q    Number of probes per TTL (default 3)(RANGE 1 to 255)\n-s    IP address to use as the source address\n-t    Type-of-service in probe packets (default 0)(RANGE 0 to 255)\n-w    Time in seconds to wait for a response (default 3)(RANGE 0 to 86400)\n-g    Loose source route gateway (8 max) (supports IPV4 only)\n-z    Pause Time in ms (default 0)(RANGE 0 to 86400) (supports IPV4 only)\n-f    Start from the 1ST_TTL hop (instead from 1)(RANGE 1 to 255) (supports IPV4 only)\n-i    Specify a network interface to operate with"
 
@@ -367,6 +371,8 @@
 #define HELP_eval "usage: eval COMMAND...\n\nExecute (combined) arguments as a shell command."
 
 #define HELP_unset "usage: unset [-fvn] NAME...\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	dereference NAME and unset that"
+
+#define HELP_set "usage: set [+a] [+o OPTION] [VAR...]\n\nSet variables and shell attributes. Use + to disable and - to enable.\nNAME=VALUE arguments assign to the variable, any leftovers set $1, $2...\nWith no arguments, prints current variables.\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	dereference NAME and unset that\n\nOPTIONs:\n  history - enable command history"
 
 #define HELP_exit "usage: exit [status]\n\nExit shell.  If no return value supplied on command line, use value\nof most recent command, or 0 if none."
 
@@ -490,7 +496,7 @@
 
 #define HELP_time "usage: time [-pv] COMMAND...\n\nRun command line and report real, user, and system time elapsed in seconds.\n(real = clock on the wall, user = cpu used by command's code,\nsystem = cpu used by OS on behalf of command.)\n\n-p	POSIX format output (default)\n-v	Verbose"
 
-#define HELP_test "usage: test [-bcdefghLPrSsuwx PATH] [-nz STRING] [-t FD] [X ?? Y]\n\nReturn true or false by performing tests. (With no arguments return false.)\n\n--- Tests with a single argument (after the option):\nPATH is/has:\n  -b  block device   -f  regular file   -p  fifo           -u  setuid bit\n  -c  char device    -g  setgid         -r  read bit       -w  write bit\n  -d  directory      -h  symlink        -S  socket         -x  execute bit\n  -e  exists         -L  symlink        -s  nonzero size\nSTRING is:\n  -n  nonzero size   -z  zero size      (STRING by itself implies -n)\nFD (integer file descriptor) is:\n  -t  a TTY\n\n--- Tests with one argument on each side of an operator:\nTwo strings:\n  =  are identical   !=  differ\nTwo integers:\n  -eq  equal         -gt  first > second    -lt  first < second\n  -ne  not equal     -ge  first >= second   -le  first <= second\n\n--- Modify or combine tests:\n  ! EXPR     not (swap true/false)   EXPR -a EXPR    and (are both true)\n  ( EXPR )   evaluate this first     EXPR -o EXPR    or (is either true)"
+#define HELP_test "usage: test [-bcdefghLPrSsuwx PATH] [-nz STRING] [-t FD] [X ?? Y]\n\nReturn true or false by performing tests. (With no arguments return false.)\n\n--- Tests with a single argument (after the option):\nPATH is/has:\n  -b  block device   -f  regular file   -p  fifo           -u  setuid bit\n  -c  char device    -g  setgid         -r  read bit       -w  write bit\n  -d  directory      -h  symlink        -S  socket         -x  execute bit\n  -e  exists         -L  symlink        -s  nonzero size   -k  sticky bit\nSTRING is:\n  -n  nonzero size   -z  zero size      (STRING by itself implies -n)\nFD (integer file descriptor) is:\n  -t  a TTY\n\n--- Tests with one argument on each side of an operator:\nTwo strings:\n  =  are identical   !=  differ\nTwo integers:\n  -eq  equal         -gt  first > second    -lt  first < second\n  -ne  not equal     -ge  first >= second   -le  first <= second\n\n--- Modify or combine tests:\n  ! EXPR     not (swap true/false)   EXPR -a EXPR    and (are both true)\n  ( EXPR )   evaluate this first     EXPR -o EXPR    or (is either true)"
 
 #define HELP_tee "usage: tee [-ai] [FILE...]\n\nCopy stdin to each listed file, and also to stdout.\nFilename \"-\" is a synonym for stdout.\n\n-a	Append to files\n-i	Ignore SIGINT"
 
@@ -612,7 +618,7 @@
 
 #define HELP_cksum "usage: cksum [-IPLN] [FILE...]\n\nFor each file, output crc32 checksum value, length and name of file.\nIf no files listed, copy from stdin.  Filename \"-\" is a synonym for stdin.\n\n-H	Hexadecimal checksum (defaults to decimal)\n-L	Little endian (defaults to big endian)\n-P	Pre-inversion\n-I	Skip post-inversion\n-N	Do not include length in CRC calculation (or output)"
 
-#define HELP_chmod "usage: chmod [-R] MODE FILE...\n\nChange mode of listed file[s] (recursively with -R).\n\nMODE can be (comma-separated) stanzas: [ugoa][+-=][rwxstXugo]\n\nStanzas are applied in order: For each category (u = user,\ng = group, o = other, a = all three, if none specified default is a),\nset (+), clear (-), or copy (=), r = read, w = write, x = execute.\ns = u+s = suid, g+s = sgid, o+s = sticky. (+t is an alias for o+s).\nsuid/sgid: execute as the user/group who owns the file.\nsticky: can't delete files you don't own out of this directory\nX = x for directories or if any category already has x set.\n\nOr MODE can be an octal value up to 7777	ug uuugggooo	top +\nbit 1 = o+x, bit 1<<8 = u+w, 1<<11 = g+1	sstrwxrwxrwx	bottom\n\nExamples:\nchmod u+w file - allow owner of \"file\" to write to it.\nchmod 744 file - user can read/write/execute, everyone else read only"
+#define HELP_chmod "usage: chmod [-R] MODE FILE...\n\nChange mode of listed file[s] (recursively with -R).\n\nMODE can be (comma-separated) stanzas: [ugoa][+-=][rwxstXugo]\n\nStanzas are applied in order: For each category (u = user,\ng = group, o = other, a = all three, if none specified default is a),\nset (+), clear (-), or copy (=), r = read, w = write, x = execute.\ns = u+s = suid, g+s = sgid, +t = sticky. (o+s ignored so a+s doesn't set +t)\nsuid/sgid: execute as the user/group who owns the file.\nsticky: can't delete files you don't own out of this directory\nX = x for directories or if any category already has x set.\n\nOr MODE can be an octal value up to 7777	ug uuugggooo	top +\nbit 1 = o+x, bit 1<<8 = u+w, 1<<11 = g+1	sstrwxrwxrwx	bottom\n\nExamples:\nchmod u+w file - allow owner of \"file\" to write to it.\nchmod 744 file - user can read/write/execute, everyone else read only"
 
 #define HELP_chown "see: chgrp"
 
