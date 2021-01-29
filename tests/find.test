@@ -140,4 +140,8 @@ ln -s nowhere broken
 testing "-H broken" "find -H broken" "broken\n" "" ""
 testing "-L broken" "find -L broken" "broken\n" "" ""
 
+testing "one slash" 'find /etc/ -maxdepth 1 | grep /passwd\$' '/etc/passwd\n' \
+  '' ''
+testing 'empty arg' 'find "" dir -name file 2>/dev/null' 'dir/file\n' '' ''
+
 rm -rf dir

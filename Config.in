@@ -15,8 +15,6 @@ config TOYBOX
 	help
 	  usage: toybox [--long | --help | --version | [COMMAND] [ARGUMENTS...]]
 
-	  Toybox multicall binary: https://landley.net/toybox/about.html
-
 	  With no arguments, "toybox" shows available COMMAND names. Add --long
 	  to include suggested install path for each command, see
 	  https://landley.net/toybox/faq.html#install for details.
@@ -107,12 +105,6 @@ config TOYBOX_HELP_DASHDASH
 	  Support --help argument in all commands, even ones with a NULL
 	  optstring. (Use TOYFLAG_NOHELP to disable.) Produces the same output
 	  as "help command". --version shows toybox version.
-
-config TOYBOX_I18N
-	bool "Internationalization support"
-	default y
-	help
-	  Support for UTF-8 character sets, and some locale support.
 
 config TOYBOX_FREE
 	bool "Free memory unnecessarily"

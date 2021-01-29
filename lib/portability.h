@@ -4,8 +4,13 @@
 // in specific compiler, library, or OS versions, localize all that here
 // and in portability.c
 
+// Always use long file support.
+// This must come before we #include any system header file to take effect!
+#define _FILE_OFFSET_BITS 64
+
 // For musl
 #define _ALL_SOURCE
+#include <regex.h>
 #ifndef REG_STARTEND
 #define REG_STARTEND 0
 #endif
@@ -28,9 +33,6 @@
 #else
 #define printf_format
 #endif
-
-// Always use long file support.
-#define _FILE_OFFSET_BITS 64
 
 // This isn't in the spec, but it's how we determine what libc we're using.
 
@@ -206,11 +208,15 @@ ssize_t xattr_lset(const char*, const char*, const void*, size_t, int);
 ssize_t xattr_fset(int, const char*, const void*, size_t, int);
 #endif
 
-// macOS doesn't have these functions, but we can fake them.
 #ifdef __APPLE__
+// macOS doesn't have these functions, but we can fake them.
 int mknodat(int, const char*, mode_t, dev_t);
 int posix_fallocate(int, off_t, off_t);
+
+// macOS keeps newlocale(3) in the non-POSIX <xlocale.h> rather than <locale.h>.
+#include <xlocale.h>
 #endif
+
 
 // Android is missing some headers and functions
 // "generated/config.h" is included first

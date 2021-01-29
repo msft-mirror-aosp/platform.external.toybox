@@ -8,9 +8,9 @@
 
 # The following environment variables enable optional behavior in "testing":
 #    DEBUG - Show every command run by test script.
-#    VERBOSE - Print the diff -u of each failed test case.
-#              If equal to "fail", stop after first failed test.
-#              "nopass" to not show successful tests
+#    VERBOSE - "all" continue after failed test
+#              "quiet" like all but just print FAIL (no diff -u).
+#              "nopass" don't show successful tests
 #
 # The "testcmd" function takes five arguments:
 #	$1) Description to display when running command
@@ -69,7 +69,7 @@ optional()
 
 skipnot()
 {
-  if [ -z "$VERBOSE" ]
+  if [ "$VERBOSE" == quiet ]
   then
     eval "$@" 2>/dev/null
   else
@@ -81,7 +81,13 @@ skipnot()
 toyonly()
 {
   IS_TOYBOX="$("$C" --version 2>/dev/null)"
-  [ "${IS_TOYBOX/toybox/}" == "$IS_TOYBOX" ] && SKIPNEXT=1
+  # Ideally we'd just check for "toybox", but toybox sed lies to make autoconf
+  # happy, so we have at least two things to check for.
+  case "$IS_TOYBOX" in
+    toybox*) ;;
+    This\ is\ not\ GNU*) ;;
+    *) SKIPNEXT=1 ;;
+  esac
 
   "$@"
 }
@@ -114,7 +120,7 @@ testing()
 
   if [ -n "$SKIP" -o -n "$SKIP_HOST" -a -n "$TEST_HOST" -o -n "$SKIPNEXT" ]
   then
-    [ ! -z "$VERBOSE" ] && printf "%s\n" "$SHOWSKIP: $NAME"
+    [ "$VERBOSE" != quiet ] && printf "%s\n" "$SHOWSKIP: $NAME"
     unset SKIPNEXT
     return 0
   fi
@@ -132,12 +138,12 @@ testing()
   then
     FAILCOUNT=$(($FAILCOUNT+1))
     printf "%s\n" "$SHOWFAIL: $NAME"
-    if [ -n "$VERBOSE" ]
+    if [ "$VERBOSE" != quiet ]
     then
       [ ! -z "$4" ] && printf "%s\n" "echo -ne \"$4\" > input"
       printf "%s\n" "echo -ne '$5' |$EVAL $2"
       printf "%s\n" "$DIFF"
-      [ "$VERBOSE" == fail ] && exit 1
+      [ "$VERBOSE" != all ] && exit 1
     fi
   else
     [ "$VERBOSE" != "nopass" ] && printf "%s\n" "$SHOWPASS: $NAME"
@@ -168,7 +174,7 @@ do_fail()
     echo "Expected '$CASE'"
     echo "Got '$A'"
   fi
-  [ "$VERBOSE" == fail ] && exit 1
+  [ "$VERBOSE" != all ] && [ "$VERBOSE" != quiet ] && exit 1
 }
 
 # txpect NAME COMMAND [I/O/E/Xstring]...
@@ -251,7 +257,7 @@ txpect()
   then
     do_pass
   else
-    [ ! -z "$VERBOSE" ] && echo "$VERBOSITY" >&2
+    [ "$VERBOSE" != quiet ] && echo "$VERBOSITY" >&2
   fi
 }
 

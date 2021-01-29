@@ -58,6 +58,7 @@
 
 // Internationalization support (also in POSIX and LSB)
 
+#include <langinfo.h>
 #include <locale.h>
 #include <wchar.h>
 #include <wctype.h>
@@ -118,7 +119,7 @@ extern struct toy_context {
 
 // Two big temporary buffers: one for use by commands, one for library functions
 
-extern char toybuf[4096], libbuf[4096];
+extern char *toybox_version, toybuf[4096], libbuf[4096];
 
 extern char **environ;
 
@@ -132,5 +133,5 @@ extern char **environ;
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.3"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.4"TOYBOX_VENDOR
 #endif
