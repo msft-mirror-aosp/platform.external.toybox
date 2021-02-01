@@ -45,6 +45,7 @@ CONFIG_TOYBOX=y
 # CONFIG_ARPING is not set
 # CONFIG_ARP is not set
 # CONFIG_ASCII is not set
+# CONFIG_BASE32 is not set
 # CONFIG_BASE64 is not set
 CONFIG_BASENAME=y
 # CONFIG_BC is not set
@@ -241,6 +242,7 @@ CONFIG_PRINTF=y
 CONFIG_PS=y
 # CONFIG_PWDX is not set
 CONFIG_PWD=y
+# CONFIG_PWGEN is not set
 # CONFIG_READAHEAD is not set
 # CONFIG_READELF is not set
 CONFIG_READLINK=y
@@ -313,6 +315,7 @@ CONFIG_TR=y
 # CONFIG_ULIMIT is not set
 # CONFIG_UMOUNT is not set
 CONFIG_UNAME=y
+# CONFIG_UNICODE is not set
 CONFIG_UNIQ=y
 CONFIG_UNIX2DOS=y
 # CONFIG_UNLINK is not set

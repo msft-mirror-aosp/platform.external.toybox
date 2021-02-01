@@ -64,6 +64,8 @@
 #define USE_ARP(...)
 #define CFG_ASCII 0
 #define USE_ASCII(...)
+#define CFG_BASE32 0
+#define USE_BASE32(...)
 #define CFG_BASE64 0
 #define USE_BASE64(...)
 #define CFG_BASENAME 1
@@ -456,6 +458,8 @@
 #define USE_PWDX(...)
 #define CFG_PWD 1
 #define USE_PWD(...) __VA_ARGS__
+#define CFG_PWGEN 0
+#define USE_PWGEN(...)
 #define CFG_READAHEAD 0
 #define USE_READAHEAD(...)
 #define CFG_READELF 0
@@ -600,6 +604,8 @@
 #define USE_UMOUNT(...)
 #define CFG_UNAME 1
 #define USE_UNAME(...) __VA_ARGS__
+#define CFG_UNICODE 0
+#define USE_UNICODE(...)
 #define CFG_UNIQ 1
 #define USE_UNIQ(...) __VA_ARGS__
 #define CFG_UNIX2DOS 1

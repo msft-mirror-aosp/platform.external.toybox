@@ -81,7 +81,13 @@ skipnot()
 toyonly()
 {
   IS_TOYBOX="$("$C" --version 2>/dev/null)"
-  [ "${IS_TOYBOX/toybox/}" == "$IS_TOYBOX" ] && SKIPNEXT=1
+  # Ideally we'd just check for "toybox", but toybox sed lies to make autoconf
+  # happy, so we have at least two things to check for.
+  case "$IS_TOYBOX" in
+    toybox*) ;;
+    This\ is\ not\ GNU*) ;;
+    *) SKIPNEXT=1 ;;
+  esac
 
   "$@"
 }
