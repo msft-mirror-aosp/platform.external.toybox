@@ -300,6 +300,7 @@ CONFIG_TEE=y
 # CONFIG_TELNETD is not set
 # CONFIG_TELNET is not set
 CONFIG_TEST=y
+CONFIG_TEST_GLUE=y
 # CONFIG_TFTPD is not set
 # CONFIG_TFTP is not set
 # CONFIG_TIME is not set
