@@ -685,12 +685,9 @@ struct getopt_data {
 // toys/pending/getty.c
 
 struct getty_data {
-  char *issue_str;
-  char *login_str;
-  char *init_str;
-  char *host_str; 
-  long timeout;
-  
+  char *f, *l, *I, *H;
+  long t;
+
   char *tty_name, buff[128];
   int speeds[20], sc;
   struct termios termios;
@@ -800,11 +797,9 @@ struct mke2fs_data {
 struct modprobe_data {
   struct arg_list *dirs;
 
-  struct arg_list *probes;
-  struct arg_list *dbase[256];
+  struct arg_list *probes, *dbase[256];
   char *cmdopts;
-  int nudeps;
-  uint8_t symreq;
+  int nudeps, symreq;
 };
 
 // toys/pending/more.c
@@ -875,6 +870,25 @@ struct sh_data {
     struct double_list *expect; // should be zero at end of parsing
   } *functions;
 
+  // runtime function call stack
+  struct sh_fcall {
+    struct sh_fcall *next;
+    struct sh_function *func;
+    struct sh_pipeline *pl;
+    int *urd, pout;
+
+    // Runtime stack of nested if/else/fi and for/do/done contexts.
+    struct sh_blockstack {
+      struct sh_blockstack *next;
+      struct sh_pipeline *start, *middle;
+      struct sh_process *pp;       // list of processes piping in to us
+      int run, loop, *urd, pout;
+      struct sh_arg farg;          // for/select arg stack, case wildcard deck
+      struct arg_list *fdelete;    // farg's cleanup list
+      char *fvar;                  // for/select's iteration variable name
+    } *blk;
+  } *ff;
+
 // TODO ctrl-Z suspend should stop script
   struct sh_process {
     struct sh_process *next, *prev; // | && ||
@@ -890,8 +904,8 @@ struct sh_data {
     struct sh_function scratch;
     struct sh_arg arg;
     struct arg_list *delete;
-    unsigned lineno;
     long shift;
+    unsigned lineno;
   } *cc;
 
   // job list, command line for $*, scratch space for do_wildcard_files()
