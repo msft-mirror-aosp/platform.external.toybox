@@ -1166,11 +1166,11 @@ struct cp_data {
   union {
     // install's options
     struct {
-      char *g, *o, *m;
+      char *g, *o, *m, *t;
     } i;
     // cp's options
     struct {
-      char *preserve;
+      char *t, *preserve;
     } c;
   };
 
