@@ -1211,9 +1211,7 @@ struct date_data {
 struct df_data {
   struct arg_list *t;
 
-  long units;
-  int column_widths[5];
-  int header_shown;
+  int units, width[6];
 };
 
 // toys/posix/du.c
