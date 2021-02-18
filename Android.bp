@@ -34,6 +34,24 @@
 
 */
 
+package {
+    default_applicable_licenses: ["external_toybox_license"],
+}
+
+license {
+    name: "external_toybox_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-0BSD",
+        "SPDX-license-identifier-CC0-1.0",
+        "SPDX-license-identifier-Unlicense",
+        "legacy_unencumbered",
+    ],
+    license_text: [
+        "LICENSE",
+    ],
+}
+
 all_srcs = [
     "lib/args.c",
     "lib/commas.c",
