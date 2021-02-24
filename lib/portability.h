@@ -215,6 +215,11 @@ int posix_fallocate(int, off_t, off_t);
 
 // macOS keeps newlocale(3) in the non-POSIX <xlocale.h> rather than <locale.h>.
 #include <xlocale.h>
+static inline long statfs_bsize(struct statfs *sf) { return sf->f_iosize; }
+static inline long statfs_frsize(struct statfs *sf) { return sf->f_bsize; }
+#else
+static inline long statfs_bsize(struct statfs *sf) { return sf->f_bsize; }
+static inline long statfs_frsize(struct statfs *sf) { return sf->f_frsize; }
 #endif
 
 
@@ -345,10 +350,6 @@ struct xnotify {
 struct xnotify *xnotify_init(int max);
 int xnotify_add(struct xnotify *not, int fd, char *path);
 int xnotify_wait(struct xnotify *not, char **path);
-
-#ifdef __APPLE__
-#define f_frsize f_iosize
-#endif
 
 int sig_to_num(char *s);
 char *num_to_sig(int sig);
