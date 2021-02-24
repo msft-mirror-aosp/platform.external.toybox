@@ -372,9 +372,9 @@
 #undef FOR_count
 #endif
 
-// cp <2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni] <2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]
+// cp <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni] <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<2(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -1979,9 +1979,9 @@
 #undef FLAG_q
 #endif
 
-// mv <2vnF(remove-destination)fit:T[-ni] <2vnF(remove-destination)fit:T[-ni]
+// mv <1vnF(remove-destination)fit:T[-ni] <1vnF(remove-destination)fit:T[-ni]
 #undef OPTSTR_mv
-#define OPTSTR_mv "<2vnF(remove-destination)fit:T[-ni]"
+#define OPTSTR_mv "<1vnF(remove-destination)fit:T[-ni]"
 #ifdef CLEANUP_mv
 #undef CLEANUP_mv
 #undef FOR_mv
