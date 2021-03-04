@@ -22,7 +22,7 @@ config CPIO
   default y
   help
     usage: cpio -{o|t|i|p DEST} [-v] [--verbose] [-F FILE] [--no-preserve-owner]
-           [ignored: -mdu -H newc]
+           [ignored: -m -H newc]
 
     Copy files into and out of a "newc" format cpio archive.
 
@@ -32,6 +32,7 @@ config CPIO
     -o	Create archive (stdin=list of files, stdout=archive)
     -t	Test files (list only, stdin=archive, stdout=list of files)
     -d	Create directories if needed
+    -u	unlink existing files when extracting
     -v	Verbose
     --no-preserve-owner (don't set ownership during extract)
 */
@@ -137,6 +138,8 @@ void cpio_main(void)
     // (This output is unaffected by --quiet.)
     if (FLAG(t) || FLAG(v)) puts(name);
 
+    if (FLAG(u) && !test) if (unlink(name) && errno == EISDIR) rmdir(name);
+
     if (!test && FLAG(d) && strrchr(name, '/') && mkpath(name)) {
       perror_msg("mkpath '%s'", name);
       test++;
@@ -146,7 +149,7 @@ void cpio_main(void)
     // properly aligned with next file.
 
     if (S_ISDIR(mode)) {
-      if (!test) err = mkdir(name, mode);
+      if (!test) err = mkdir(name, mode) && !FLAG(u);
     } else if (S_ISLNK(mode)) {
       data = strpad(afd, size, 0);
       if (!test) err = symlink(data, name);
@@ -155,7 +158,7 @@ void cpio_main(void)
       if (!err && !geteuid() && !FLAG(no_preserve_owner))
         err = lchown(name, uid, gid);
     } else if (S_ISREG(mode)) {
-      int fd = test ? 0 : open(name, O_CREAT|O_WRONLY|O_TRUNC|O_NOFOLLOW, mode);
+      int fd = test ? 0 : open(name, O_CREAT|O_WRONLY|O_EXCL|O_NOFOLLOW, mode);
 
       // If write fails, we still need to read/discard data to continue with
       // archive. Since doing so overwrites errno, report error now
@@ -229,6 +232,7 @@ void cpio_main(void)
       struct stat st;
       unsigned nlen, error = 0, zero = 0;
       int len, fd = -1;
+      char *link = 0;
       ssize_t llen;
 
       len = getline(&name, &size, stdin);
@@ -236,11 +240,14 @@ void cpio_main(void)
       if (name[len-1] == '\n') name[--len] = 0;
       nlen = len+1;
       if (lstat(name, &st) || (S_ISREG(st.st_mode)
-          && st.st_size && (fd = open(name, O_RDONLY))<0))
+          && st.st_size && (fd = open(name, O_RDONLY))<0)
+          || (S_ISLNK(st.st_mode) && !(link = xreadlink(name))))
       {
         perror_msg_raw(name);
         continue;
       }
+      // encrypted filesystems can stat the wrong link size
+      if (link) st.st_size = strlen(link);
 
       if (FLAG(no_preserve_owner)) st.st_uid = st.st_gid = 0;
       if (!S_ISREG(st.st_mode) && !S_ISLNK(st.st_mode)) st.st_size = 0;
@@ -260,14 +267,9 @@ void cpio_main(void)
         if (llen) xwrite(afd, &zero, 4-llen);
 
         // Write out body for symlink or regular file
-        llen = st.st_size;
-        if (S_ISLNK(st.st_mode)) {
-          if (readlink(name, toybuf, sizeof(toybuf)-1) == llen)
-            xwrite(afd, toybuf, llen);
-          else perror_msg("readlink '%s'", name);
-        } else while (llen) {
+        if (link) xwrite(afd, link, st.st_size);
+        else for (llen = st.st_size; llen; llen -= nlen) {
           nlen = llen > sizeof(toybuf) ? sizeof(toybuf) : llen;
-          llen -= nlen;
           // If read fails, write anyway (already wrote size in header)
           if (nlen != readall(fd, toybuf, nlen))
             if (!error++) perror_msg("bad read from file '%s'", name);
@@ -276,9 +278,10 @@ void cpio_main(void)
         llen = st.st_size & 3;
         if (llen) xwrite(afd, &zero, 4-llen);
       }
-      close(fd);
+      free(link);
+      xclose(fd);
     }
-    free(name);
+    if (CFG_TOYBOX_FREE) free(name);
 
     memset(toybuf, 0, sizeof(toybuf));
     xwrite(afd, toybuf,

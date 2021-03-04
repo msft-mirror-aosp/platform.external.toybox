@@ -177,9 +177,11 @@ int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
   // not-a-directory along the way, but the last one we must explicitly
   // test for. Might as well do it up front.
 
-  if (!fstatat(atfd, dir, &buf, 0) && !S_ISDIR(buf.st_mode)) {
-    errno = EEXIST;
-    return 1;
+  if (!fstatat(atfd, dir, &buf, 0)) {
+    if ((flags&MKPATHAT_MKLAST) && !S_ISDIR(buf.st_mode)) {
+      errno = EEXIST;
+      return 1;
+    } else return 0;
   }
 
   for (s = dir; ;s++) {
@@ -909,9 +911,10 @@ void exit_signal(int sig)
   xexit();
 }
 
-// Install the same handler on every signal that defaults to killing the
-// process, calling the handler on the way out. Calling multiple times
-// adds the handlers to a list, to be called in order.
+// Install an atexit handler. Also install the same handler on every signal
+// that defaults to killing the process, calling the handler on the way out.
+// Calling multiple times adds the handlers to a list, to be called in LIFO
+// order.
 void sigatexit(void *handler)
 {
   struct arg_list *al = 0;
@@ -926,7 +929,7 @@ void sigatexit(void *handler)
 }
 
 // Output a nicely formatted table of all the signals.
-void list_signals()
+void list_signals(void)
 {
   int i = 0, count = 0;
   unsigned cols = 80;
