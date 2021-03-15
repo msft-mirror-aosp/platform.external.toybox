@@ -601,9 +601,9 @@
 #undef FOR_devmem
 #endif
 
-// df HPkhit*a[-HPkh] HPkhit*a[-HPkh]
+// df HPkhit*a[-HPh] HPkhit*a[-HPh]
 #undef OPTSTR_df
-#define OPTSTR_df "HPkhit*a[-HPkh]"
+#define OPTSTR_df "HPkhit*a[-HPh]"
 #ifdef CLEANUP_df
 #undef CLEANUP_df
 #undef FOR_df
