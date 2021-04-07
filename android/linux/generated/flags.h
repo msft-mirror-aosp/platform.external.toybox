@@ -314,6 +314,15 @@
 #undef FLAG_m
 #endif
 
+// chsh   s:
+#undef OPTSTR_chsh
+#define OPTSTR_chsh "s:"
+#ifdef CLEANUP_chsh
+#undef CLEANUP_chsh
+#undef FOR_chsh
+#undef FLAG_s
+#endif
+
 // chvt   <1
 #undef OPTSTR_chvt
 #define OPTSTR_chvt "<1"
@@ -2774,9 +2783,9 @@
 #undef FLAG_g
 #endif
 
-// source   0<1
+// source   <1
 #undef OPTSTR_source
-#define OPTSTR_source "0<1"
+#define OPTSTR_source "<1"
 #ifdef CLEANUP_source
 #undef CLEANUP_source
 #undef FOR_source
@@ -3845,6 +3854,13 @@
 #define FLAG_i (FORCED_FLAG<<5)
 #define FLAG_p (FORCED_FLAG<<6)
 #define FLAG_m (FORCED_FLAG<<7)
+#endif
+
+#ifdef FOR_chsh
+#ifndef TT
+#define TT this.chsh
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_chvt

@@ -541,6 +541,12 @@ struct brctl_data {
     int sockfd;
 };
 
+// toys/pending/chsh.c
+
+struct chsh_data {
+  char *s;
+};
+
 // toys/pending/crond.c
 
 struct crond_data {
@@ -846,43 +852,49 @@ struct sh_data {
   // keep ifs here: used to work around compiler limitation in run_command()
   char *ifs, *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount;
+  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
   long long SECONDS;
 
-  // global and local variables
-  struct sh_vars {
-    long flags;
-    char *str;
-  } *vars;
+// FUNCTION transplant pipelines from place to place?
+// function keyword can have pointer to function struct? Still refcnt?
+// is function body like HERE document? Lifetime rules
 
-  // Parsed functions
+  // Callable functions
   struct sh_function {
     char *name;
     struct sh_pipeline {  // pipeline segments: linked list of arg w/metadata
       struct sh_pipeline *next, *prev, *end;
-      unsigned lineno;
-      int count, here, type; // TODO abuse type to replace count during parsing
+      int count, here, type, lineno;
       struct sh_arg {
         char **v;
         int c;
       } arg[1];
     } *pipeline;
-    struct double_list *expect; // should be zero at end of parsing
   } *functions;
 
   // runtime function call stack
   struct sh_fcall {
-    struct sh_fcall *next;
-    struct sh_function *func;
+    struct sh_fcall *next, *prev;
+
+    // This dlist in reverse order: TT.ff current function, TT.ff->prev globals
+    struct sh_vars {
+      long flags;
+      char *str;
+    } *vars;
+
+//    struct sh_function *func;
     struct sh_pipeline *pl;
-    int *urd, pout;
+    int varslen;
+    struct sh_arg arg;
+    struct arg_list *delete;
+    long shift;
 
     // Runtime stack of nested if/else/fi and for/do/done contexts.
     struct sh_blockstack {
       struct sh_blockstack *next;
       struct sh_pipeline *start, *middle;
       struct sh_process *pp;       // list of processes piping in to us
-      int run, loop, *urd, pout;
+      int run, loop, *urd, pout, pipe;
       struct sh_arg farg;          // for/select arg stack, case wildcard deck
       struct arg_list *fdelete;    // farg's cleanup list
       char *fvar;                  // for/select's iteration variable name
@@ -898,15 +910,6 @@ struct sh_data {
     long long when; // when job backgrounded/suspended
     struct sh_arg *raw, arg;
   } *pp; // currently running process
-
-  struct sh_callstack {
-    struct sh_callstack *next;
-    struct sh_function scratch;
-    struct sh_arg arg;
-    struct arg_list *delete;
-    long shift;
-    unsigned lineno;
-  } *cc;
 
   // job list, command line for $*, scratch space for do_wildcard_files()
   struct sh_arg jobs, *wcdeck;
@@ -1635,6 +1638,7 @@ extern union global_union {
 	struct bc_data bc;
 	struct bootchartd_data bootchartd;
 	struct brctl_data brctl;
+	struct chsh_data chsh;
 	struct crond_data crond;
 	struct crontab_data crontab;
 	struct dd_data dd;
