@@ -110,6 +110,8 @@
 #define USE_CHROOT(...)
 #define CFG_CHRT 0
 #define USE_CHRT(...)
+#define CFG_CHSH 0
+#define USE_CHSH(...)
 #define CFG_CHVT 0
 #define USE_CHVT(...)
 #define CFG_CKSUM 0
