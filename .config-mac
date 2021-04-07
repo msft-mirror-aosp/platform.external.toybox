@@ -68,6 +68,7 @@ CONFIG_CHMOD=y
 # CONFIG_CHOWN is not set
 # CONFIG_CHROOT is not set
 # CONFIG_CHRT is not set
+# CONFIG_CHSH is not set
 # CONFIG_CHVT is not set
 # CONFIG_CKSUM is not set
 # CONFIG_CLEAR is not set

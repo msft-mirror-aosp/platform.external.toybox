@@ -362,6 +362,8 @@
 
 #define HELP_shift "usage: shift [N]\n\nSkip N (default 1) positional parameters, moving $1 and friends along the list.\nDoes not affect $0."
 
+#define HELP_local "usage: local [NAME[=VALUE]...]\n\nCreate a local variable that lasts until return from this function.\nWith no arguments lists local variables in current function context.\nTODO: implement \"declare\" options."
+
 #define HELP_jobs "usage: jobs [-lnprs] [%JOB | -x COMMAND...]\n\nList running/stopped background jobs.\n\n-l Include process ID in list\n-n Show only new/changed processes\n-p Show process IDs only\n-r Show running processes\n-s Show stopped processes"
 
 #define HELP_export "usage: export [-n] [NAME[=VALUE]...]\n\nMake variables available to child processes. NAME exports existing local\nvariable(s), NAME=VALUE sets and exports.\n\n-n	Unexport. Turn listed variable(s) into local variables.\n\nWith no arguments list exported variables/attributes as \"declare\" statements."
@@ -457,6 +459,8 @@
 #define HELP_crontab "usage: crontab [-u user] FILE\n               [-u user] [-e | -l | -r]\n               [-c dir]\n\nFiles used to schedule the execution of programs.\n\n-c crontab dir\n-e edit user's crontab\n-l list user's crontab\n-r delete user's crontab\n-u user\nFILE Replace crontab by FILE ('-': stdin)"
 
 #define HELP_crond "usage: crond [-fbS] [-l N] [-d N] [-L LOGFILE] [-c DIR]\n\nA daemon to execute scheduled commands.\n\n-b Background (default)\n-c crontab dir\n-d Set log level, log to stderr\n-f Foreground\n-l Set log level. 0 is the most verbose, default 8\n-S Log to syslog (default)\n-L Log to file"
+
+#define HELP_chsh "usage: chsh [-s SHELL] [USER]\n\nChange user's login shell.\n\n-s	Use SHELL instead of prompting\n\nNon-root users can only change their own shell to one listed in /etc/shells."
 
 #define HELP_brctl "usage: brctl COMMAND [BRIDGE [INTERFACE]]\n\nManage ethernet bridges\n\nCommands:\nshow                  Show a list of bridges\naddbr BRIDGE          Create BRIDGE\ndelbr BRIDGE          Delete BRIDGE\naddif BRIDGE IFACE    Add IFACE to BRIDGE\ndelif BRIDGE IFACE    Delete IFACE from BRIDGE\nsetageing BRIDGE TIME Set ageing time\nsetfd BRIDGE TIME     Set bridge forward delay\nsethello BRIDGE TIME  Set hello time\nsetmaxage BRIDGE TIME Set max message age\nsetpathcost BRIDGE PORT COST   Set path cost\nsetportprio BRIDGE PORT PRIO   Set port priority\nsetbridgeprio BRIDGE PRIO      Set bridge priority\nstp BRIDGE [1/yes/on|0/no/off] STP on/off"
 

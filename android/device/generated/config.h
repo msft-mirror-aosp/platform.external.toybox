@@ -108,6 +108,8 @@
 #define USE_CHROOT(...) __VA_ARGS__
 #define CFG_CHRT 1
 #define USE_CHRT(...) __VA_ARGS__
+#define CFG_CHSH 0
+#define USE_CHSH(...)
 #define CFG_CHVT 0
 #define USE_CHVT(...)
 #define CFG_CKSUM 1
