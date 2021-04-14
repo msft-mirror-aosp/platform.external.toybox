@@ -849,11 +849,11 @@ struct sh_data {
     } exec;
   };
 
-  // keep ifs here: used to work around compiler limitation in run_command()
-  char *ifs, *isexec, *wcpat;
+  // keep SECONDS here: used to work around compiler limitation in run_command()
+  long long SECONDS;
+  char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
   int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
-  long long SECONDS;
 
 // FUNCTION transplant pipelines from place to place?
 // function keyword can have pointer to function struct? Still refcnt?
@@ -884,6 +884,7 @@ struct sh_data {
 
 //    struct sh_function *func;
     struct sh_pipeline *pl;
+    char *ifs;
     int varslen;
     struct sh_arg arg;
     struct arg_list *delete;
