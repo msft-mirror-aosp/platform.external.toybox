@@ -314,6 +314,15 @@
 #undef FLAG_m
 #endif
 
+// chsh   s:
+#undef OPTSTR_chsh
+#define OPTSTR_chsh "s:"
+#ifdef CLEANUP_chsh
+#undef CLEANUP_chsh
+#undef FOR_chsh
+#undef FLAG_s
+#endif
+
 // chvt   <1
 #undef OPTSTR_chvt
 #define OPTSTR_chvt "<1"
@@ -372,9 +381,9 @@
 #undef FOR_count
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni] <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]
+// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -389,6 +398,7 @@
 #undef FLAG_s
 #undef FLAG_a
 #undef FLAG_d
+#undef FLAG_u
 #undef FLAG_r
 #undef FLAG_p
 #undef FLAG_P
@@ -601,9 +611,9 @@
 #undef FOR_devmem
 #endif
 
-// df HPkhit*a[-HPkh] HPkhit*a[-HPkh]
+// df HPkhit*a[-HPh] HPkhit*a[-HPh]
 #undef OPTSTR_df
-#define OPTSTR_df "HPkhit*a[-HPkh]"
+#define OPTSTR_df "HPkhit*a[-HPh]"
 #ifdef CLEANUP_df
 #undef CLEANUP_df
 #undef FOR_df
@@ -2774,9 +2784,9 @@
 #undef FLAG_g
 #endif
 
-// source   0<1
+// source   <1
 #undef OPTSTR_source
-#define OPTSTR_source "0<1"
+#define OPTSTR_source "<1"
 #ifdef CLEANUP_source
 #undef CLEANUP_source
 #undef FOR_source
@@ -3847,6 +3857,13 @@
 #define FLAG_m (1<<7)
 #endif
 
+#ifdef FOR_chsh
+#ifndef TT
+#define TT this.chsh
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#endif
+
 #ifdef FOR_chvt
 #ifndef TT
 #define TT this.chvt
@@ -3908,14 +3925,15 @@
 #define FLAG_s (1<<8)
 #define FLAG_a (1<<9)
 #define FLAG_d (1<<10)
-#define FLAG_r (1<<11)
-#define FLAG_p (1<<12)
-#define FLAG_P (1<<13)
-#define FLAG_L (1<<14)
-#define FLAG_H (1<<15)
-#define FLAG_R (1<<16)
-#define FLAG_D (1<<17)
-#define FLAG_preserve (1<<18)
+#define FLAG_u (1<<11)
+#define FLAG_r (1<<12)
+#define FLAG_p (1<<13)
+#define FLAG_P (1<<14)
+#define FLAG_L (1<<15)
+#define FLAG_H (1<<16)
+#define FLAG_R (1<<17)
+#define FLAG_D (1<<18)
+#define FLAG_preserve (1<<19)
 #endif
 
 #ifdef FOR_cpio

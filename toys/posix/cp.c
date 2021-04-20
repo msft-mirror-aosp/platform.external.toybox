@@ -15,7 +15,7 @@
 // options shared between mv/cp must be in same order (right to left)
 // for FLAG macros to work out right in shared infrastructure.
 
-USE_CP(NEWTOY(cp, "<1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]", TOYFLAG_BIN))
+USE_CP(NEWTOY(cp, "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]", TOYFLAG_BIN))
 USE_MV(NEWTOY(mv, "<1vnF(remove-destination)fit:T[-ni]", TOYFLAG_BIN))
 USE_INSTALL(NEWTOY(install, "<1cdDpsvt:m:o:g:", TOYFLAG_USR|TOYFLAG_BIN))
 
@@ -38,6 +38,7 @@ config CP
     -L	Follow all symlinks
     -l	Hard link instead of copy
     -n	No clobber (don't overwrite DEST)
+    -u	Update (keep newest mtime)
     -P	Do not follow symlinks
     -p	Preserve timestamps, ownership, and mode
     -R	Recurse into subdirectories (DEST must be a directory)
@@ -152,7 +153,7 @@ static int cp_node(struct dirtree *try)
       return 0;
     }
 
-    // Handle -invF
+    // Handle -inuvF
 
     if (!faccessat(cfd, catch, F_OK, 0) && !S_ISDIR(cst.st_mode)) {
       char *s;
@@ -165,6 +166,8 @@ static int cp_node(struct dirtree *try)
         error_msg("unlink '%s'", catch);
         return 0;
       } else if (flags & FLAG_n) return 0;
+      else if ((flags & FLAG_u) && nanodiff(&try->st.st_mtim, &cst.st_mtim)>0)
+        return 0;
       else if (flags & FLAG_i) {
         fprintf(stderr, "%s: overwrite '%s'", toys.which->name,
           s = dirtree_path(try, 0));
@@ -412,11 +415,11 @@ void cp_main(void)
 
   // Loop through sources
   for (i=0; i<toys.optc; i++) {
-    char *src = toys.optargs[i], *trail = src;
-    int rc = 1;
+    char *src = toys.optargs[i], *trail;
+    int send = 1;
 
-    while (*++trail);
-    if (*--trail == '/') *trail = 0;
+    if (!(trail = strrchr(src, '/')) || trail[1]) trail = 0;
+    else while (trail>src && *trail=='/') *trail-- = 0;
 
     if (destdir) {
       char *s = FLAG(D) ? src : getbasename(src);
@@ -433,6 +436,7 @@ void cp_main(void)
       }
     } else TT.destname = destname;
 
+    // "mv across devices" triggers cp fallback path, so set that as default
     errno = EXDEV;
     if (CFG_MV && toys.which->name[0] == 'm') {
       int force = FLAG(f), no_clobber = FLAG(n);
@@ -446,18 +450,18 @@ void cp_main(void)
         // _else_) but I don't care.
         if (exists && (FLAG(i) || (!(st.st_mode & 0222) && isatty(0)))) {
           fprintf(stderr, "%s: overwrite '%s'", toys.which->name, TT.destname);
-          if (!yesno(0)) rc = 0;
+          if (!yesno(0)) send = 0;
           else unlink(TT.destname);
         }
         // if -n and dest exists, don't try to rename() or copy
-        if (exists && no_clobber) rc = 0;
+        if (exists && no_clobber) send = 0;
       }
-      if (rc) rc = rename(src, TT.destname);
-      if (errno && !*trail) *trail = '/';
+      if (send) send = rename(src, TT.destname);
+      if (trail) trail[1] = '/';
     }
 
-    // Copy if we didn't mv, skipping nonexistent sources
-    if (rc) {
+    // Copy if we didn't mv or hit an error, skipping nonexistent sources
+    if (send) {
       if (errno!=EXDEV || dirtree_flagread(src, DIRTREE_SHUTUP+
         DIRTREE_SYMFOLLOW*!!(FLAG(H)||FLAG(L)), TT.callback))
           perror_msg("bad '%s'", src);
@@ -519,11 +523,11 @@ void install_main(void)
     return;
   }
 
-  if (FLAG(D) && !FLAG(t)) {
-    TT.destname = toys.optargs[toys.optc-1];
-    if (mkpathat(AT_FDCWD, TT.destname, 0, MKPATHAT_MAKE))
-      perror_exit("-D '%s'", TT.destname);
-    if (toys.optc == 1) return;
+  if (FLAG(D)) {
+    char *destname = FLAG(t) ? TT.i.t : (TT.destname = toys.optargs[toys.optc-1]);
+    if (mkpathat(AT_FDCWD, destname, 0777, MKPATHAT_MAKE | (FLAG(t) ? MKPATHAT_MKLAST : 0)))
+      perror_exit("-D '%s'", destname);
+    if (toys.optc == !FLAG(t)) return;
   }
 
   // Translate flags from install to cp
