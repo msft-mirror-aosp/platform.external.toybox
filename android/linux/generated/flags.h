@@ -381,9 +381,9 @@
 #undef FOR_count
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni] <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]
+// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -398,6 +398,7 @@
 #undef FLAG_s
 #undef FLAG_a
 #undef FLAG_d
+#undef FLAG_u
 #undef FLAG_r
 #undef FLAG_p
 #undef FLAG_P
@@ -3924,14 +3925,15 @@
 #define FLAG_s (1<<8)
 #define FLAG_a (1<<9)
 #define FLAG_d (1<<10)
-#define FLAG_r (1<<11)
-#define FLAG_p (1<<12)
-#define FLAG_P (1<<13)
-#define FLAG_L (1<<14)
-#define FLAG_H (1<<15)
-#define FLAG_R (1<<16)
-#define FLAG_D (1<<17)
-#define FLAG_preserve (1<<18)
+#define FLAG_u (1<<11)
+#define FLAG_r (1<<12)
+#define FLAG_p (1<<13)
+#define FLAG_P (1<<14)
+#define FLAG_L (1<<15)
+#define FLAG_H (1<<16)
+#define FLAG_R (1<<17)
+#define FLAG_D (1<<18)
+#define FLAG_preserve (1<<19)
 #endif
 
 #ifdef FOR_cpio
