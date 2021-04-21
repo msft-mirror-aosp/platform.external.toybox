@@ -268,7 +268,7 @@
 
 #define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc0 (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
 
-#define HELP_hexedit "usage: hexedit FILENAME\n\nHexadecimal file editor. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows        Move left/right/up/down by one line/column\nPg Up/Pg Dn   Move up/down by one page\n0-9, a-f      Change current half-byte to hexadecimal value\nu             Undo\nq/^c/^d/<esc> Quit"
+#define HELP_hexedit "usage: hexedit FILE\n\nHexadecimal file editor/viewer. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows         Move left/right/up/down by one line/column\nPgUp/PgDn      Move up/down by one page\nHome/End       Start/end of line (start/end of file with ctrl)\n0-9, a-f       Change current half-byte to hexadecimal value\n^J or :        Jump (+/- for relative offset, otherwise absolute address)\n^F or /        Find string (^G/n: next, ^D/p: previous match)\nu              Undo\nq/^C/^Q/Esc    Quit"
 
 #define HELP_help "usage: help [-ahu] [COMMAND]\n\n-a	All commands\n-u	Usage only\n-h	HTML output\n\nShow usage information for toybox commands.\nRun \"toybox\" with no arguments for a list of available commands."
 
