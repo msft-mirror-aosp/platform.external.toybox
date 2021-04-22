@@ -3,7 +3,8 @@
  * Copyright 2013 Isaac Dunham <ibid.ag@gmail.com>
  * Copyright 2015 Frontier Silicon Ltd.
  *
- * see http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/cpio.html
+ * see https://www.kernel.org/doc/Documentation/early-userspace/buffer-format.txt
+ * and http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/cpio.html
  * and http://pubs.opengroup.org/onlinepubs/7908799/xcu/cpio.html
  *
  * Yes, that's SUSv2, newer versions removed it, but RPM and initramfs use
@@ -11,7 +12,7 @@
  * expanded headers to 110 bytes (first field 6 bytes, rest are 8).
  * In order: magic ino mode uid gid nlink mtime filesize devmajor devminor
  * rdevmajor rdevminor namesize check
- * This is the equiavlent of mode -H newc when using GNU CPIO.
+ * This is the equivalent of mode -H newc in other implementations.
  *
  * todo: export/import linux file list text format ala gen_initramfs_list.sh
 
@@ -72,7 +73,7 @@ static unsigned x8u(char *hex)
   // Because scanf gratuitously treats %*X differently than printf does.
   sprintf(pattern, "%%%dX%%n", inpos);
   sscanf(hex, pattern, &val, &outpos);
-  if (inpos != outpos) error_exit("bad header");
+  if (inpos != outpos) error_exit("bad hex");
 
   return val;
 }
@@ -80,7 +81,7 @@ static unsigned x8u(char *hex)
 void cpio_main(void)
 {
   // Subtle bit: FLAG_o is 1 so we can just use it to select stdin/stdout.
-  int pipe, afd = FLAG(o);
+  int pipe, afd = FLAG(o), empty = 1;
   pid_t pid = 0;
 
   // In passthrough mode, parent stays in original dir and generates archive
@@ -111,18 +112,31 @@ void cpio_main(void)
 
   // read cpio archive
 
-  if (FLAG(i) || FLAG(t)) for (;;) {
+  if (FLAG(i) || FLAG(t)) for (;; empty = 0) {
     char *name, *tofree, *data;
-    unsigned size, mode, uid, gid, timestamp;
-    int test = FLAG(t), err = 0;
+    unsigned mode, uid, gid, timestamp;
+    int test = FLAG(t), err = 0, size = 0, len;
 
-    // Read header and name.
-    if (!(size =readall(afd, toybuf, 110))) break;
+    // read header, skipping arbitrary leading NUL bytes (concatenated archives)
+    for (;;) {
+      if (1>(len = readall(afd, toybuf+size, 110-size))) break;
+      if (size || *toybuf) {
+        size += len;
+        break;
+      }
+      for (size = 0; size<len; size++) if (toybuf[size]) break;
+      memmove(toybuf, toybuf+size, len-size);
+      size = len-size;
+    }
+    if (!size) {
+      if (empty) error_exit("empty archive");
+      else break;
+    }
     if (size != 110 || memcmp(toybuf, "070701", 6)) error_exit("bad header");
     tofree = name = strpad(afd, x8u(toybuf+94), 110);
     if (!strcmp("TRAILER!!!", name)) {
-      if (CFG_TOYBOX_FREE) free(tofree);
-      break;
+      free(tofree);
+      continue;
     }
 
     // If you want to extract absolute paths, "cd /" and run cpio.
@@ -283,9 +297,8 @@ void cpio_main(void)
     }
     if (CFG_TOYBOX_FREE) free(name);
 
-    memset(toybuf, 0, sizeof(toybuf));
-    xwrite(afd, toybuf,
-       sprintf(toybuf, "070701%040X%056X%08XTRAILER!!!", 1, 0x0b, 0)+4);
+    // nlink=1, namesize=11, with padding
+    dprintf(afd, "070701%040X%056X%08XTRAILER!!!%c%c%c%c", 1, 11, 0, 0, 0, 0,0);
   }
   if (TT.F) xclose(afd);
 

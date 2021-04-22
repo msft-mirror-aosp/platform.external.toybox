@@ -277,7 +277,11 @@ struct hexedit_data {
   char *data;
   long long len, base;
   int numlen, undo, undolen;
-  unsigned height;
+  unsigned rows, cols;
+  long long pos;
+  char keybuf[16];
+  char input[80];
+  char *search;
 };
 
 // toys/other/hwclock.c
