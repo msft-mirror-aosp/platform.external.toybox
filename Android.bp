@@ -445,6 +445,10 @@ cc_defaults {
             local_include_dirs: ["android/linux"],
         },
 
+        linux_bionic: {
+            local_include_dirs: ["android/linux"],
+        },
+
         darwin: {
             local_include_dirs: ["android/mac"],
             cflags: [
