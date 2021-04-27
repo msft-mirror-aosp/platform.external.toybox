@@ -350,7 +350,7 @@
 
 #define HELP_telnetd "Handle incoming telnet connections\n\n-l LOGIN  Exec LOGIN on connect\n-f ISSUE_FILE Display ISSUE_FILE instead of /etc/issue\n-K Close connection as soon as login exits\n-p PORT   Port to listen on\n-b ADDR[:PORT]  Address to bind to\n-F Run in foreground\n-i Inetd mode\n-w SEC    Inetd 'wait' mode, linger time SEC\n-S Log to syslog (implied by -i or without -F and -w)"
 
-#define HELP_telnet "usage: telnet HOST [PORT]\n\nConnect to telnet server"
+#define HELP_telnet "usage: telnet HOST [PORT]\n\nConnect to telnet server."
 
 #define HELP_tcpsvd "usage: tcpsvd [-hEv] [-c N] [-C N[:MSG]] [-b N] [-u User] [-l Name] IP Port Prog\nusage: udpsvd [-hEv] [-c N] [-u User] [-l Name] IP Port Prog\n\nCreate TCP/UDP socket, bind to IP:PORT and listen for incoming connection.\nRun PROG for each connection.\n\nIP            IP to listen on, 0 = all\nPORT          Port to listen on\nPROG ARGS     Program to run\n-l NAME       Local hostname (else looks up local hostname in DNS)\n-u USER[:GRP] Change to user/group after bind\n-c N          Handle up to N (> 0) connections simultaneously\n-b N          (TCP Only) Allow a backlog of approximately N TCP SYNs\n-C N[:MSG]    (TCP Only) Allow only up to N (> 0) connections from the same IP\n              New connections from this IP address are closed\n              immediately. MSG is written to the peer before close\n-h            Look up peer's hostname\n-E            Don't set up environment variables\n-v            Verbose"
 
@@ -376,7 +376,7 @@
 
 #define HELP_unset "usage: unset [-fvn] NAME...\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	dereference NAME and unset that"
 
-#define HELP_set "usage: set [+a] [+o OPTION] [VAR...]\n\nSet variables and shell attributes. Use + to disable and - to enable.\nNAME=VALUE arguments assign to the variable, any leftovers set $1, $2...\nWith no arguments, prints current variables.\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	dereference NAME and unset that\n\nOPTIONs:\n  history - enable command history"
+#define HELP_set "usage: set [+a] [+o OPTION] [VAR...]\n\nSet variables and shell attributes. Use + to disable and - to enable.\nNAME=VALUE arguments assign to the variable, any leftovers set $1, $2...\nWith no arguments, prints current variables.\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	don't follow name reference\n\nOPTIONs:\n  history - enable command history"
 
 #define HELP_exit "usage: exit [status]\n\nExit shell.  If no return value supplied on command line, use value\nof most recent command, or 0 if none."
 
