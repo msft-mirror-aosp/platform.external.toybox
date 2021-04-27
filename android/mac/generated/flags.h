@@ -3338,9 +3338,9 @@
 #undef FOR_unlink
 #endif
 
-// unset   fvn
+// unset   fvn[!fv]
 #undef OPTSTR_unset
-#define OPTSTR_unset "fvn"
+#define OPTSTR_unset "fvn[!fv]"
 #ifdef CLEANUP_unset
 #undef CLEANUP_unset
 #undef FOR_unset
