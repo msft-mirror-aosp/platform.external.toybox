@@ -859,11 +859,7 @@ struct sh_data {
   unsigned options, jobcnt, LINENO;
   int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
 
-// FUNCTION transplant pipelines from place to place?
-// function keyword can have pointer to function struct? Still refcnt?
-// is function body like HERE document? Lifetime rules
-
-  // Callable functions
+  // Callable function array
   struct sh_function {
     char *name;
     struct sh_pipeline {  // pipeline segments: linked list of arg w/metadata
@@ -874,7 +870,9 @@ struct sh_data {
         int c;
       } arg[1];
     } *pipeline;
-  } *functions;
+    unsigned long refcount;
+  } **functions;
+  long funcslen;
 
   // runtime function call stack
   struct sh_fcall {
@@ -885,14 +883,13 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
+    long varslen, shift;
 
-//    struct sh_function *func;
+    struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
     char *ifs;
-    int varslen;
     struct sh_arg arg;
     struct arg_list *delete;
-    long shift;
 
     // Runtime stack of nested if/else/fi and for/do/done contexts.
     struct sh_blockstack {
@@ -971,20 +968,15 @@ struct tcpsvd_data {
 // toys/pending/telnet.c
 
 struct telnet_data {
-  int port;
-  int sfd;
-  char buff[128];
-  int pbuff;
-  char iac[256];
-  int piac;
-  char *ttype;
-  struct termios def_term;
+  int sock;
+  char buf[2048]; // Half sizeof(toybuf) allows a buffer full of IACs.
+  char iac[128];
+  int iac_len;
+  struct termios old_term;
   struct termios raw_term;
-  uint8_t term_ok;
-  uint8_t term_mode;
-  uint8_t flags;
-  unsigned win_width;
-  unsigned win_height;
+  uint8_t mode;
+  int echo, sga;
+  int state, request;
 };
 
 // toys/pending/telnetd.c
