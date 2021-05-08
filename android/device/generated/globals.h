@@ -908,7 +908,7 @@ struct sh_data {
     struct sh_process *next, *prev; // | && ||
     struct arg_list *delete;   // expanded strings
     // undo redirects, a=b at start, child PID, exit status, has !, job #
-    int *urd, envlen, pid, exit, not, job;
+    int *urd, envlen, pid, exit, not, job, dash;
     long long when; // when job backgrounded/suspended
     struct sh_arg *raw, arg;
   } *pp; // currently running process
@@ -970,8 +970,6 @@ struct tcpsvd_data {
 struct telnet_data {
   int sock;
   char buf[2048]; // Half sizeof(toybuf) allows a buffer full of IACs.
-  char iac[128];
-  int iac_len;
   struct termios old_term;
   struct termios raw_term;
   uint8_t mode;

@@ -1524,6 +1524,19 @@
 #undef FLAG_a
 #endif
 
+// jobs   lnprs
+#undef OPTSTR_jobs
+#define OPTSTR_jobs "lnprs"
+#ifdef CLEANUP_jobs
+#undef CLEANUP_jobs
+#undef FOR_jobs
+#undef FLAG_s
+#undef FLAG_r
+#undef FLAG_p
+#undef FLAG_n
+#undef FLAG_l
+#endif
+
 // kill   ?ls: 
 #undef OPTSTR_kill
 #define OPTSTR_kill "?ls: "
@@ -3469,6 +3482,15 @@
 #undef FOR_w
 #endif
 
+// wait   n
+#undef OPTSTR_wait
+#define OPTSTR_wait "n"
+#ifdef CLEANUP_wait
+#undef CLEANUP_wait
+#undef FOR_wait
+#undef FLAG_n
+#endif
+
 // watch   ^<1n%<100=2000tebx
 #undef OPTSTR_watch
 #define OPTSTR_watch "^<1n%<100=2000tebx"
@@ -4879,6 +4901,17 @@
 #define FLAG_p (FORCED_FLAG<<7)
 #define FLAG_c (FORCED_FLAG<<8)
 #define FLAG_a (FORCED_FLAG<<9)
+#endif
+
+#ifdef FOR_jobs
+#ifndef TT
+#define TT this.jobs
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_r (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
+#define FLAG_n (FORCED_FLAG<<3)
+#define FLAG_l (FORCED_FLAG<<4)
 #endif
 
 #ifdef FOR_kill
@@ -6514,6 +6547,13 @@
 #ifndef TT
 #define TT this.w
 #endif
+#endif
+
+#ifdef FOR_wait
+#ifndef TT
+#define TT this.wait
+#endif
+#define FLAG_n (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_watch
