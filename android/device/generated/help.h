@@ -358,6 +358,8 @@
 
 #define HELP_stty "usage: stty [-ag] [-F device] SETTING...\n\nGet/set terminal configuration.\n\n-F	Open device instead of stdin\n-a	Show all current settings (default differences from \"sane\")\n-g	Show all current settings usable as input to stty\n\nSpecial characters (syntax ^c or undef): intr quit erase kill eof eol eol2\nswtch start stop susp rprnt werase lnext discard\n\nControl/input/output/local settings as shown by -a, '-' prefix to disable\n\nCombo settings: cooked/raw, evenp/oddp/parity, nl, ek, sane\n\nN	set input and output speed (ispeed N or ospeed N for just one)\ncols N	set number of columns\nrows N	set number of rows\nline N	set line discipline\nmin N	set minimum chars per read\ntime N	set read timeout\nspeed	show speed only\nsize	show size only"
 
+#define HELP_wait "usage: wait [-n] [ID...]\n\nWait for background processes to exit, returning its exit code.\nID can be PID or job, with no IDs waits for all backgrounded processes.\n\n-n	Wait for next process to exit"
+
 #define HELP_source "usage: source FILE [ARGS...]\n\nRead FILE and execute commands. Any ARGS become positional parameters."
 
 #define HELP_shift "usage: shift [N]\n\nSkip N (default 1) positional parameters, moving $1 and friends along the list.\nDoes not affect $0."
