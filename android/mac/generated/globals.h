@@ -274,10 +274,10 @@ struct free_data {
 // toys/other/hexedit.c
 
 struct hexedit_data {
-  char *data;
-  long long len, base;
-  int numlen, undo, undolen;
-  unsigned height;
+  char *data, *search, keybuf[16], input[80];
+  long long len, base, pos;
+  int numlen, undo, undolen, mode;
+  unsigned rows, cols;
 };
 
 // toys/other/hwclock.c
@@ -384,6 +384,16 @@ struct oneit_data {
 
 struct pwgen_data {
   char *r;
+};
+
+// toys/other/readelf.c
+
+struct readelf_data {
+  char *x, *p;
+
+  char *elf, *shstrtab, *f;
+  unsigned long long shoff, phoff, size, shstrtabsz;
+  int bits, endian, shnum, shentsize, phentsize;
 };
 
 // toys/other/rtcwake.c
@@ -821,16 +831,6 @@ struct openvt_data {
   long c;
 };
 
-// toys/pending/readelf.c
-
-struct readelf_data {
-  char *x, *p;
-
-  char *elf, *shstrtab, *f;
-  unsigned long long shoff, phoff, size, shstrtabsz;
-  int bits, endian, shnum, shentsize, phentsize;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -855,11 +855,7 @@ struct sh_data {
   unsigned options, jobcnt, LINENO;
   int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
 
-// FUNCTION transplant pipelines from place to place?
-// function keyword can have pointer to function struct? Still refcnt?
-// is function body like HERE document? Lifetime rules
-
-  // Callable functions
+  // Callable function array
   struct sh_function {
     char *name;
     struct sh_pipeline {  // pipeline segments: linked list of arg w/metadata
@@ -870,7 +866,9 @@ struct sh_data {
         int c;
       } arg[1];
     } *pipeline;
-  } *functions;
+    unsigned long refcount;
+  } **functions;
+  long funcslen;
 
   // runtime function call stack
   struct sh_fcall {
@@ -881,14 +879,13 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
+    long varslen, shift;
 
-//    struct sh_function *func;
+    struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
     char *ifs;
-    int varslen;
     struct sh_arg arg;
     struct arg_list *delete;
-    long shift;
 
     // Runtime stack of nested if/else/fi and for/do/done contexts.
     struct sh_blockstack {
@@ -907,7 +904,7 @@ struct sh_data {
     struct sh_process *next, *prev; // | && ||
     struct arg_list *delete;   // expanded strings
     // undo redirects, a=b at start, child PID, exit status, has !, job #
-    int *urd, envlen, pid, exit, not, job;
+    int *urd, envlen, pid, exit, not, job, dash;
     long long when; // when job backgrounded/suspended
     struct sh_arg *raw, arg;
   } *pp; // currently running process
@@ -967,20 +964,13 @@ struct tcpsvd_data {
 // toys/pending/telnet.c
 
 struct telnet_data {
-  int port;
-  int sfd;
-  char buff[128];
-  int pbuff;
-  char iac[256];
-  int piac;
-  char *ttype;
-  struct termios def_term;
+  int sock;
+  char buf[2048]; // Half sizeof(toybuf) allows a buffer full of IACs.
+  struct termios old_term;
   struct termios raw_term;
-  uint8_t term_ok;
-  uint8_t term_mode;
-  uint8_t flags;
-  unsigned win_width;
-  unsigned win_height;
+  uint8_t mode;
+  int echo, sga;
+  int state, request;
 };
 
 // toys/pending/telnetd.c
@@ -1621,6 +1611,7 @@ extern union global_union {
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
 	struct pwgen_data pwgen;
+	struct readelf_data readelf;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
@@ -1668,7 +1659,6 @@ extern union global_union {
 	struct modprobe_data modprobe;
 	struct more_data more;
 	struct openvt_data openvt;
-	struct readelf_data readelf;
 	struct route_data route;
 	struct sh_data sh;
 	struct stty_data stty;
