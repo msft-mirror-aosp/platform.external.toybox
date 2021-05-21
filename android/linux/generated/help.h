@@ -198,6 +198,8 @@
 
 #define HELP_readlink "usage: readlink FILE...\n\nWith no options, show what symlink points to, return error if not symlink.\n\nOptions for producing canonical paths (all symlinks/./.. resolved):\n\n-e	Canonical path to existing entry (fail if missing)\n-f	Full path (fail if directory missing)\n-m	Ignore missing entries, show where it would be\n-n	No trailing newline\n-q	Quiet (no output, just error code)"
 
+#define HELP_readelf "usage: readelf [-adehlnSs] [-p SECTION] [-x SECTION] [file...]\n\nDisplays information about ELF files.\n\n-a	Equivalent to -dhlnSs\n-d	Show dynamic section\n-e	Headers (equivalent to -hlS)\n-h	Show ELF header\n-l	Show program headers\n-n	Show notes\n-p S	Dump strings found in named/numbered section\n-S	Show section headers\n-s	Show symbol tables (.dynsym and .symtab)\n-x S	Hex dump of named/numbered section\n\n--dyn-syms	Show just .dynsym symbol table"
+
 #define HELP_readahead "usage: readahead FILE...\n\nPreload files into disk cache."
 
 #define HELP_pwgen "usage: pwgen [-cAn0yrsBhC1v] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. When output is to tty produces\na screenfull to defeat shoulder surfing (pick one and clear the screen).\n\n-c  --capitalize                  Permit capital letters.\n-A  --no-capitalize               Don't include capital letters.\n-n  --numerals                    Permit numbers.\n-0  --no-numerals                 Don't include numbers.\n-y  --symbols                     Permit special characters ($#%...).\n-r <chars>  --remove=<chars>      Don't include the given characters.\n-s  --secure                      Generate more random passwords.\n-B  --ambiguous                   Avoid ambiguous characters (e.g. 0, O).\n-h  --help                        Print this help message.\n-C                                Print the output in columns.\n-1                                Print the output one line each.\n-v                                Don't include vowels."
@@ -268,7 +270,7 @@
 
 #define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc0 (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
 
-#define HELP_hexedit "usage: hexedit FILE\n\nHexadecimal file editor/viewer. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows         Move left/right/up/down by one line/column\nPgUp/PgDn      Move up/down by one page\nHome/End       Start/end of line (start/end of file with ctrl)\n0-9, a-f       Change current half-byte to hexadecimal value\n^J or :        Jump (+/- for relative offset, otherwise absolute address)\n^F or /        Find string (^G/n: next, ^D/p: previous match)\nu              Undo\nq/^C/^Q/Esc    Quit"
+#define HELP_hexedit "usage: hexedit FILE\n\nHexadecimal file editor/viewer. All changes are written to disk immediately.\n\n-r	Read only (display but don't edit)\n\nKeys:\nArrows         Move left/right/up/down by one line/column\nPgUp/PgDn      Move up/down by one page\nHome/End       Start/end of line (start/end of file with ctrl)\n0-9, a-f       Change current half-byte to hexadecimal value\n^J or :        Jump (+/- for relative offset, otherwise absolute address)\n^F or /        Find string (^G/n: next, ^D/p: previous match)\nu              Undo\nx              Toggle bw/color display\nq/^C/^Q/Esc    Quit"
 
 #define HELP_help "usage: help [-ahu] [COMMAND]\n\n-a	All commands\n-u	Usage only\n-h	HTML output\n\nShow usage information for toybox commands.\nRun \"toybox\" with no arguments for a list of available commands."
 
@@ -324,6 +326,8 @@
 
 #define HELP_base64 "usage: base64 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base64.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
 
+#define HELP_unicode "usage: unicode CODE[-END]...\n\nConvert between Unicode code points and UTF-8, in both directions.\nCODE can be one or more characters (show U+XXXX), hex numbers\n(show character), or dash separated range."
+
 #define HELP_ascii "usage: ascii\n\nDisplay ascii character set."
 
 #define HELP_acpi "usage: acpi [-abctV]\n\nShow status of power sources and thermal devices.\n\n-a	Show power adapters\n-b	Show batteries\n-c	Show cooling device state\n-t	Show temperatures\n-V	Show everything"
@@ -337,8 +341,6 @@
 #define HELP_userdel "usage: userdel [-r] USER\nusage: deluser [-r] USER\n\nDelete USER from the SYSTEM\n\n-r	remove home directory"
 
 #define HELP_useradd "usage: useradd [-SDH] [-h DIR] [-s SHELL] [-G GRP] [-g NAME] [-u UID] USER [GROUP]\n\nCreate new user, or add USER to GROUP\n\n-D       Don't assign a password\n-g NAME  Real name\n-G GRP   Add user to existing group\n-h DIR   Home directory\n-H       Don't create home directory\n-s SHELL Login shell\n-S       Create a system user\n-u UID   User id"
-
-#define HELP_unicode "usage: unicode [[min]-max]\n\nConvert between Unicode code points and UTF-8, in both directions."
 
 #define HELP_traceroute "usage: traceroute [-46FUIldnvr] [-f 1ST_TTL] [-m MAXTTL] [-p PORT] [-q PROBES]\n[-s SRC_IP] [-t TOS] [-w WAIT_SEC] [-g GATEWAY] [-i IFACE] [-z PAUSE_MSEC] HOST [BYTES]\n\ntraceroute6 [-dnrv] [-m MAXTTL] [-p PORT] [-q PROBES][-s SRC_IP] [-t TOS] [-w WAIT_SEC]\n  [-i IFACE] HOST [BYTES]\n\nTrace the route to HOST\n\n-4,-6 Force IP or IPv6 name resolution\n-F    Set the don't fragment bit (supports IPV4 only)\n-U    Use UDP datagrams instead of ICMP ECHO (supports IPV4 only)\n-I    Use ICMP ECHO instead of UDP datagrams (supports IPV4 only)\n-l    Display the TTL value of the returned packet (supports IPV4 only)\n-d    Set SO_DEBUG options to socket\n-n    Print numeric addresses\n-v    verbose\n-r    Bypass routing tables, send directly to HOST\n-m    Max time-to-live (max number of hops)(RANGE 1 to 255)\n-p    Base UDP port number used in probes(default 33434)(RANGE 1 to 65535)\n-q    Number of probes per TTL (default 3)(RANGE 1 to 255)\n-s    IP address to use as the source address\n-t    Type-of-service in probe packets (default 0)(RANGE 0 to 255)\n-w    Time in seconds to wait for a response (default 3)(RANGE 0 to 86400)\n-g    Loose source route gateway (8 max) (supports IPV4 only)\n-z    Pause Time in ms (default 0)(RANGE 0 to 86400) (supports IPV4 only)\n-f    Start from the 1ST_TTL hop (instead from 1)(RANGE 1 to 255) (supports IPV4 only)\n-i    Specify a network interface to operate with"
 
@@ -387,8 +389,6 @@
 #define HELP_sh "usage: sh [-c command] [script]\n\nCommand shell.  Runs a shell script, or reads input interactively\nand responds to it.\n\n-c	command line to execute\n-i	interactive mode (default when STDIN is a tty)"
 
 #define HELP_route "usage: route [-ne] [-A [inet|inet6]] [add|del TARGET [OPTIONS]]\n\nDisplay, add or delete network routes in the \"Forwarding Information Base\",\nwhich send packets out a network interface to an address.\n\n-n	Show numerical addresses (no DNS lookups)\n-e	display netstat fields\n\nAssigning an address to an interface automatically creates an appropriate\nnetwork route (\"ifconfig eth0 10.0.2.15/8\" does \"route add 10.0.0.0/8 eth0\"\nfor you), although some devices (such as loopback) won't show it in the\ntable. For machines more than one hop away, you need to specify a gateway\n(ala \"route add default gw 10.0.2.2\").\n\nThe address \"default\" is a wildcard address (0.0.0.0/0) matching all\npackets without a more specific route.\n\nAvailable OPTIONS include:\nreject   - blocking route (force match failure)\ndev NAME - force matching packets out this interface (ala \"eth0\")\nnetmask  - old way of saying things like ADDR/24\ngw ADDR  - forward packets to gateway ADDR"
-
-#define HELP_readelf "usage: readelf [-adehlnSs] [-p SECTION] [-x SECTION] [file...]\n\nDisplays information about ELF files.\n\n-a	Equivalent to -dhlnSs\n-d	Show dynamic section\n-e	Headers (equivalent to -hlS)\n-h	Show ELF header\n-l	Show program headers\n-n	Show notes\n-p S	Dump strings found in named/numbered section\n-S	Show section headers\n-s	Show symbol tables (.dynsym and .symtab)\n-x S	Hex dump of named/numbered section\n\n--dyn-syms	Show just .dynsym symbol table"
 
 #define HELP_deallocvt "usage: deallocvt [NUM]\n\nDeallocate unused virtual terminals, either a specific /dev/ttyNUM, or all."
 
@@ -602,7 +602,7 @@
 
 #define HELP_env "usage: env [-i] [-u NAME] [NAME=VALUE...] [COMMAND...]\n\nSet the environment for command invocation, or list environment variables.\n\n-i	Clear existing environment\n-u NAME	Remove NAME from the environment\n-0	Use null instead of newline in output"
 
-#define HELP_echo "usage: echo [-neE] [ARG...]\n\nWrite each argument to stdout, with one space between each, followed\nby a newline.\n\n-n	No trailing newline\n-E	Print escape sequences literally (default)\n-e	Process the following escape sequences:\n	\\\\	Backslash\n	\\0NNN	Octal values (1 to 3 digits)\n	\\a	Alert (beep/flash)\n	\\b	Backspace\n	\\c	Stop output here (avoids trailing newline)\n	\\f	Form feed\n	\\n	Newline\n	\\r	Carriage return\n	\\t	Horizontal tab\n	\\v	Vertical tab\n	\\xHH	Hexadecimal values (1 to 2 digits)"
+#define HELP_echo "usage: echo [-neE] [ARG...]\n\nWrite each argument to stdout, one space between each, followed by a newline.\n\n-n	No trailing newline\n-E	Print escape sequences literally (default)\n-e	Process the following escape sequences:\n	\\\\  Backslash		\\0NNN Octal (1-3 digit)	\\xHH Hex (1-2 digit)\n	\\a  Alert (beep/flash)	\\b  Backspace		\\c  Stop here (no \\n)\n	\\f  Form feed		\\n  Newline		\\r  Carriage return\n	\\t  Horizontal tab	\\v  Vertical tab"
 
 #define HELP_du "usage: du [-d N] [-askxHLlmc] [FILE...]\n\nShow disk usage, space consumed by files and directories.\n\nSize in:\n-b	Apparent bytes (directory listing size, not space used)\n-k	1024 byte blocks (default)\n-K	512 byte blocks (posix)\n-m	Megabytes\n-h	Human readable (e.g., 1K 243M 2G)\n\nWhat to show:\n-a	All files, not just directories\n-H	Follow symlinks on cmdline\n-L	Follow all symlinks\n-s	Only total size of each argument\n-x	Don't leave this filesystem\n-c	Cumulative total\n-d N	Only depth < N\n-l	Disable hardlink filter"
 
