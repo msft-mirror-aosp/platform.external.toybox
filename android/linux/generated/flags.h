@@ -381,9 +381,9 @@
 #undef FOR_count
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni] <1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]
+// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprdaslvnF(remove-destination)fit:T[-HLPd][-ni]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -398,6 +398,7 @@
 #undef FLAG_s
 #undef FLAG_a
 #undef FLAG_d
+#undef FLAG_u
 #undef FLAG_r
 #undef FLAG_p
 #undef FLAG_P
@@ -482,13 +483,14 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso)(iso-8601):;r:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:u(utc)[!dr]
+// date d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
 #undef FLAG_u
+#undef FLAG_s
 #undef FLAG_r
 #undef FLAG_I
 #undef FLAG_D
@@ -1521,6 +1523,19 @@
 #undef FLAG_p
 #undef FLAG_c
 #undef FLAG_a
+#endif
+
+// jobs   lnprs
+#undef OPTSTR_jobs
+#define OPTSTR_jobs "lnprs"
+#ifdef CLEANUP_jobs
+#undef CLEANUP_jobs
+#undef FOR_jobs
+#undef FLAG_s
+#undef FLAG_r
+#undef FLAG_p
+#undef FLAG_n
+#undef FLAG_l
 #endif
 
 // kill   ?ls: 
@@ -2656,17 +2671,6 @@
 #undef FLAG_noediting
 #endif
 
-// sha1sum bc(check)s(status)[!bc] bc(check)s(status)[!bc]
-#undef OPTSTR_sha1sum
-#define OPTSTR_sha1sum "bc(check)s(status)[!bc]"
-#ifdef CLEANUP_sha1sum
-#undef CLEANUP_sha1sum
-#undef FOR_sha1sum
-#undef FLAG_s
-#undef FLAG_c
-#undef FLAG_b
-#endif
-
 // sha3sum   bSa#<128>512=224
 #undef OPTSTR_sha3sum
 #define OPTSTR_sha3sum "bSa#<128>512=224"
@@ -3337,9 +3341,9 @@
 #undef FOR_unlink
 #endif
 
-// unset   fvn
+// unset   fvn[!fv]
 #undef OPTSTR_unset
-#define OPTSTR_unset "fvn"
+#define OPTSTR_unset "fvn[!fv]"
 #ifdef CLEANUP_unset
 #undef CLEANUP_unset
 #undef FOR_unset
@@ -3466,6 +3470,15 @@
 #ifdef CLEANUP_w
 #undef CLEANUP_w
 #undef FOR_w
+#endif
+
+// wait   n
+#undef OPTSTR_wait
+#define OPTSTR_wait "n"
+#ifdef CLEANUP_wait
+#undef CLEANUP_wait
+#undef FOR_wait
+#undef FLAG_n
 #endif
 
 // watch   ^<1n%<100=2000tebx
@@ -3924,14 +3937,15 @@
 #define FLAG_s (1<<8)
 #define FLAG_a (1<<9)
 #define FLAG_d (1<<10)
-#define FLAG_r (1<<11)
-#define FLAG_p (1<<12)
-#define FLAG_P (1<<13)
-#define FLAG_L (1<<14)
-#define FLAG_H (1<<15)
-#define FLAG_R (1<<16)
-#define FLAG_D (1<<17)
-#define FLAG_preserve (1<<18)
+#define FLAG_u (1<<11)
+#define FLAG_r (1<<12)
+#define FLAG_p (1<<13)
+#define FLAG_P (1<<14)
+#define FLAG_L (1<<15)
+#define FLAG_H (1<<16)
+#define FLAG_R (1<<17)
+#define FLAG_D (1<<18)
+#define FLAG_preserve (1<<19)
 #endif
 
 #ifdef FOR_cpio
@@ -4003,10 +4017,11 @@
 #define TT this.date
 #endif
 #define FLAG_u (1<<0)
-#define FLAG_r (1<<1)
-#define FLAG_I (1<<2)
-#define FLAG_D (1<<3)
-#define FLAG_d (1<<4)
+#define FLAG_s (1<<1)
+#define FLAG_r (1<<2)
+#define FLAG_I (1<<3)
+#define FLAG_D (1<<4)
+#define FLAG_d (1<<5)
 #endif
 
 #ifdef FOR_dd
@@ -4877,6 +4892,17 @@
 #define FLAG_p (FORCED_FLAG<<7)
 #define FLAG_c (FORCED_FLAG<<8)
 #define FLAG_a (FORCED_FLAG<<9)
+#endif
+
+#ifdef FOR_jobs
+#ifndef TT
+#define TT this.jobs
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_r (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
+#define FLAG_n (FORCED_FLAG<<3)
+#define FLAG_l (FORCED_FLAG<<4)
 #endif
 
 #ifdef FOR_kill
@@ -5830,15 +5856,6 @@
 #define FLAG_noediting (FORCED_FLAG<<5)
 #endif
 
-#ifdef FOR_sha1sum
-#ifndef TT
-#define TT this.sha1sum
-#endif
-#define FLAG_s (1<<0)
-#define FLAG_c (1<<1)
-#define FLAG_b (1<<2)
-#endif
-
 #ifdef FOR_sha3sum
 #ifndef TT
 #define TT this.sha3sum
@@ -6512,6 +6529,13 @@
 #ifndef TT
 #define TT this.w
 #endif
+#endif
+
+#ifdef FOR_wait
+#ifndef TT
+#define TT this.wait
+#endif
+#define FLAG_n (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_watch

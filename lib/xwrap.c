@@ -96,7 +96,6 @@ void *xrealloc(void *ptr, size_t size)
 char *xstrndup(char *s, size_t n)
 {
   char *ret = strndup(s, n);
-
   if (!ret) error_exit("xstrndup");
 
   return ret;
@@ -127,8 +126,7 @@ char *xmprintf(char *format, ...)
   va_copy(va2, va);
 
   // How long is it?
-  len = vsnprintf(0, 0, format, va);
-  len++;
+  len = vsnprintf(0, 0, format, va)+1;
   va_end(va);
 
   // Allocate and do the sprintf()
@@ -225,8 +223,8 @@ pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid)
 void xexec(char **argv)
 {
   // Only recurse to builtin when we have multiplexer and !vfork context.
-  if (CFG_TOYBOX && !CFG_TOYBOX_NORECURSE && toys.stacktop && **argv != '/')
-    toy_exec(argv);
+  if (CFG_TOYBOX && !CFG_TOYBOX_NORECURSE)
+    if (toys.stacktop && !strchr(*argv, '/')) toy_exec(argv);
   execvp(argv[0], argv);
 
   toys.exitval = 126+(errno == ENOENT);
@@ -340,7 +338,7 @@ int xwaitpid(pid_t pid)
 {
   int status;
 
-  while (-1 == waitpid(pid, &status, 0) && errno == EINTR);
+  while (-1 == waitpid(pid, &status, 0) && errno == EINTR) errno = 0;
 
   return WIFEXITED(status) ? WEXITSTATUS(status) : WTERMSIG(status)+128;
 }
@@ -1041,25 +1039,33 @@ void xparsedate(char *str, time_t *t, unsigned *nano, int endian)
       }
 
       // Handle optional Z or +HH[[:]MM] timezone
+      while (isspace(*p)) p++;
       if (*p && strchr("Z+-", *p)) {
-        unsigned hh, mm = 0, len;
-        char *tz, sign = *p++;
+        unsigned uu[3] = {0}, n = 0, nn = 0;
+        char *tz = 0, sign = *p++;
 
         if (sign == 'Z') tz = "UTC0";
-        else if (sscanf(p, "%2u%2u%n",  &hh, &mm, &len) == 2
-              || sscanf(p, "%2u%n:%2u%n", &hh, &len, &mm, &len) > 0)
-        {
+        else if (0<sscanf(p, " %u%n : %u%n : %u%n", uu,&n,uu+1,&nn,uu+2,&nn)) {
+          if (n>2) {
+            uu[1] += uu[0]%100;
+            uu[0] /= 100;
+          }
+          if (n>nn) nn = n;
+          if (!nn) continue;
+
           // flip sign because POSIX UTC offsets are backwards
-          sprintf(tz = libbuf, "UTC%c%02d:%02d", "+-"[sign=='+'], hh, mm);
-          p += len;
-        } else continue;
+          sprintf(tz = libbuf, "UTC%c%02u:%02u:%02u", "+-"[sign=='+'],
+            uu[0], uu[1], uu[2]);
+          p += nn;
+        }
 
         if (!oldtz) {
           oldtz = getenv("TZ");
           if (oldtz) oldtz = xstrdup(oldtz);
         }
-        setenv("TZ", tz, 1);
+        if (tz) setenv("TZ", tz, 1);
       }
+      while (isspace(*p)) p++;
 
       if (!*p) break;
     }

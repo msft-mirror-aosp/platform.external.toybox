@@ -224,7 +224,7 @@ static int config_action(struct dirtree *node)
     free(filename);
     return 0;
   }
-  for (line = linecp = NULL; read_line(fc, &line) > 0; 
+  for (line = linecp = NULL; read_line(fc, &line) >= 0;
       free(line), free(linecp), line = linecp = NULL) {
     char *tk = NULL;
 
@@ -238,7 +238,8 @@ static int config_action(struct dirtree *node)
         break;
       }
     }
-    if (!tk) continue; 
+    // Every command requires at least one argument.
+    if (tcount < 2) continue;
     // process the tokens[0] contains first word of config line.
     if (!strcmp(tokens[0], "alias")) {
       struct arg_list *temp;
@@ -286,7 +287,7 @@ static int depmode_read_entry(char *cmdname)
   int ret = -1;
   FILE *fe = xfopen("modules.dep", "r");
 
-  while (read_line(fe, &line) > 0) {
+  while (read_line(fe, &line) >= 0) {
     char *tmp = strchr(line, ':');
 
     if (tmp) {
@@ -314,7 +315,7 @@ static void find_dep(void)
   struct module_s *mod;
   FILE *fe = xfopen("modules.dep", "r");
 
-  for (; read_line(fe, &line) > 0; free(line)) {
+  for (; read_line(fe, &line) >= 0; free(line)) {
     char *tmp = strchr(line, ':');
 
     if (tmp) {
