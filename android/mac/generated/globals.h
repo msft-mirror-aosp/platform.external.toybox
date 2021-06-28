@@ -72,15 +72,16 @@ struct killall_data {
 
 struct md5sum_data {
   int sawline;
+  unsigned *rconsttable32;
+  unsigned long long *rconsttable64; // for sha384,sha512
 
-  unsigned *md5table;
   // Crypto variables blanked after summing
-  unsigned state[5], oldstate[5];
-  unsigned long long count;
+  unsigned long long count, overflow;
   union {
-    char c[64];
-    unsigned i[16];
-  } buffer;
+    char c[128]; // bytes, 1024 bits
+    unsigned i32[16]; // 512 bits for md5,sha1,sha224,sha256
+    unsigned long long i64[16]; // 1024 bits for sha384,sha512
+  } state, buffer;
 };
 
 // toys/lsb/mknod.c
@@ -904,7 +905,7 @@ struct sh_data {
     struct sh_process *next, *prev; // | && ||
     struct arg_list *delete;   // expanded strings
     // undo redirects, a=b at start, child PID, exit status, has !, job #
-    int *urd, envlen, pid, exit, not, job, dash;
+    int *urd, envlen, pid, exit, flags, job, dash;
     long long when; // when job backgrounded/suspended
     struct sh_arg *raw, arg;
   } *pp; // currently running process
@@ -1195,7 +1196,7 @@ struct cut_data {
 // toys/posix/date.c
 
 struct date_data {
-  char *r, *I, *D, *d;
+  char *s, *r, *I, *D, *d;
 
   unsigned nano;
 };

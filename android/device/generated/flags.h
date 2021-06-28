@@ -483,13 +483,14 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso)(iso-8601):;r:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:u(utc)[!dr]
+// date d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
 #undef FLAG_u
+#undef FLAG_s
 #undef FLAG_r
 #undef FLAG_I
 #undef FLAG_D
@@ -2670,17 +2671,6 @@
 #undef FLAG_noediting
 #endif
 
-// sha1sum bc(check)s(status)[!bc] bc(check)s(status)[!bc]
-#undef OPTSTR_sha1sum
-#define OPTSTR_sha1sum "bc(check)s(status)[!bc]"
-#ifdef CLEANUP_sha1sum
-#undef CLEANUP_sha1sum
-#undef FOR_sha1sum
-#undef FLAG_s
-#undef FLAG_c
-#undef FLAG_b
-#endif
-
 // sha3sum   bSa#<128>512=224
 #undef OPTSTR_sha3sum
 #define OPTSTR_sha3sum "bSa#<128>512=224"
@@ -4027,10 +4017,11 @@
 #define TT this.date
 #endif
 #define FLAG_u (1<<0)
-#define FLAG_r (1<<1)
-#define FLAG_I (1<<2)
-#define FLAG_D (1<<3)
-#define FLAG_d (1<<4)
+#define FLAG_s (1<<1)
+#define FLAG_r (1<<2)
+#define FLAG_I (1<<3)
+#define FLAG_D (1<<4)
+#define FLAG_d (1<<5)
 #endif
 
 #ifdef FOR_dd
@@ -5863,15 +5854,6 @@
 #define FLAG_norc (FORCED_FLAG<<3)
 #define FLAG_noprofile (FORCED_FLAG<<4)
 #define FLAG_noediting (FORCED_FLAG<<5)
-#endif
-
-#ifdef FOR_sha1sum
-#ifndef TT
-#define TT this.sha1sum
-#endif
-#define FLAG_s (1<<0)
-#define FLAG_c (1<<1)
-#define FLAG_b (1<<2)
 #endif
 
 #ifdef FOR_sha3sum
