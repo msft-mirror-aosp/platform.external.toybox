@@ -465,9 +465,9 @@
 #undef FLAG_c
 #endif
 
-// cut b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf] b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf]
+// cut b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF] b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]
 #undef OPTSTR_cut
-#define OPTSTR_cut "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf]"
+#define OPTSTR_cut "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]"
 #ifdef CLEANUP_cut
 #undef CLEANUP_cut
 #undef FOR_cut
@@ -975,9 +975,9 @@
 #undef FLAG_b
 #endif
 
-// free   htgmkb[!htgmkb]
+// free   hgmkb[!hgmkb]
 #undef OPTSTR_free
-#define OPTSTR_free "htgmkb[!htgmkb]"
+#define OPTSTR_free "hgmkb[!hgmkb]"
 #ifdef CLEANUP_free
 #undef CLEANUP_free
 #undef FOR_free
@@ -985,7 +985,6 @@
 #undef FLAG_k
 #undef FLAG_m
 #undef FLAG_g
-#undef FLAG_t
 #undef FLAG_h
 #endif
 
@@ -2795,12 +2794,13 @@
 #undef FOR_source
 #endif
 
-// split   >2a#<1=2>9b#<1l#<1[!bl]
+// split   >2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln]
 #undef OPTSTR_split
-#define OPTSTR_split ">2a#<1=2>9b#<1l#<1[!bl]"
+#define OPTSTR_split ">2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln]"
 #ifdef CLEANUP_split
 #undef CLEANUP_split
 #undef FOR_split
+#undef FLAG_n
 #undef FLAG_l
 #undef FLAG_b
 #undef FLAG_a
@@ -2948,14 +2948,16 @@
 #undef FOR_tac
 #endif
 
-// tail ?fc-n-[-cn] ?fc-n-[-cn]
+// tail ?fFs#=1c-n-[-cn][-fF] ?fFs#=1c-n-[-cn][-fF]
 #undef OPTSTR_tail
-#define OPTSTR_tail "?fc-n-[-cn]"
+#define OPTSTR_tail "?fFs#=1c-n-[-cn][-fF]"
 #ifdef CLEANUP_tail
 #undef CLEANUP_tail
 #undef FOR_tail
 #undef FLAG_n
 #undef FLAG_c
+#undef FLAG_s
+#undef FLAG_F
 #undef FLAG_f
 #endif
 
@@ -4438,8 +4440,7 @@
 #define FLAG_k (FORCED_FLAG<<1)
 #define FLAG_m (FORCED_FLAG<<2)
 #define FLAG_g (FORCED_FLAG<<3)
-#define FLAG_t (FORCED_FLAG<<4)
-#define FLAG_h (FORCED_FLAG<<5)
+#define FLAG_h (FORCED_FLAG<<4)
 #endif
 
 #ifdef FOR_freeramdisk
@@ -5966,9 +5967,10 @@
 #ifndef TT
 #define TT this.split
 #endif
-#define FLAG_l (FORCED_FLAG<<0)
-#define FLAG_b (FORCED_FLAG<<1)
-#define FLAG_a (FORCED_FLAG<<2)
+#define FLAG_n (FORCED_FLAG<<0)
+#define FLAG_l (FORCED_FLAG<<1)
+#define FLAG_b (FORCED_FLAG<<2)
+#define FLAG_a (FORCED_FLAG<<3)
 #endif
 
 #ifdef FOR_stat
@@ -6095,7 +6097,9 @@
 #endif
 #define FLAG_n (1<<0)
 #define FLAG_c (1<<1)
-#define FLAG_f (1<<2)
+#define FLAG_s (1<<2)
+#define FLAG_F (1<<3)
+#define FLAG_f (1<<4)
 #endif
 
 #ifdef FOR_tar
