@@ -2948,9 +2948,9 @@
 #undef FOR_tac
 #endif
 
-// tail ?fFs#=1c-n-[-cn][-fF] ?fFs#=1c-n-[-cn][-fF]
+// tail ?fFs:c-n-[-cn][-fF] ?fFs:c-n-[-cn][-fF]
 #undef OPTSTR_tail
-#define OPTSTR_tail "?fFs#=1c-n-[-cn][-fF]"
+#define OPTSTR_tail "?fFs:c-n-[-cn][-fF]"
 #ifdef CLEANUP_tail
 #undef CLEANUP_tail
 #undef FOR_tail

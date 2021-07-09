@@ -1472,10 +1472,17 @@ struct strings_data {
 // toys/posix/tail.c
 
 struct tail_data {
-  long n, c, s;
-  int file_no, last_fd;
+  long n, c;
+  char *s;
+
+  int file_no, last_fd, ss;
   struct xnotify *not;
-  struct follow_file *F;
+  struct {
+    char *path;
+    int fd;
+    dev_t dev;
+    ino_t ino;
+  } *F;
 };
 
 // toys/posix/tar.c
