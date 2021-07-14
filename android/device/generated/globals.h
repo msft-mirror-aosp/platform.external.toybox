@@ -1189,6 +1189,7 @@ struct cut_data {
   char *d, *O;
   struct arg_list *select[5]; // we treat them the same, so loop through
 
+  unsigned line;
   int pairs;
   regex_t reg;
 };
@@ -1456,7 +1457,7 @@ struct sort_data {
 // toys/posix/split.c
 
 struct split_data {
-  long l, b, a;
+  long n, l, b, a;
 
   char *outfile;
 };
@@ -1472,9 +1473,16 @@ struct strings_data {
 
 struct tail_data {
   long n, c;
+  char *s;
 
-  int file_no, last_fd;
+  int file_no, last_fd, ss;
   struct xnotify *not;
+  struct {
+    char *path;
+    int fd;
+    dev_t dev;
+    ino_t ino;
+  } *F;
 };
 
 // toys/posix/tar.c
