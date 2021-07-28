@@ -370,7 +370,7 @@ int wctoutf8(char *s, unsigned wc)
 
 // Convert utf8 sequence to a unicode wide character
 // returns bytes consumed, or -1 if err, or -2 if need more data.
-int utf8towc(wchar_t *wc, char *str, unsigned len)
+int utf8towc(unsigned *wc, char *str, unsigned len)
 {
   unsigned result, mask, first;
   char *s, c;
@@ -403,7 +403,7 @@ char *strlower(char *s)
 {
   char *try, *new;
   int len, mlen = (strlen(s)|7)+9;
-  wchar_t c;
+  unsigned c;
 
   try = new = xmalloc(mlen);
 
@@ -713,9 +713,9 @@ void poke(void *ptr, long long val, unsigned size)
 void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name))
 {
-  int fd, failok = !(flags&WARN_ONLY);
+  int fd, failok = !(flags&WARN_ONLY), anyway = flags & LOOPFILES_ANYWAY;
 
-  flags &= ~WARN_ONLY;
+  flags &= ~(WARN_ONLY|LOOPFILES_ANYWAY);
 
   // If no arguments, read from stdin.
   if (!*argv) function((flags & O_ACCMODE) != O_RDONLY ? 1 : 0, "-");
@@ -726,10 +726,10 @@ void loopfiles_rw(char **argv, int flags, int permissions,
     if (!strcmp(*argv, "-")) fd = 0;
     else if (0>(fd = notstdio(open(*argv, flags, permissions))) && !failok) {
       perror_msg_raw(*argv);
-      continue;
+      if (!anyway) continue;
     }
     function(fd, *argv);
-    if ((flags & O_CLOEXEC) && fd) close(fd);
+    if ((flags & O_CLOEXEC) && fd>0) close(fd);
   } while (*++argv);
 }
 
@@ -739,7 +739,7 @@ void loopfiles(char **argv, void (*function)(int fd, char *name))
   loopfiles_rw(argv, O_RDONLY|O_CLOEXEC|WARN_ONLY, 0, function);
 }
 
-// glue to call dl_lines() from loopfiles
+// glue to call do_lines() from loopfiles
 static void (*do_lines_bridge)(char **pline, long len);
 static void loopfile_lines_bridge(int fd, char *name)
 {

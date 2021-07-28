@@ -465,9 +465,9 @@
 #undef FLAG_c
 #endif
 
-// cut b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf] b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf]
+// cut b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF] b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]
 #undef OPTSTR_cut
-#define OPTSTR_cut "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf]"
+#define OPTSTR_cut "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]"
 #ifdef CLEANUP_cut
 #undef CLEANUP_cut
 #undef FOR_cut
@@ -483,13 +483,14 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso)(iso-8601):;r:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:u(utc)[!dr]
+// date d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
 #undef FLAG_u
+#undef FLAG_s
 #undef FLAG_r
 #undef FLAG_I
 #undef FLAG_D
@@ -974,9 +975,9 @@
 #undef FLAG_b
 #endif
 
-// free htgmkb[!htgmkb] htgmkb[!htgmkb]
+// free hgmkb[!hgmkb] hgmkb[!hgmkb]
 #undef OPTSTR_free
-#define OPTSTR_free "htgmkb[!htgmkb]"
+#define OPTSTR_free "hgmkb[!hgmkb]"
 #ifdef CLEANUP_free
 #undef CLEANUP_free
 #undef FOR_free
@@ -984,7 +985,6 @@
 #undef FLAG_k
 #undef FLAG_m
 #undef FLAG_g
-#undef FLAG_t
 #undef FLAG_h
 #endif
 
@@ -2670,17 +2670,6 @@
 #undef FLAG_noediting
 #endif
 
-// sha1sum bc(check)s(status)[!bc] bc(check)s(status)[!bc]
-#undef OPTSTR_sha1sum
-#define OPTSTR_sha1sum "bc(check)s(status)[!bc]"
-#ifdef CLEANUP_sha1sum
-#undef CLEANUP_sha1sum
-#undef FOR_sha1sum
-#undef FLAG_s
-#undef FLAG_c
-#undef FLAG_b
-#endif
-
 // sha3sum   bSa#<128>512=224
 #undef OPTSTR_sha3sum
 #define OPTSTR_sha3sum "bSa#<128>512=224"
@@ -2805,12 +2794,13 @@
 #undef FOR_source
 #endif
 
-// split >2a#<1=2>9b#<1l#<1[!bl] >2a#<1=2>9b#<1l#<1[!bl]
+// split >2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln] >2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln]
 #undef OPTSTR_split
-#define OPTSTR_split ">2a#<1=2>9b#<1l#<1[!bl]"
+#define OPTSTR_split ">2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln]"
 #ifdef CLEANUP_split
 #undef CLEANUP_split
 #undef FOR_split
+#undef FLAG_n
 #undef FLAG_l
 #undef FLAG_b
 #undef FLAG_a
@@ -2958,14 +2948,16 @@
 #undef FOR_tac
 #endif
 
-// tail ?fc-n-[-cn] ?fc-n-[-cn]
+// tail ?fFs:c-n-[-cn][-fF] ?fFs:c-n-[-cn][-fF]
 #undef OPTSTR_tail
-#define OPTSTR_tail "?fc-n-[-cn]"
+#define OPTSTR_tail "?fFs:c-n-[-cn][-fF]"
 #ifdef CLEANUP_tail
 #undef CLEANUP_tail
 #undef FOR_tail
 #undef FLAG_n
 #undef FLAG_c
+#undef FLAG_s
+#undef FLAG_F
 #undef FLAG_f
 #endif
 
@@ -4027,10 +4019,11 @@
 #define TT this.date
 #endif
 #define FLAG_u (1<<0)
-#define FLAG_r (1<<1)
-#define FLAG_I (1<<2)
-#define FLAG_D (1<<3)
-#define FLAG_d (1<<4)
+#define FLAG_s (1<<1)
+#define FLAG_r (1<<2)
+#define FLAG_I (1<<3)
+#define FLAG_D (1<<4)
+#define FLAG_d (1<<5)
 #endif
 
 #ifdef FOR_dd
@@ -4447,8 +4440,7 @@
 #define FLAG_k (1<<1)
 #define FLAG_m (1<<2)
 #define FLAG_g (1<<3)
-#define FLAG_t (1<<4)
-#define FLAG_h (1<<5)
+#define FLAG_h (1<<4)
 #endif
 
 #ifdef FOR_freeramdisk
@@ -5865,15 +5857,6 @@
 #define FLAG_noediting (FORCED_FLAG<<5)
 #endif
 
-#ifdef FOR_sha1sum
-#ifndef TT
-#define TT this.sha1sum
-#endif
-#define FLAG_s (1<<0)
-#define FLAG_c (1<<1)
-#define FLAG_b (1<<2)
-#endif
-
 #ifdef FOR_sha3sum
 #ifndef TT
 #define TT this.sha3sum
@@ -5984,9 +5967,10 @@
 #ifndef TT
 #define TT this.split
 #endif
-#define FLAG_l (1<<0)
-#define FLAG_b (1<<1)
-#define FLAG_a (1<<2)
+#define FLAG_n (1<<0)
+#define FLAG_l (1<<1)
+#define FLAG_b (1<<2)
+#define FLAG_a (1<<3)
 #endif
 
 #ifdef FOR_stat
@@ -6113,7 +6097,9 @@
 #endif
 #define FLAG_n (1<<0)
 #define FLAG_c (1<<1)
-#define FLAG_f (1<<2)
+#define FLAG_s (1<<2)
+#define FLAG_F (1<<3)
+#define FLAG_f (1<<4)
 #endif
 
 #ifdef FOR_tar
