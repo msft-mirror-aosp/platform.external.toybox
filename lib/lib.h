@@ -112,7 +112,8 @@ void show_help(FILE *out, int full);
 // Tell xopen and friends to print warnings but return -1 as necessary
 // The largest O_BLAH flag so far is arch/alpha's O_PATH at 0x800000 so
 // plenty of headroom.
-#define WARN_ONLY (1<<31)
+#define WARN_ONLY        (1<<31) // don't exit, just warn
+#define LOOPFILES_ANYWAY (1<<30) // call function with fd -1
 
 // xwrap.c
 void xstrncpy(char *dest, char *src, size_t size);
@@ -231,7 +232,7 @@ long long atolx(char *c);
 long long atolx_range(char *numstr, long long low, long long high);
 int stridx(char *haystack, char needle);
 int wctoutf8(char *s, unsigned wc);
-int utf8towc(wchar_t *wc, char *str, unsigned len);
+int utf8towc(unsigned *wc, char *str, unsigned len);
 char *strlower(char *s);
 char *strafter(char *haystack, char *needle);
 char *chomp(char *s);

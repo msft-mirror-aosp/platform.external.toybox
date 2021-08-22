@@ -83,6 +83,7 @@
 
 struct toy_list *toy_find(char *name);
 void toy_init(struct toy_list *which, char *argv[]);
+void check_help(char **arg);
 void toy_singleinit(struct toy_list *which, char *argv[]);
 void toy_exec(char *argv[]);
 
@@ -133,5 +134,5 @@ extern char **environ;
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.4"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.5"TOYBOX_VENDOR
 #endif

@@ -72,15 +72,16 @@ struct killall_data {
 
 struct md5sum_data {
   int sawline;
+  unsigned *rconsttable32;
+  unsigned long long *rconsttable64; // for sha384,sha512
 
-  unsigned *md5table;
   // Crypto variables blanked after summing
-  unsigned state[5], oldstate[5];
-  unsigned long long count;
+  unsigned long long count, overflow;
   union {
-    char c[64];
-    unsigned i[16];
-  } buffer;
+    char c[128]; // bytes, 1024 bits
+    unsigned i32[16]; // 512 bits for md5,sha1,sha224,sha256
+    unsigned long long i64[16]; // 1024 bits for sha384,sha512
+  } state, buffer;
 };
 
 // toys/lsb/mknod.c
@@ -274,14 +275,10 @@ struct free_data {
 // toys/other/hexedit.c
 
 struct hexedit_data {
-  char *data;
-  long long len, base;
-  int numlen, undo, undolen;
+  char *data, *search, keybuf[16], input[80];
+  long long len, base, pos;
+  int numlen, undo, undolen, mode;
   unsigned rows, cols;
-  long long pos;
-  char keybuf[16];
-  char input[80];
-  char *search;
 };
 
 // toys/other/hwclock.c
@@ -388,6 +385,16 @@ struct oneit_data {
 
 struct pwgen_data {
   char *r;
+};
+
+// toys/other/readelf.c
+
+struct readelf_data {
+  char *x, *p;
+
+  char *elf, *shstrtab, *f;
+  unsigned long long shoff, phoff, size, shstrtabsz;
+  int bits, endian, shnum, shentsize, phentsize;
 };
 
 // toys/other/rtcwake.c
@@ -825,16 +832,6 @@ struct openvt_data {
   long c;
 };
 
-// toys/pending/readelf.c
-
-struct readelf_data {
-  char *x, *p;
-
-  char *elf, *shstrtab, *f;
-  unsigned long long shoff, phoff, size, shstrtabsz;
-  int bits, endian, shnum, shentsize, phentsize;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -908,7 +905,7 @@ struct sh_data {
     struct sh_process *next, *prev; // | && ||
     struct arg_list *delete;   // expanded strings
     // undo redirects, a=b at start, child PID, exit status, has !, job #
-    int *urd, envlen, pid, exit, not, job, dash;
+    int *urd, envlen, pid, exit, flags, job, dash;
     long long when; // when job backgrounded/suspended
     struct sh_arg *raw, arg;
   } *pp; // currently running process
@@ -1192,6 +1189,7 @@ struct cut_data {
   char *d, *O;
   struct arg_list *select[5]; // we treat them the same, so loop through
 
+  unsigned line;
   int pairs;
   regex_t reg;
 };
@@ -1199,7 +1197,7 @@ struct cut_data {
 // toys/posix/date.c
 
 struct date_data {
-  char *r, *I, *D, *d;
+  char *s, *r, *I, *D, *d;
 
   unsigned nano;
 };
@@ -1459,7 +1457,7 @@ struct sort_data {
 // toys/posix/split.c
 
 struct split_data {
-  long l, b, a;
+  long n, l, b, a;
 
   char *outfile;
 };
@@ -1475,9 +1473,16 @@ struct strings_data {
 
 struct tail_data {
   long n, c;
+  char *s;
 
-  int file_no, last_fd;
+  int file_no, last_fd, ss;
   struct xnotify *not;
+  struct {
+    char *path;
+    int fd;
+    dev_t dev;
+    ino_t ino;
+  } *F;
 };
 
 // toys/posix/tar.c
@@ -1615,6 +1620,7 @@ extern union global_union {
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
 	struct pwgen_data pwgen;
+	struct readelf_data readelf;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
@@ -1662,7 +1668,6 @@ extern union global_union {
 	struct modprobe_data modprobe;
 	struct more_data more;
 	struct openvt_data openvt;
-	struct readelf_data readelf;
 	struct route_data route;
 	struct sh_data sh;
 	struct stty_data stty;
