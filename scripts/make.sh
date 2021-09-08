@@ -10,9 +10,12 @@ if [ ! -z "$ASAN" ]; then
     -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls"
   CFLAGS="$asan_flags $CFLAGS"
   HOSTCC="$HOSTCC $asan_flags"
-  # Ignore leaks on exit.
+  # Ignore leaks on exit. TODO
   export ASAN_OPTIONS="detect_leaks=0"
 fi
+
+# Centos 7 bug workaround, EOL June 30 2024.
+DASHN=-n; wait -n 2>/dev/null; [ $? -eq 2 ] && unset DASHN
 
 export LANG=c
 export LC_ALL=C
@@ -23,9 +26,8 @@ source scripts/portability.sh
 [ -z "$OUTNAME" ] && OUTNAME=toybox"${TARGET:+-$TARGET}"
 UNSTRIPPED="generated/unstripped/$(basename "$OUTNAME")"
 
-# Try to keep one more cc invocation going than we have processors
-[ -z "$CPUS" ] && \
-  CPUS=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))
+# Default to running one more parallel cc instance than we have processors
+: ${CPUS:=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))}
 
 # Respond to V= by echoing command lines as well as running them
 DOTPROG=
@@ -92,18 +94,8 @@ genbuildsh()
 {
   # Write a canned build line for use on crippled build machines.
 
-  echo "#!/bin/sh"
-  echo
-  echo "PATH='$PATH'"
-  echo
-  echo "BUILD='$BUILD'"
-  echo
-  echo "LINK='$LINK'"
-  echo
-  echo "FILES='$LIBFILES $TOYFILES'"
-  echo
-  echo
-  echo '$BUILD $FILES $LINK'
+  echo -e "#!/bin/sh\n\nPATH='\$PATH'\n\nBUILD='\$BUILD'\n\nLINK='\$LINK'\n"
+  echo -e "FILES='$LIBFILES $TOYFILES'\n\n\$BUILD \$FILES \$LINK"
 }
 
 if ! cmp -s <(genbuildsh 2>/dev/null | head -n 6 ; echo LINK="'"$LDOPTIMIZE $LDFLAGS) \
@@ -111,10 +103,9 @@ if ! cmp -s <(genbuildsh 2>/dev/null | head -n 6 ; echo LINK="'"$LDOPTIMIZE $LDF
 then
   echo -n "Library probe"
 
-  # We trust --as-needed to remove each library if we don't use any symbols
-  # out of it, this loop is because the compiler has no way to ignore a library
-  # that doesn't exist, so we have to detect and skip nonexistent libraries
-  # for it.
+  # --as-needed removes libraries we don't use any symbols out of, but the
+  # compiler has no way to ignore a library that doesn't exist, so detect
+  # and skip nonexistent libraries for it.
 
   > generated/optlibs.dat
   for i in util crypt m resolv selinux smack attr crypto z log iconv
@@ -174,8 +165,10 @@ fi
 # allow multiple NEWTOY() in the same C file. (When disabled the FLAG is 0,
 # so flags&0 becomes a constant 0 allowing dead code elimination.)
 
-make_flagsh()
-{
+if isnewer generated/flags.h toys "$KCONFIG_CONFIG"
+then
+  echo -n "generated/flags.h "
+
   # Parse files through C preprocessor twice, once to get flags for current
   # .config and once to get flags for allyesconfig
   for I in A B
@@ -211,12 +204,6 @@ make_flagsh()
   done | sort -s | $SED -n -e 's/ A / /;t pair;h;s/\([^ ]*\).*/\1 " "/;x' \
     -e 'b single;:pair;h;n;:single;s/[^ ]* B //;H;g;s/\n/ /;p' | \
     tee generated/flags.raw | generated/mkflags > generated/flags.h || exit 1
-}
-
-if isnewer generated/flags.h toys "$KCONFIG_CONFIG"
-then
-  echo -n "generated/flags.h "
-  make_flagsh
 fi
 
 # Extract global structure definitions and flag definitions from toys/*/*.c
@@ -225,12 +212,12 @@ function getglobals()
 {
   for i in toys/*/*.c
   do
+    # alas basename -s isn't in posix yet.
     NAME="$(echo $i | $SED 's@.*/\(.*\)\.c@\1@')"
     DATA="$($SED -n -e '/^GLOBALS(/,/^)/b got;b;:got' \
-            -e 's/^GLOBALS(/struct '"$NAME"'_data {/' \
+            -e 's/^GLOBALS(/_data {/' \
             -e 's/^)/};/' -e 'p' $i)"
-
-    [ ! -z "$DATA" ] && echo -e "// $i\n\n$DATA\n"
+    [ ! -z "$DATA" ] && echo -e "// $i\n\nstruct $NAME$DATA\n"
   done
 }
 
@@ -291,11 +278,9 @@ fi
 
 # build each generated/obj/*.o file in parallel
 
-PENDING=
-LNKFILES=
+unset PENDING LNKFILES CLICK
 DONE=0
 COUNT=0
-CLICK=
 
 for i in $LIBFILES click $TOYFILES
 do
@@ -306,38 +291,25 @@ do
   OUT="generated/obj/${X%%.c}.o"
   LNKFILES="$LNKFILES $OUT"
 
-  # $LIBFILES doesn't need to be rebuilt if older than .config, $TOYFILES does
+  # $LIBFILES don't need to be rebuilt if older than .config, $TOYFILES do
   # ($TOYFILES contents can depend on CONFIG symbols, lib/*.c never should.)
 
   [ "$OUT" -nt "$i" ] && [ -z "$CLICK" -o "$OUT" -nt "$KCONFIG_CONFIG" ] &&
     continue
 
   do_loudly $BUILD -c $i -o $OUT &
-  PENDING="$PENDING $!"
-  COUNT=$(($COUNT+1))
 
   # ratelimit to $CPUS many parallel jobs, detecting errors
-
-  for j in $PENDING
-  do
-    [ "$COUNT" -lt "$CPUS" ] && break;
-
-    wait $j
-    DONE=$(($DONE+$?))
-    COUNT=$(($COUNT-1))
-    PENDING="${PENDING## $j}"
-  done
+  [ $((++COUNT)) -ge $CPUS ] && { wait $DASHN; DONE=$?; : $((--COUNT)); }
   [ $DONE -ne 0 ] && break
 done
-
 # wait for all background jobs, detecting errors
 
-for i in $PENDING
+while [ $((COUNT--)) -gt 0 ]
 do
-  wait $i
-  DONE=$(($DONE+$?))
+  wait $DASHN;
+  DONE=$((DONE+$?))
 done
-
 [ $DONE -ne 0 ] && exit 1
 
 do_loudly $BUILD $LNKFILES $LINK || exit 1
@@ -346,8 +318,7 @@ if [ ! -z "$NOSTRIP" ] ||
 then
   [ -z "$NOSTRIP" ] && echo "strip failed, using unstripped"
   rm -f "$OUTNAME" &&
-  cp "$UNSTRIPPED" "$OUTNAME" ||
-    exit 1
+  cp "$UNSTRIPPED" "$OUTNAME" || exit 1
 fi
 
 # gcc 4.4's strip command is buggy, and doesn't set the executable bit on
