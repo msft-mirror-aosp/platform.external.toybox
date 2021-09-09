@@ -422,6 +422,7 @@ int posix_fallocate(int fd, off_t offset, off_t length)
 #define SIGNIFY(x) {SIG##x, #x}
 
 static const struct signame signames[] = {
+  {0, "0"},
   // POSIX
   SIGNIFY(ABRT), SIGNIFY(ALRM), SIGNIFY(BUS),
   SIGNIFY(FPE), SIGNIFY(HUP), SIGNIFY(ILL), SIGNIFY(INT), SIGNIFY(KILL),
@@ -465,7 +466,7 @@ void xsignal_all_killers(void *handler)
   int i;
 
   if (!handler) handler = SIG_DFL;
-  for (i = 0; signames[i].num != SIGCHLD; i++)
+  for (i = 1; signames[i].num != SIGCHLD; i++)
     if (signames[i].num != SIGKILL) xsignal(signames[i].num, handler);
 }
 
