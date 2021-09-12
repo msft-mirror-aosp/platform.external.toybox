@@ -316,8 +316,7 @@ struct losetup_data {
 // toys/other/lsattr.c
 
 struct lsattr_data {
-  long v;
-  long p;
+  long v, p;
 
   long add, rm, set;
   // !add and !rm tell us whether they were used, but `chattr =` is meaningful.
@@ -1238,7 +1237,6 @@ struct expand_data {
 
 struct file_data {
   int max_name_len;
-
   off_t len;
 };
 
@@ -1496,7 +1494,7 @@ struct tar_data {
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd;
-  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen;
+  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
   long long *sparse;
   time_t mtt;
 

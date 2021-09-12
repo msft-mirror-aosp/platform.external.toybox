@@ -136,7 +136,7 @@
 
 #define HELP_yes "usage: yes [args...]\n\nRepeatedly output line until killed. If no args, output 'y'."
 
-#define HELP_xxd "usage: xxd [-c n] [-g n] [-i] [-l n] [-o n] [-p] [-r] [-s n] [file]\n\nHexdump a file to stdout.  If no file is listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-c n	Show n bytes per line (default 16)\n-g n	Group bytes by adding a ' ' every n bytes (default 2)\n-i	Include file output format (comma-separated hex byte literals)\n-l n	Limit of n bytes before stopping (default is no limit)\n-o n	Add n to display offset\n-p	Plain hexdump (30 bytes/line, no grouping)\n-r	Reverse operation: turn a hexdump into a binary file\n-s n	Skip to offset n"
+#define HELP_xxd "usage: xxd [-c n] [-g n] [-i] [-l n] [-o n] [-p] [-r] [-s n] [file]\n\nHexdump a file to stdout. If no file is listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-c n	Show n bytes per line (default 16)\n-g n	Group bytes by adding a ' ' every n bytes (default 2)\n-i	Output include file (CSV hex bytes, plus C header/footer if not stdin)\n-l n	Limit of n bytes before stopping (default is no limit)\n-o n	Add n to display offset\n-p	Plain hexdump (30 bytes/line, no grouping)\n-r	Reverse operation: turn a hexdump into a binary file\n-s n	Skip to offset n"
 
 #define HELP_which "usage: which [-a] filename ...\n\nSearch $PATH for executable files matching filename(s).\n\n-a	Show all matches"
 
@@ -266,7 +266,7 @@
 
 #define HELP_i2cdump "usage: i2cdump [-fy] BUS CHIP\n\nDump i2c registers.\n\n-f	Force access to busy devices\n-y	Answer \"yes\" to confirmation prompts (for script use)"
 
-#define HELP_i2cdetect "usage: i2cdetect [-ary] BUS [FIRST LAST]\nusage: i2cdetect -F BUS\nusage: i2cdetect -l\n\nDetect i2c devices.\n\n-a	All addresses (0x00-0x7f rather than 0x03-0x77)\n-F	Show functionality\n-l	List all buses\n-r	Probe with SMBus Read Byte\n-y	Answer \"yes\" to confirmation prompts (for script use)"
+#define HELP_i2cdetect "usage: i2cdetect [-aqry] BUS [FIRST LAST]\nusage: i2cdetect -F BUS\nusage: i2cdetect -l\n\nDetect i2c devices.\n\n-a	All addresses (0x00-0x7f rather than 0x03-0x77 or FIRST-LAST)\n-F	Show functionality\n-l	List available buses\n-q	Probe with SMBus Quick Write (default)\n-r	Probe with SMBus Read Byte\n-y	Answer \"yes\" to confirmation prompts (for script use)"
 
 #define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc0 (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
 
@@ -508,7 +508,7 @@
 
 #define HELP_tee "usage: tee [-ai] [FILE...]\n\nCopy stdin to each listed file, and also to stdout.\nFilename \"-\" is a synonym for stdout.\n\n-a	Append to files\n-i	Ignore SIGINT"
 
-#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude    --full-time   Show seconds with -tv\n--mode MODE      Adjust modes           --mtime TIME  Override timestamps\n--owner NAME     Set file owner to NAME --group NAME  Set file group to NAME\n--sparse         Record sparse files\n--restrict       All archive contents must extract under one subdirectory\n--numeric-owner  Save/use/display uid and gid, not user/group name\n--no-recursion   Don't store directory contents\n-I PROG          Filter through PROG to compress or PROG -d to decompress"
+#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [--selinux] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude    --full-time   Show seconds with -tv\n--mode MODE      Adjust modes           --mtime TIME  Override timestamps\n--owner NAME     Set file owner to NAME --group NAME  Set file group to NAME\n--sparse         Record sparse files    --selinux     Record/restore labels\n--restrict       All archive contents must extract under one subdirectory\n--numeric-owner  Save/use/display uid and gid, not user/group name\n--no-recursion   Don't store directory contents\n-I PROG          Filter through PROG to compress or PROG -d to decompress"
 
 #define HELP_tail "usage: tail [-n|c NUMBER] [-f|F] [-s SECONDS] [FILE...]\n\nCopy last lines from files to stdout. If no files listed, copy from\nstdin. Filename \"-\" is a synonym for stdin.\n\n-n	Output the last NUMBER lines (default 10), +X counts from start\n-c	Output the last NUMBER bytes, +NUMBER counts from start\n-f	Follow FILE(s) by descriptor, waiting for more data to be appended\n-F	Follow FILE(s) by filename, waiting for more data, and retrying\n-s	Used with -F, sleep SECONDS between retries (default 1)"
 
@@ -640,7 +640,7 @@
 
 #define HELP_cat "usage: cat [-etuv] [FILE...]\n\nCopy (concatenate) files to stdout.  If no files listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-e	Mark each newline with $\n-t	Show tabs as ^I\n-u	Copy one byte at a time (slow)\n-v	Display nonprinting characters as escape sequences with M-x for\n	high ascii characters (>127), and ^x for other nonprinting chars"
 
-#define HELP_cal "usage: cal [[MONTH] YEAR]\n\nPrint a calendar.\n\nWith one argument, prints all months of the specified year.\nWith two arguments, prints calendar for month and year.\n\n-h	Don't highlight today"
+#define HELP_cal "usage: cal [[[DAY] MONTH] YEAR]\n\nPrint a calendar.\n\nWith one argument, prints all months of the specified year.\nWith two arguments, prints calendar for month and year.\nWith three arguments, highlights day within month and year.\n\n-h	Don't highlight today"
 
 #define HELP_basename "usage: basename [-a] [-s SUFFIX] NAME... | NAME [SUFFIX]\n\nReturn non-directory portion of a pathname removing suffix.\n\n-a		All arguments are names\n-s SUFFIX	Remove suffix (implies -a)"
 
