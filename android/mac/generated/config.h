@@ -538,6 +538,8 @@
 #define USE_SPLIT(...)
 #define CFG_STAT 1
 #define USE_STAT(...) __VA_ARGS__
+#define CFG_STRACE 0
+#define USE_STRACE(...)
 #define CFG_STRINGS 0
 #define USE_STRINGS(...)
 #define CFG_STTY 0
