@@ -1627,9 +1627,9 @@
 #undef FOR_load_policy
 #endif
 
-// log <1p:t: <1p:t:
+// log p:t: p:t:
 #undef OPTSTR_log
-#define OPTSTR_log "<1p:t:"
+#define OPTSTR_log "p:t:"
 #ifdef CLEANUP_log
 #undef CLEANUP_log
 #undef FOR_log
@@ -2454,14 +2454,15 @@
 #undef FOR_realpath
 #endif
 
-// reboot   fn
+// reboot   d:fn
 #undef OPTSTR_reboot
-#define OPTSTR_reboot "fn"
+#define OPTSTR_reboot "d:fn"
 #ifdef CLEANUP_reboot
 #undef CLEANUP_reboot
 #undef FOR_reboot
 #undef FLAG_n
 #undef FLAG_f
+#undef FLAG_d
 #endif
 
 // renice <1gpun#| <1gpun#|
@@ -2820,6 +2821,17 @@
 #undef FLAG_L
 #undef FLAG_f
 #undef FLAG_c
+#endif
+
+// strace   ^p#s#v
+#undef OPTSTR_strace
+#define OPTSTR_strace "^p#s#v"
+#ifdef CLEANUP_strace
+#undef CLEANUP_strace
+#undef FOR_strace
+#undef FLAG_v
+#undef FLAG_s
+#undef FLAG_p
 #endif
 
 // strings t:an#=4<1fo t:an#=4<1fo
@@ -3293,9 +3305,9 @@
 #undef FLAG_c
 #endif
 
-// uname oamvrns[+os] oamvrns[+os]
+// uname oamvrns oamvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "oamvrns[+os]"
+#define OPTSTR_uname "oamvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -5692,6 +5704,7 @@
 #endif
 #define FLAG_n (FORCED_FLAG<<0)
 #define FLAG_f (FORCED_FLAG<<1)
+#define FLAG_d (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_renice
@@ -5990,6 +6003,15 @@
 #define FLAG_L (1<<1)
 #define FLAG_f (1<<2)
 #define FLAG_c (1<<3)
+#endif
+
+#ifdef FOR_strace
+#ifndef TT
+#define TT this.strace
+#endif
+#define FLAG_v (FORCED_FLAG<<0)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_strings

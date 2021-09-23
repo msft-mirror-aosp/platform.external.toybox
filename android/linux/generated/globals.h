@@ -396,6 +396,12 @@ struct readelf_data {
   int bits, endian, shnum, shentsize, phentsize;
 };
 
+// toys/other/reboot.c
+
+struct reboot_data {
+  char *d;
+};
+
 // toys/other/rtcwake.c
 
 struct rtcwake_data {
@@ -911,6 +917,20 @@ struct sh_data {
 
   // job list, command line for $*, scratch space for do_wildcard_files()
   struct sh_arg jobs, *wcdeck;
+};
+
+// toys/pending/strace.c
+
+struct strace_data {
+  long s;
+  long p;
+
+  // 216 for x86-64.
+  char regs_buf[256];
+  pid_t pid;
+  char *fmt;
+  char ioctl[32];
+  int arg;
 };
 
 // toys/pending/stty.c
@@ -1619,6 +1639,7 @@ extern union global_union {
 	struct oneit_data oneit;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
+	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
@@ -1668,6 +1689,7 @@ extern union global_union {
 	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
+	struct strace_data strace;
 	struct stty_data stty;
 	struct sulogin_data sulogin;
 	struct syslogd_data syslogd;
