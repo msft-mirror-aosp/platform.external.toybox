@@ -1,3 +1,19 @@
+name: "toybox"
+description: "Toybox: all-in-one Linux command line."
 third_party {
+  url {
+    type: HOMEPAGE
+    value: "https://landley.net/toybox/"
+  }
+  url {
+    type: GIT
+    value: "https://github.com/landley/toybox"
+  }
+  version: "2a5dc105a323a20ab3dce82f3b39fa20555ab174"
   license_type: UNENCUMBERED
+  last_upgrade_date {
+    year: 2021
+    month: 9
+    day: 23
+  }
 }
