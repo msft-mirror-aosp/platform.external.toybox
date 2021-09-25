@@ -510,7 +510,7 @@ struct arp_data {
     char *af_type_A;
     char *af_type_p;
     char *interface;
-    
+
     int sockfd;
     char *device;
 };
@@ -544,7 +544,7 @@ struct bc_data {
 // toys/pending/bootchartd.c
 
 struct bootchartd_data {
-  char buf[32];
+  char timestamp[32];
   long msec;
   int proc_accounting;
 
