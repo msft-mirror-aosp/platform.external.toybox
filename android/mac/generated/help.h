@@ -208,7 +208,7 @@
 
 #define HELP_printenv "usage: printenv [-0] [env_var...]\n\nPrint environment variables.\n\n-0	Use \\0 as delimiter instead of \\n"
 
-#define HELP_pmap "usage: pmap [-xq] [pids...]\n\nReport the memory map of a process or processes.\n\n-x	Show the extended format\n-q	Do not display some header/footer lines"
+#define HELP_pmap "usage: pmap [-pqx] PID...\n\nReport the memory map of a process or processes.\n\n-q	Show full paths\n-q	Do not show header or footer\n-x	Show the extended format"
 
 #define HELP_pivot_root "usage: pivot_root OLD NEW\n\nSwap OLD and NEW filesystems (as if by simultaneous mount --move), and\nmove all processes with chdir or chroot under OLD into NEW (including\nkernel threads) so OLD may be unmounted.\n\nThe directory NEW must exist under OLD. This doesn't work on initramfs,\nwhich can't be moved (about the same way PID 1 can't be killed; see\nswitch_root instead)."
 
@@ -492,7 +492,9 @@
 
 #define HELP_uniq "usage: uniq [-cduiz] [-w MAXCHARS] [-f FIELDS] [-s CHAR] [INFILE [OUTFILE]]\n\nReport or filter out repeated lines in a file\n\n-c	Show counts before each line\n-d	Show only lines that are repeated\n-u	Show only lines that are unique\n-i	Ignore case when comparing lines\n-z	Lines end with \\0 not \\n\n-w	Compare maximum X chars per line\n-f	Ignore first X fields\n-s	Ignore first X chars"
 
-#define HELP_uname "usage: uname [-asnrvm]\n\nPrint system information.\n\n-s	System name\n-n	Network (domain) name\n-r	Kernel Release number\n-v	Kernel Version\n-m	Machine (hardware) name\n-a	All of the above"
+#define HELP_uname "usage: uname [-asnrvm]\n\nPrint system information.\n\n-s	System name\n-n	Network (domain) name\n-r	Kernel Release number\n-v	Kernel Version\n-m	Machine (hardware) name\n-o	Userspace type\n-a	All of the above (in order)"
+
+#define HELP_linux32 "usage: linux32 [COMMAND...]\n\nTell uname -m to line to autoconf (to build 32 bit binaries on 64 bit kernel)."
 
 #define HELP_arch "usage: arch\n\nPrint machine (hardware) name, same as uname -m."
 
@@ -590,7 +592,7 @@
 
 #define HELP_head "usage: head [-n NUM] [FILE...]\n\nCopy first lines from files to stdout. If no files listed, copy from\nstdin. Filename \"-\" is a synonym for stdin.\n\n-n	Number of lines to copy\n-c	Number of bytes to copy\n-q	Never print headers\n-v	Always print headers"
 
-#define HELP_grep "usage: grep [-EFrivwcloqsHbhn] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE] [FILE]...\n\nShow lines matching regular expressions. If no -e, first argument is\nregular expression to match. With no files (or \"-\" filename) read stdin.\nReturns 0 if matched, 1 if no match found, 2 for command errors.\n\n-e  Regex to match. (May be repeated.)\n-f  File listing regular expressions to match.\n\nfile search:\n-r  Recurse into subdirectories (defaults FILE to \".\")\n-R  Recurse into subdirectories and symlinks to directories\n-M  Match filename pattern (--include)\n-S  Skip filename pattern (--exclude)\n--exclude-dir=PATTERN  Skip directory pattern\n-I  Ignore binary files\n\nmatch type:\n-A  Show NUM lines after     -B  Show NUM lines before match\n-C  NUM lines context (A+B)  -E  extended regex syntax\n-F  fixed (literal match)    -a  always text (not binary)\n-i  case insensitive         -m  match MAX many lines\n-v  invert match             -w  whole word (implies -E)\n-x  whole line               -z  input NUL terminated\n\ndisplay modes: (default: matched line)\n-L  show only non-matching filenames\n-c  count of matching lines  -l  show only matching filenames\n-o  only matching part       -q  quiet (errors only)\n-s  silent (no error msg)    -Z  output NUL terminated\n\noutput prefix (default: filename if checking more than 1 file)\n-H  force filename           -b  byte offset of match\n-h  hide filename            -n  line number of match"
+#define HELP_grep "usage: grep [-EFrivwcloqsHbhn] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE] [FILE]...\n\nShow lines matching regular expressions. If no -e, first argument is\nregular expression to match. With no files (or \"-\" filename) read stdin.\nReturns 0 if matched, 1 if no match found, 2 for command errors.\n\n-e  Regex to match. (May be repeated.)\n-f  File listing regular expressions to match.\n\nfile search:\n-r  Recurse into subdirectories (defaults FILE to \".\")\n-R  Recurse into subdirectories and symlinks to directories\n-M  Match filename pattern (--include)\n-S  Skip filename pattern (--exclude)\n--exclude-dir=PATTERN  Skip directory pattern\n-I  Ignore binary files\n\nmatch type:\n-A  Show NUM lines after     -B  Show NUM lines before match\n-C  NUM lines context (A+B)  -E  extended regex syntax\n-F  fixed (literal match)    -a  always text (not binary)\n-i  case insensitive         -m  match MAX many lines\n-v  invert match             -w  whole word (implies -E)\n-x  whole line               -z  input NUL terminated\n\ndisplay modes: (default: matched line)\n-L  filenames with no match  -Z  output is NUL terminated\n-c  count of matching lines  -l  filenames with a match\n-o  only matching part       -q  quiet (errors only)\n-s  silent (no error msg)\n\noutput prefix (default: filename if checking more than 1 file)\n-H  force filename           -b  byte offset of match\n-h  hide filename            -n  line number of match"
 
 #define HELP_getconf "usage: getconf -a [PATH] | -l | NAME [PATH]\n\nGet system configuration values. Values from pathconf(3) require a path.\n\n-a	Show all (defaults to \"/\" if no path given)\n-l	List available value names (grouped by source)"
 

@@ -318,6 +318,8 @@
 #define USE_LAST(...)
 #define CFG_LINK 0
 #define USE_LINK(...)
+#define CFG_LINUX32 0
+#define USE_LINUX32(...)
 #define CFG_LN 1
 #define USE_LN(...) __VA_ARGS__
 #define CFG_LOAD_POLICY 0

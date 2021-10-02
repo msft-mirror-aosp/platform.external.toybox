@@ -1605,6 +1605,14 @@
 #undef FOR_link
 #endif
 
+// linux32    
+#undef OPTSTR_linux32
+#define OPTSTR_linux32 0
+#ifdef CLEANUP_linux32
+#undef CLEANUP_linux32
+#undef FOR_linux32
+#endif
+
 // ln <1rt:Tvnfs <1rt:Tvnfs
 #undef OPTSTR_ln
 #define OPTSTR_ln "<1rt:Tvnfs"
@@ -2309,14 +2317,15 @@
 #undef FLAG_V
 #endif
 
-// pmap   <1xq
+// pmap   <1pqx
 #undef OPTSTR_pmap
-#define OPTSTR_pmap "<1xq"
+#define OPTSTR_pmap "<1pqx"
 #ifdef CLEANUP_pmap
 #undef CLEANUP_pmap
 #undef FOR_pmap
-#undef FLAG_q
 #undef FLAG_x
+#undef FLAG_q
+#undef FLAG_p
 #endif
 
 // printenv   (null)0
@@ -3306,9 +3315,9 @@
 #undef FLAG_c
 #endif
 
-// uname oamvrns oamvrns
+// uname aomvrns aomvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "oamvrns"
+#define OPTSTR_uname "aomvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -3317,8 +3326,8 @@
 #undef FLAG_r
 #undef FLAG_v
 #undef FLAG_m
-#undef FLAG_a
 #undef FLAG_o
+#undef FLAG_a
 #endif
 
 // unicode   <1
@@ -4980,6 +4989,12 @@
 #endif
 #endif
 
+#ifdef FOR_linux32
+#ifndef TT
+#define TT this.linux32
+#endif
+#endif
+
 #ifdef FOR_ln
 #ifndef TT
 #define TT this.ln
@@ -5580,8 +5595,9 @@
 #ifndef TT
 #define TT this.pmap
 #endif
-#define FLAG_q (FORCED_FLAG<<0)
-#define FLAG_x (FORCED_FLAG<<1)
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_q (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_printenv
@@ -6428,8 +6444,8 @@
 #define FLAG_r (1<<2)
 #define FLAG_v (1<<3)
 #define FLAG_m (1<<4)
-#define FLAG_a (1<<5)
-#define FLAG_o (1<<6)
+#define FLAG_o (1<<5)
+#define FLAG_a (1<<6)
 #endif
 
 #ifdef FOR_unicode
