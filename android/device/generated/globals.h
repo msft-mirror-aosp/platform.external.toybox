@@ -318,7 +318,7 @@ struct losetup_data {
 struct lsattr_data {
   long v, p;
 
-  long add, rm, set;
+  unsigned add, rm, set;
   // !add and !rm tell us whether they were used, but `chattr =` is meaningful.
   int have_set;
 };
@@ -468,8 +468,9 @@ struct timeout_data {
 
   int nextsig;
   pid_t pid;
-  struct timeval ktv;
-  struct itimerval itv;
+  struct timespec kts;
+  struct itimerspec its;
+  timer_t timer;
 };
 
 // toys/other/truncate.c

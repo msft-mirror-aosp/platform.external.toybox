@@ -172,6 +172,7 @@ CONFIG_ID=y
 # CONFIG_KLOGD_SOURCE_RING_BUFFER is not set
 # CONFIG_LAST is not set
 # CONFIG_LINK is not set
+# CONFIG_LINUX32 is not set
 CONFIG_LN=y
 # CONFIG_LOAD_POLICY is not set
 # CONFIG_LOGGER is not set
