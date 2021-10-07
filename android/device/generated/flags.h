@@ -1267,6 +1267,23 @@
 #undef FLAG_a
 #endif
 
+// hexdump   bcCdn#<0os#<0vx[!bcCdox]
+#undef OPTSTR_hexdump
+#define OPTSTR_hexdump "bcCdn#<0os#<0vx[!bcCdox]"
+#ifdef CLEANUP_hexdump
+#undef CLEANUP_hexdump
+#undef FOR_hexdump
+#undef FLAG_x
+#undef FLAG_v
+#undef FLAG_s
+#undef FLAG_o
+#undef FLAG_n
+#undef FLAG_d
+#undef FLAG_C
+#undef FLAG_c
+#undef FLAG_b
+#endif
+
 // hexedit   <1>1r
 #undef OPTSTR_hexedit
 #define OPTSTR_hexedit "<1>1r"
@@ -1603,6 +1620,14 @@
 #ifdef CLEANUP_link
 #undef CLEANUP_link
 #undef FOR_link
+#endif
+
+// linux32    
+#undef OPTSTR_linux32
+#define OPTSTR_linux32 0
+#ifdef CLEANUP_linux32
+#undef CLEANUP_linux32
+#undef FOR_linux32
 #endif
 
 // ln <1rt:Tvnfs <1rt:Tvnfs
@@ -2248,9 +2273,9 @@
 #undef FLAG_c
 #endif
 
-// pidof <1so:x <1so:x
+// pidof so:x so:x
 #undef OPTSTR_pidof
-#define OPTSTR_pidof "<1so:x"
+#define OPTSTR_pidof "so:x"
 #ifdef CLEANUP_pidof
 #undef CLEANUP_pidof
 #undef FOR_pidof
@@ -2309,14 +2334,15 @@
 #undef FLAG_V
 #endif
 
-// pmap <1xq <1xq
+// pmap <1pqx <1pqx
 #undef OPTSTR_pmap
-#define OPTSTR_pmap "<1xq"
+#define OPTSTR_pmap "<1pqx"
 #ifdef CLEANUP_pmap
 #undef CLEANUP_pmap
 #undef FOR_pmap
-#undef FLAG_q
 #undef FLAG_x
+#undef FLAG_q
+#undef FLAG_p
 #endif
 
 // printenv (null)0 (null)0
@@ -3306,9 +3332,9 @@
 #undef FLAG_c
 #endif
 
-// uname oamvrns oamvrns
+// uname aomvrns aomvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "oamvrns"
+#define OPTSTR_uname "aomvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -3317,8 +3343,8 @@
 #undef FLAG_r
 #undef FLAG_v
 #undef FLAG_m
-#undef FLAG_a
 #undef FLAG_o
+#undef FLAG_a
 #endif
 
 // unicode   <1
@@ -4700,6 +4726,21 @@
 #define FLAG_a (1<<2)
 #endif
 
+#ifdef FOR_hexdump
+#ifndef TT
+#define TT this.hexdump
+#endif
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_v (FORCED_FLAG<<1)
+#define FLAG_s (FORCED_FLAG<<2)
+#define FLAG_o (FORCED_FLAG<<3)
+#define FLAG_n (FORCED_FLAG<<4)
+#define FLAG_d (FORCED_FLAG<<5)
+#define FLAG_C (FORCED_FLAG<<6)
+#define FLAG_c (FORCED_FLAG<<7)
+#define FLAG_b (FORCED_FLAG<<8)
+#endif
+
 #ifdef FOR_hexedit
 #ifndef TT
 #define TT this.hexedit
@@ -4977,6 +5018,12 @@
 #ifdef FOR_link
 #ifndef TT
 #define TT this.link
+#endif
+#endif
+
+#ifdef FOR_linux32
+#ifndef TT
+#define TT this.linux32
 #endif
 #endif
 
@@ -5580,8 +5627,9 @@
 #ifndef TT
 #define TT this.pmap
 #endif
-#define FLAG_q (1<<0)
-#define FLAG_x (1<<1)
+#define FLAG_x (1<<0)
+#define FLAG_q (1<<1)
+#define FLAG_p (1<<2)
 #endif
 
 #ifdef FOR_printenv
@@ -6428,8 +6476,8 @@
 #define FLAG_r (1<<2)
 #define FLAG_v (1<<3)
 #define FLAG_m (1<<4)
-#define FLAG_a (1<<5)
-#define FLAG_o (1<<6)
+#define FLAG_o (1<<5)
+#define FLAG_a (1<<6)
 #endif
 
 #ifdef FOR_unicode
