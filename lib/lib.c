@@ -1164,10 +1164,9 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
       if (scripts && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
       continue;
 match:
-      if (callback(u, *cur)) goto done;
+      if (callback(u, *cur)) break;
     }
   }
-done:
   closedir(dp);
 }
 

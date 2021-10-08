@@ -1267,23 +1267,6 @@
 #undef FLAG_a
 #endif
 
-// hexdump   bcCdn#<0os#<0vx[!bcCdox]
-#undef OPTSTR_hexdump
-#define OPTSTR_hexdump "bcCdn#<0os#<0vx[!bcCdox]"
-#ifdef CLEANUP_hexdump
-#undef CLEANUP_hexdump
-#undef FOR_hexdump
-#undef FLAG_x
-#undef FLAG_v
-#undef FLAG_s
-#undef FLAG_o
-#undef FLAG_n
-#undef FLAG_d
-#undef FLAG_C
-#undef FLAG_c
-#undef FLAG_b
-#endif
-
 // hexedit   <1>1r
 #undef OPTSTR_hexedit
 #define OPTSTR_hexedit "<1>1r"
@@ -2273,9 +2256,9 @@
 #undef FLAG_c
 #endif
 
-// pidof so:x so:x
+// pidof <1so:x <1so:x
 #undef OPTSTR_pidof
-#define OPTSTR_pidof "so:x"
+#define OPTSTR_pidof "<1so:x"
 #ifdef CLEANUP_pidof
 #undef CLEANUP_pidof
 #undef FOR_pidof
@@ -4724,21 +4707,6 @@
 #define FLAG_u (1<<0)
 #define FLAG_h (1<<1)
 #define FLAG_a (1<<2)
-#endif
-
-#ifdef FOR_hexdump
-#ifndef TT
-#define TT this.hexdump
-#endif
-#define FLAG_x (FORCED_FLAG<<0)
-#define FLAG_v (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_o (FORCED_FLAG<<3)
-#define FLAG_n (FORCED_FLAG<<4)
-#define FLAG_d (FORCED_FLAG<<5)
-#define FLAG_C (FORCED_FLAG<<6)
-#define FLAG_c (FORCED_FLAG<<7)
-#define FLAG_b (FORCED_FLAG<<8)
 #endif
 
 #ifdef FOR_hexedit
