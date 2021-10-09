@@ -262,8 +262,12 @@
 #define USE_HELP_EXTRAS(...) __VA_ARGS__
 #define CFG_HELP 1
 #define USE_HELP(...) __VA_ARGS__
+#define CFG_HEXDUMP 0
+#define USE_HEXDUMP(...)
 #define CFG_HEXEDIT 0
 #define USE_HEXEDIT(...)
+#define CFG_HD 0
+#define USE_HD(...)
 #define CFG_HOSTID 0
 #define USE_HOSTID(...)
 #define CFG_HOST 0

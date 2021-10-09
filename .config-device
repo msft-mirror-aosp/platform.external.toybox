@@ -144,7 +144,9 @@ CONFIG_HEAD=y
 # CONFIG_HELLO is not set
 CONFIG_HELP_EXTRAS=y
 CONFIG_HELP=y
+# CONFIG_HEXDUMP is not set
 # CONFIG_HEXEDIT is not set
+# CONFIG_HD is not set
 # CONFIG_HOSTID is not set
 # CONFIG_HOST is not set
 CONFIG_HOSTNAME=y
