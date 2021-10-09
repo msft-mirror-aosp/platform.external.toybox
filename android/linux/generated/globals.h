@@ -117,7 +117,7 @@ struct passwd_data {
 // toys/lsb/pidof.c
 
 struct pidof_data {
-  char *omit;
+  char *o;
 };
 
 // toys/lsb/seq.c
@@ -720,6 +720,19 @@ struct getty_data {
 
 struct groupadd_data {
   long gid;
+};
+
+// toys/pending/hexdump.c
+
+struct hexdump_data {
+    long s, n;
+
+    long long len, pos, ppos;
+    const char *fmt;
+    unsigned int fn, bc;  // file number and byte count
+    char linebuf[16];  // line buffer - serves double duty for sqeezing repeat
+                       // lines and for accumulating full lines accross file
+                       // boundaries if necessesary.
 };
 
 // toys/pending/host.c
@@ -1676,6 +1689,7 @@ extern union global_union {
 	struct getopt_data getopt;
 	struct getty_data getty;
 	struct groupadd_data groupadd;
+	struct hexdump_data hexdump;
 	struct host_data host;
 	struct ip_data ip;
 	struct ipcrm_data ipcrm;
