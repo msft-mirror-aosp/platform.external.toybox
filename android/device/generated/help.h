@@ -72,7 +72,7 @@
 
 #define HELP_seq "usage: seq [-w|-f fmt_str] [-s sep_str] [first] [increment] last\n\nCount from first to last, by increment. Omitted arguments default\nto 1. Two arguments are used as first and last. Arguments can be\nnegative or floating point.\n\n-f	Use fmt_str as a printf-style floating point format string\n-s	Use sep_str as separator, default is a newline character\n-w	Pad to equal width with leading zeroes"
 
-#define HELP_pidof "usage: pidof [-s] [-o omitpid[,omitpid...]] [NAME]...\n\nPrint the PIDs of all processes with the given names.\n\n-s	Single shot, only return one pid\n-o	Omit PID(s)\n-x	Match shell scripts too"
+#define HELP_pidof "usage: pidof [-s] [-o omitpid[,omitpid...]] [NAME...]\n\nPrint the PIDs of all processes with the given names.\n\n-o	Omit PID(s)\n-s	Single shot, only return one pid\n-x	Match shell scripts too"
 
 #define HELP_passwd_sad "Password changes are checked to make sure they're at least 6 chars long,\ndon't include the entire username (but not a subset of it), or the entire\nprevious password (but changing password1, password2, password3 is fine).\nThis heuristic accepts \"aaaaaa\" and \"123456\"."
 
@@ -429,6 +429,10 @@
 #define HELP_init "usage: init\n\nSystem V style init.\n\nFirst program to run (as PID 1) when the system comes up, reading\n/etc/inittab to determine actions."
 
 #define HELP_host "usage: host [-av] [-t TYPE] NAME [SERVER]\n\nPerform DNS lookup on NAME, which can be a domain name to lookup,\nor an IPv4 dotted or IPv6 colon-separated address to reverse lookup.\nSERVER (if present) is the DNS server to use.\n\n-a	-v -t ANY\n-t TYPE	query records of type TYPE\n-v	verbose"
+
+#define HELP_hd "usage: hd [FILE...]\n\nDisplay file(s) in cannonical hex+ASCII format."
+
+#define HELP_hexdump "usage: hexdump [-bcCdovx] [-n LEN] [-s SKIP] [FILE...]\n\nDump file(s) in hexadecimal format.\n\n-n LEN	Show LEN bytes of output\n-s SKIP	Skip bytes of input\n-v	Verbose (don't combine identical lines)\n\nDisplay type:\n-b One byte octal   -c One byte character -C Canonical (hex + ASCII)\n-d Two byte decimal -o Two byte octal     -x Two byte hexadecimal (default)"
 
 #define HELP_groupdel "usage: groupdel [USER] GROUP\n\nDelete a group or remove a user from a group"
 

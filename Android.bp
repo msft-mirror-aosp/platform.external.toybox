@@ -462,6 +462,9 @@ cc_defaults {
                 // also getting from <sys/param.h>.
                 "-Wno-macro-redefined",
             ],
+            ldflags: [
+                "-Wl,-dead_strip",
+            ],
         },
 
         linux: {
