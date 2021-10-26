@@ -142,7 +142,9 @@ CONFIG_HEAD=y
 # CONFIG_HELLO is not set
 # CONFIG_HELP_EXTRAS is not set
 # CONFIG_HELP is not set
+# CONFIG_HEXDUMP is not set
 # CONFIG_HEXEDIT is not set
+# CONFIG_HD is not set
 # CONFIG_HOSTID is not set
 # CONFIG_HOST is not set
 CONFIG_HOSTNAME=y
@@ -172,6 +174,7 @@ CONFIG_ID=y
 # CONFIG_KLOGD_SOURCE_RING_BUFFER is not set
 # CONFIG_LAST is not set
 # CONFIG_LINK is not set
+# CONFIG_LINUX32 is not set
 CONFIG_LN=y
 # CONFIG_LOAD_POLICY is not set
 # CONFIG_LOGGER is not set
@@ -282,6 +285,7 @@ CONFIG_SORT_FLOAT=y
 CONFIG_SORT=y
 # CONFIG_SPLIT is not set
 CONFIG_STAT=y
+# CONFIG_STRACE is not set
 # CONFIG_STRINGS is not set
 # CONFIG_STTY is not set
 # CONFIG_SU is not set

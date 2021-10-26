@@ -258,8 +258,12 @@
 #define USE_HELP_EXTRAS(...)
 #define CFG_HELP 0
 #define USE_HELP(...)
+#define CFG_HEXDUMP 0
+#define USE_HEXDUMP(...)
 #define CFG_HEXEDIT 0
 #define USE_HEXEDIT(...)
+#define CFG_HD 0
+#define USE_HD(...)
 #define CFG_HOSTID 0
 #define USE_HOSTID(...)
 #define CFG_HOST 0
@@ -318,6 +322,8 @@
 #define USE_LAST(...)
 #define CFG_LINK 0
 #define USE_LINK(...)
+#define CFG_LINUX32 0
+#define USE_LINUX32(...)
 #define CFG_LN 1
 #define USE_LN(...) __VA_ARGS__
 #define CFG_LOAD_POLICY 0
@@ -538,6 +544,8 @@
 #define USE_SPLIT(...)
 #define CFG_STAT 1
 #define USE_STAT(...) __VA_ARGS__
+#define CFG_STRACE 0
+#define USE_STRACE(...)
 #define CFG_STRINGS 0
 #define USE_STRINGS(...)
 #define CFG_STTY 0

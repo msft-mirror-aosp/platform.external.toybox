@@ -200,9 +200,9 @@
 #undef FOR_bzcat
 #endif
 
-// cal   >2h
+// cal   >3h
 #undef OPTSTR_cal
-#define OPTSTR_cal ">2h"
+#define OPTSTR_cal ">3h"
 #ifdef CLEANUP_cal
 #undef CLEANUP_cal
 #undef FOR_cal
@@ -409,9 +409,9 @@
 #undef FLAG_preserve
 #endif
 
-// cpio (quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
+// cpio (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
 #undef OPTSTR_cpio
-#define OPTSTR_cpio "(quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
+#define OPTSTR_cpio "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
 #ifdef CLEANUP_cpio
 #undef CLEANUP_cpio
 #undef FOR_cpio
@@ -427,6 +427,8 @@
 #undef FLAG_m
 #undef FLAG_no_preserve_owner
 #undef FLAG_quiet
+#undef FLAG_renumber_inodes
+#undef FLAG_ignore_devno
 #endif
 
 // crc32    
@@ -1124,9 +1126,9 @@
 #undef FLAG_t
 #endif
 
-// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]
+// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]
 #undef OPTSTR_grep
-#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]"
+#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]"
 #ifdef CLEANUP_grep
 #undef CLEANUP_grep
 #undef FOR_grep
@@ -1139,6 +1141,7 @@
 #undef FLAG_e
 #undef FLAG_q
 #undef FLAG_l
+#undef FLAG_L
 #undef FLAG_c
 #undef FLAG_w
 #undef FLAG_v
@@ -1264,6 +1267,23 @@
 #undef FLAG_a
 #endif
 
+// hexdump   bcCdn#<0os#<0vx[!bcCdox]
+#undef OPTSTR_hexdump
+#define OPTSTR_hexdump "bcCdn#<0os#<0vx[!bcCdox]"
+#ifdef CLEANUP_hexdump
+#undef CLEANUP_hexdump
+#undef FOR_hexdump
+#undef FLAG_x
+#undef FLAG_v
+#undef FLAG_s
+#undef FLAG_o
+#undef FLAG_n
+#undef FLAG_d
+#undef FLAG_C
+#undef FLAG_c
+#undef FLAG_b
+#endif
+
 // hexedit   <1>1r
 #undef OPTSTR_hexedit
 #define OPTSTR_hexedit "<1>1r"
@@ -1321,13 +1341,15 @@
 #undef FLAG_fast
 #endif
 
-// i2cdetect   >3aFly
+// i2cdetect   >3aFlqry[!qr]
 #undef OPTSTR_i2cdetect
-#define OPTSTR_i2cdetect ">3aFly"
+#define OPTSTR_i2cdetect ">3aFlqry[!qr]"
 #ifdef CLEANUP_i2cdetect
 #undef CLEANUP_i2cdetect
 #undef FOR_i2cdetect
 #undef FLAG_y
+#undef FLAG_r
+#undef FLAG_q
 #undef FLAG_l
 #undef FLAG_F
 #undef FLAG_a
@@ -1600,6 +1622,14 @@
 #undef FOR_link
 #endif
 
+// linux32    
+#undef OPTSTR_linux32
+#define OPTSTR_linux32 0
+#ifdef CLEANUP_linux32
+#undef CLEANUP_linux32
+#undef FOR_linux32
+#endif
+
 // ln <1rt:Tvnfs <1rt:Tvnfs
 #undef OPTSTR_ln
 #define OPTSTR_ln "<1rt:Tvnfs"
@@ -1623,9 +1653,9 @@
 #undef FOR_load_policy
 #endif
 
-// log   <1p:t:
+// log   p:t:
 #undef OPTSTR_log
-#define OPTSTR_log "<1p:t:"
+#define OPTSTR_log "p:t:"
 #ifdef CLEANUP_log
 #undef CLEANUP_log
 #undef FOR_log
@@ -2243,9 +2273,9 @@
 #undef FLAG_c
 #endif
 
-// pidof   <1so:x
+// pidof   so:x
 #undef OPTSTR_pidof
-#define OPTSTR_pidof "<1so:x"
+#define OPTSTR_pidof "so:x"
 #ifdef CLEANUP_pidof
 #undef CLEANUP_pidof
 #undef FOR_pidof
@@ -2304,14 +2334,15 @@
 #undef FLAG_V
 #endif
 
-// pmap   <1xq
+// pmap   <1pqx
 #undef OPTSTR_pmap
-#define OPTSTR_pmap "<1xq"
+#define OPTSTR_pmap "<1pqx"
 #ifdef CLEANUP_pmap
 #undef CLEANUP_pmap
 #undef FOR_pmap
-#undef FLAG_q
 #undef FLAG_x
+#undef FLAG_q
+#undef FLAG_p
 #endif
 
 // printenv   (null)0
@@ -2450,14 +2481,15 @@
 #undef FOR_realpath
 #endif
 
-// reboot   fn
+// reboot   d:fn
 #undef OPTSTR_reboot
-#define OPTSTR_reboot "fn"
+#define OPTSTR_reboot "d:fn"
 #ifdef CLEANUP_reboot
 #undef CLEANUP_reboot
 #undef FOR_reboot
 #undef FLAG_n
 #undef FLAG_f
+#undef FLAG_d
 #endif
 
 // renice   <1gpun#|
@@ -2818,6 +2850,17 @@
 #undef FLAG_c
 #endif
 
+// strace   ^p#s#v
+#undef OPTSTR_strace
+#define OPTSTR_strace "^p#s#v"
+#ifdef CLEANUP_strace
+#undef CLEANUP_strace
+#undef FOR_strace
+#undef FLAG_v
+#undef FLAG_s
+#undef FLAG_p
+#endif
+
 // strings   t:an#=4<1fo
 #undef OPTSTR_strings
 #define OPTSTR_strings "t:an#=4<1fo"
@@ -2961,9 +3004,9 @@
 #undef FLAG_f
 #endif
 
-// tar &(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa] &(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]
+// tar &(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa] &(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]
 #undef OPTSTR_tar
-#define OPTSTR_tar "&(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]"
+#define OPTSTR_tar "&(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]"
 #ifdef CLEANUP_tar
 #undef CLEANUP_tar
 #undef FOR_tar
@@ -3000,6 +3043,7 @@
 #undef FLAG_no_recursion
 #undef FLAG_full_time
 #undef FLAG_restrict
+#undef FLAG_selinux
 #endif
 
 // taskset   <1^pa
@@ -3288,9 +3332,9 @@
 #undef FLAG_c
 #endif
 
-// uname oamvrns[+os] oamvrns[+os]
+// uname aomvrns aomvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "oamvrns[+os]"
+#define OPTSTR_uname "aomvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -3299,8 +3343,8 @@
 #undef FLAG_r
 #undef FLAG_v
 #undef FLAG_m
-#undef FLAG_a
 #undef FLAG_o
+#undef FLAG_a
 #endif
 
 // unicode   <1
@@ -3564,9 +3608,9 @@
 #undef FLAG_E
 #endif
 
-// xxd >1c#l#o#g#<1=2iprs#[!rs] >1c#l#o#g#<1=2iprs#[!rs]
+// xxd >1c#<0>256l#o#g#<1=2iprs#[!rs] >1c#<0>256l#o#g#<1=2iprs#[!rs]
 #undef OPTSTR_xxd
-#define OPTSTR_xxd ">1c#l#o#g#<1=2iprs#[!rs]"
+#define OPTSTR_xxd ">1c#<0>256l#o#g#<1=2iprs#[!rs]"
 #ifdef CLEANUP_xxd
 #undef CLEANUP_xxd
 #undef FOR_xxd
@@ -3966,6 +4010,8 @@
 #define FLAG_m (1<<9)
 #define FLAG_no_preserve_owner (1<<10)
 #define FLAG_quiet (1<<11)
+#define FLAG_renumber_inodes (1<<12)
+#define FLAG_ignore_devno (1<<13)
 #endif
 
 #ifdef FOR_crc32
@@ -4570,29 +4616,30 @@
 #define FLAG_e (1<<6)
 #define FLAG_q (1<<7)
 #define FLAG_l (1<<8)
-#define FLAG_c (1<<9)
-#define FLAG_w (1<<10)
-#define FLAG_v (1<<11)
-#define FLAG_s (1<<12)
-#define FLAG_R (1<<13)
-#define FLAG_r (1<<14)
-#define FLAG_o (1<<15)
-#define FLAG_n (1<<16)
-#define FLAG_i (1<<17)
-#define FLAG_h (1<<18)
-#define FLAG_b (1<<19)
-#define FLAG_a (1<<20)
-#define FLAG_I (1<<21)
-#define FLAG_H (1<<22)
-#define FLAG_F (1<<23)
-#define FLAG_E (1<<24)
-#define FLAG_z (1<<25)
-#define FLAG_Z (1<<26)
-#define FLAG_M (1<<27)
-#define FLAG_S (1<<28)
-#define FLAG_exclude_dir (1<<29)
-#define FLAG_color (1<<30)
-#define FLAG_line_buffered (1LL<<31)
+#define FLAG_L (1<<9)
+#define FLAG_c (1<<10)
+#define FLAG_w (1<<11)
+#define FLAG_v (1<<12)
+#define FLAG_s (1<<13)
+#define FLAG_R (1<<14)
+#define FLAG_r (1<<15)
+#define FLAG_o (1<<16)
+#define FLAG_n (1<<17)
+#define FLAG_i (1<<18)
+#define FLAG_h (1<<19)
+#define FLAG_b (1<<20)
+#define FLAG_a (1<<21)
+#define FLAG_I (1<<22)
+#define FLAG_H (1<<23)
+#define FLAG_F (1<<24)
+#define FLAG_E (1<<25)
+#define FLAG_z (1<<26)
+#define FLAG_Z (1<<27)
+#define FLAG_M (1<<28)
+#define FLAG_S (1<<29)
+#define FLAG_exclude_dir (1<<30)
+#define FLAG_color (1LL<<31)
+#define FLAG_line_buffered (1LL<<32)
 #endif
 
 #ifdef FOR_groupadd
@@ -4679,6 +4726,21 @@
 #define FLAG_a (FORCED_FLAG<<2)
 #endif
 
+#ifdef FOR_hexdump
+#ifndef TT
+#define TT this.hexdump
+#endif
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_v (FORCED_FLAG<<1)
+#define FLAG_s (FORCED_FLAG<<2)
+#define FLAG_o (FORCED_FLAG<<3)
+#define FLAG_n (FORCED_FLAG<<4)
+#define FLAG_d (FORCED_FLAG<<5)
+#define FLAG_C (FORCED_FLAG<<6)
+#define FLAG_c (FORCED_FLAG<<7)
+#define FLAG_b (FORCED_FLAG<<8)
+#endif
+
 #ifdef FOR_hexedit
 #ifndef TT
 #define TT this.hexedit
@@ -4731,9 +4793,11 @@
 #define TT this.i2cdetect
 #endif
 #define FLAG_y (FORCED_FLAG<<0)
-#define FLAG_l (FORCED_FLAG<<1)
-#define FLAG_F (FORCED_FLAG<<2)
-#define FLAG_a (FORCED_FLAG<<3)
+#define FLAG_r (FORCED_FLAG<<1)
+#define FLAG_q (FORCED_FLAG<<2)
+#define FLAG_l (FORCED_FLAG<<3)
+#define FLAG_F (FORCED_FLAG<<4)
+#define FLAG_a (FORCED_FLAG<<5)
 #endif
 
 #ifdef FOR_i2cdump
@@ -4954,6 +5018,12 @@
 #ifdef FOR_link
 #ifndef TT
 #define TT this.link
+#endif
+#endif
+
+#ifdef FOR_linux32
+#ifndef TT
+#define TT this.linux32
 #endif
 #endif
 
@@ -5557,8 +5627,9 @@
 #ifndef TT
 #define TT this.pmap
 #endif
-#define FLAG_q (FORCED_FLAG<<0)
-#define FLAG_x (FORCED_FLAG<<1)
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_q (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_printenv
@@ -5683,6 +5754,7 @@
 #endif
 #define FLAG_n (FORCED_FLAG<<0)
 #define FLAG_f (FORCED_FLAG<<1)
+#define FLAG_d (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_renice
@@ -5983,6 +6055,15 @@
 #define FLAG_c (1<<3)
 #endif
 
+#ifdef FOR_strace
+#ifndef TT
+#define TT this.strace
+#endif
+#define FLAG_v (FORCED_FLAG<<0)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
+#endif
+
 #ifdef FOR_strings
 #ifndef TT
 #define TT this.strings
@@ -6139,6 +6220,7 @@
 #define FLAG_no_recursion (1<<30)
 #define FLAG_full_time (1LL<<31)
 #define FLAG_restrict (1LL<<32)
+#define FLAG_selinux (1LL<<33)
 #endif
 
 #ifdef FOR_taskset
@@ -6394,8 +6476,8 @@
 #define FLAG_r (1<<2)
 #define FLAG_v (1<<3)
 #define FLAG_m (1<<4)
-#define FLAG_a (1<<5)
-#define FLAG_o (1<<6)
+#define FLAG_o (1<<5)
+#define FLAG_a (1<<6)
 #endif
 
 #ifdef FOR_unicode
