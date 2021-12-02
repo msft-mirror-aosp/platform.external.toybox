@@ -336,6 +336,8 @@
 #define USE_LOG(...)
 #define CFG_LOGNAME 0
 #define USE_LOGNAME(...)
+#define CFG_LOGPATH 0
+#define USE_LOGPATH(...)
 #define CFG_LOGWRAPPER 0
 #define USE_LOGWRAPPER(...)
 #define CFG_LOSETUP 0

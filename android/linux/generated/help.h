@@ -50,7 +50,7 @@
 
 #define HELP_skeleton "usage: skeleton [-a] [-b STRING] [-c NUMBER] [-d LIST] [-e COUNT] [...]\n\nTemplate for new commands. You don't need this.\n\nWhen creating a new command, copy this file and delete the parts you\ndon't need. Be sure to replace all instances of \"skeleton\" (upper and lower\ncase) with your new command name.\n\nFor simple commands, \"hello.c\" is probably a better starting point."
 
-#define HELP_logwrapper "usage: logwrapper ...\n\nAppend command line to $WRAPLOG, then call second instance\nof command in $PATH."
+#define HELP_logpath "usage: logpath ...\n\nAppend command line to $LOGPATH, then call second instance\nof command in $PATH."
 
 #define HELP_hostid "usage: hostid\n\nPrint the numeric identifier for the current host."
 
@@ -334,7 +334,11 @@
 
 #define HELP_xzcat "usage: xzcat [filename...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
 
-#define HELP_wget "usage: wget -O filename URL\n-O filename: specify output filename\nURL: uniform resource location, FTP/HTTP only, not HTTPS\n\nexamples:\n  wget -O index.html http://www.example.com\n  wget -O sample.jpg ftp://ftp.example.com:21/sample.jpg"
+#define HELP_wget_openssl "Enable HTTPS support for wget by linking to OpenSSL."
+
+#define HELP_wget_libtls "Enable HTTPS support for wget by linking to LibTLS.\nSupports using libtls, libretls or libtls-bearssl."
+
+#define HELP_wget "usage: wget [OPTIONS]... [URL]\n    --max-redirect          maximum redirections allowed\n-d, --debug                 print lots of debugging information\n-O, --output-document=FILE  specify output filename\n\nexamples:\n  wget http://www.example.com"
 
 #define HELP_vi "usage: vi [-s script] FILE\n-s script: run script file\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical."
 
@@ -385,6 +389,8 @@
 #define HELP_set "usage: set [+a] [+o OPTION] [VAR...]\n\nSet variables and shell attributes. Use + to disable and - to enable.\nNAME=VALUE arguments assign to the variable, any leftovers set $1, $2...\nWith no arguments, prints current variables.\n\n-f	NAME is a function\n-v	NAME is a variable\n-n	don't follow name reference\n\nOPTIONs:\n  history - enable command history"
 
 #define HELP_exit "usage: exit [status]\n\nExit shell.  If no return value supplied on command line, use value\nof most recent command, or 0 if none."
+
+#define HELP_declare "usage: declare [-pAailunxr] [NAME...]\n\nSet or print variable attributes and values.\n\n-p	Print variables instead of setting\n-A	Associative array\n-a	Indexed array\n-i	Integer\n-l	Lower case\n-n	Name reference (symlink)\n-r	Readonly\n-u	Uppercase\n-x	Export"
 
 #define HELP_cd "usage: cd [-PL] [path]\n\nChange current directory.  With no arguments, go $HOME.\n\n-P	Physical path: resolve symlinks in path\n-L	Local path: .. trims directories off $PWD (default)"
 
@@ -510,7 +516,7 @@
 
 #define HELP_touch "usage: touch [-amch] [-d DATE] [-t TIME] [-r FILE] FILE...\n\nUpdate the access and modification times of each FILE to the current time.\n\n-a	Change access time\n-m	Change modification time\n-c	Don't create file\n-h	Change symlink\n-d	Set time to DATE (in YYYY-MM-DDThh:mm:SS[.frac][tz] format)\n-t	Set time to TIME (in [[CC]YY]MMDDhhmm[.ss][frac] format)\n-r	Set time same as reference FILE"
 
-#define HELP_time "usage: time [-pv] COMMAND...\n\nRun command line and report real, user, and system time elapsed in seconds.\n(real = clock on the wall, user = cpu used by command's code,\nsystem = cpu used by OS on behalf of command.)\n\n-p	POSIX format output (default)\n-v	Verbose"
+#define HELP_time "usage: time [-pv] COMMAND...\n\nRun command line and report real, user, and system time elapsed in seconds.\n(real = clock on the wall, user = cpu used by command's code,\nsystem = cpu used by OS on behalf of command.)\n\n-p	POSIX format output\n-v	Verbose"
 
 #define HELP_test "usage: test [-bcdefghLPrSsuwx PATH] [-nz STRING] [-t FD] [X ?? Y]\n\nReturn true or false by performing tests. (With no arguments return false.)\n\n--- Tests with a single argument (after the option):\nPATH is/has:\n  -b  block device   -f  regular file   -p  fifo           -u  setuid bit\n  -c  char device    -g  setgid         -r  read bit       -w  write bit\n  -d  directory      -h  symlink        -S  socket         -x  execute bit\n  -e  exists         -L  symlink        -s  nonzero size   -k  sticky bit\nSTRING is:\n  -n  nonzero size   -z  zero size      (STRING by itself implies -n)\nFD (integer file descriptor) is:\n  -t  a TTY\n\n--- Tests with one argument on each side of an operator:\nTwo strings:\n  =  are identical   !=  differ\n\nTwo integers:\n  -eq  equal         -gt  first > second    -lt  first < second\n  -ne  not equal     -ge  first >= second   -le  first <= second\n\n--- Modify or combine tests:\n  ! EXPR     not (swap true/false)   EXPR -a EXPR    and (are both true)\n  ( EXPR )   evaluate this first     EXPR -o EXPR    or (is either true)"
 
