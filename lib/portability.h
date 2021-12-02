@@ -29,6 +29,11 @@
 // Test for gcc (using compiler builtin #define)
 
 #ifdef __GNUC__
+#ifndef __clang__
+#define QUIET = 0 // shut up false positive "may be used uninitialized" warning
+#else
+#define QUIET
+#endif
 #define printf_format	__attribute__((format(printf, 1, 2)))
 #else
 #define printf_format
@@ -306,10 +311,17 @@ typedef enum android_LogPriority {
   ANDROID_LOG_FATAL,
   ANDROID_LOG_SILENT,
 } android_LogPriority;
-static inline int __android_log_write(int pri, const char *tag, const char *msg)
+#endif
+#if !defined(__BIONIC__) || defined(__ANDROID_NDK__)
+// Android NDKv18 has liblog.so but not liblog.a for static builds.
+static inline int stub_out_log_write(int pri, const char *tag, const char *msg)
 {
   return -1;
 }
+#ifdef __ANDROID_NDK__
+#define __android_log_write(a, b, c) stub_out_log_write(a, b, c)
+#endif
+
 #endif
 
 // libprocessgroup is an Android platform library not included in the NDK.
@@ -324,12 +336,6 @@ static inline int __android_log_write(int pri, const char *tag, const char *msg)
 #else
 static inline int get_sched_policy(int tid, void *policy) {return 0;}
 static inline char *get_sched_policy_name(int policy) {return "unknown";}
-#endif
-
-// Android NDKv18 has liblog.so but not liblog.c for static builds,
-// stub it out for now.
-#ifdef __ANDROID_NDK__
-#define __android_log_write(a, b, c) (0)
 #endif
 
 #ifndef SYSLOG_NAMES
@@ -387,4 +393,13 @@ struct itimerspec {
 };
 int timer_create(clock_t c, struct sigevent *se, timer_t *t);
 int timer_settime(timer_t t, int flags, struct itimerspec *new, void *old);
+#elif !CFG_TOYBOX_HASTIMERS
+#include <syscall.h>
+#include <signal.h>
+#include <time.h>
+int timer_create_wrap(clockid_t c, struct sigevent *se, timer_t *t);
+#define timer_create(...) timer_create_wrap(__VA_ARGS__)
+int timer_settime_wrap(timer_t t, int flags, struct itimerspec *val,
+  struct itimerspec *old);
+#define timer_settime(...) timer_settime_wrap(__VA_ARGS__)
 #endif
