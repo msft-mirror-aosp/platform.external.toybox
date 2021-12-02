@@ -181,6 +181,7 @@ CONFIG_LN=y
 # CONFIG_LOGIN is not set
 # CONFIG_LOG is not set
 # CONFIG_LOGNAME is not set
+# CONFIG_LOGPATH is not set
 # CONFIG_LOGWRAPPER is not set
 # CONFIG_LOSETUP is not set
 # CONFIG_LSATTR is not set
