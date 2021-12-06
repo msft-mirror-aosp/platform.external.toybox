@@ -381,9 +381,9 @@
 #undef FOR_count
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]
+// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -513,6 +513,23 @@
 #ifdef CLEANUP_deallocvt
 #undef CLEANUP_deallocvt
 #undef FOR_deallocvt
+#endif
+
+// declare   pAailunxr
+#undef OPTSTR_declare
+#define OPTSTR_declare "pAailunxr"
+#ifdef CLEANUP_declare
+#undef CLEANUP_declare
+#undef FOR_declare
+#undef FLAG_r
+#undef FLAG_x
+#undef FLAG_n
+#undef FLAG_u
+#undef FLAG_l
+#undef FLAG_i
+#undef FLAG_a
+#undef FLAG_A
+#undef FLAG_p
 #endif
 
 // demo_many_options   ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba
@@ -1126,9 +1143,9 @@
 #undef FLAG_t
 #endif
 
-// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]
+// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]
 #undef OPTSTR_grep
-#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]"
+#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]"
 #ifdef CLEANUP_grep
 #undef CLEANUP_grep
 #undef FOR_grep
@@ -1693,12 +1710,12 @@
 #undef FOR_logname
 #endif
 
-// logwrapper    
-#undef OPTSTR_logwrapper
-#define OPTSTR_logwrapper 0
-#ifdef CLEANUP_logwrapper
-#undef CLEANUP_logwrapper
-#undef FOR_logwrapper
+// logpath    
+#undef OPTSTR_logpath
+#define OPTSTR_logpath 0
+#ifdef CLEANUP_logpath
+#undef CLEANUP_logpath
+#undef FOR_logpath
 #endif
 
 // losetup   >2S(sizelimit)#s(show)ro#j:fdcaD[!afj]
@@ -3140,9 +3157,9 @@
 #undef FLAG_r
 #endif
 
-// time   <1^pv
+// time   <1^pv[-pv]
 #undef OPTSTR_time
-#define OPTSTR_time "<1^pv"
+#define OPTSTR_time "<1^pv[-pv]"
 #ifdef CLEANUP_time
 #undef CLEANUP_time
 #undef FOR_time
@@ -3563,14 +3580,15 @@
 #undef FLAG_m
 #endif
 
-// wget   (no-check-certificate)O:
+// wget   <1>1(max-redirect)#<0=20d(debug)O(output-document):
 #undef OPTSTR_wget
-#define OPTSTR_wget "(no-check-certificate)O:"
+#define OPTSTR_wget "<1>1(max-redirect)#<0=20d(debug)O(output-document):"
 #ifdef CLEANUP_wget
 #undef CLEANUP_wget
 #undef FOR_wget
 #undef FLAG_O
-#undef FLAG_no_check_certificate
+#undef FLAG_d
+#undef FLAG_max_redirect
 #endif
 
 // which <1a <1a
@@ -4082,6 +4100,21 @@
 #ifndef TT
 #define TT this.deallocvt
 #endif
+#endif
+
+#ifdef FOR_declare
+#ifndef TT
+#define TT this.declare
+#endif
+#define FLAG_r (FORCED_FLAG<<0)
+#define FLAG_x (FORCED_FLAG<<1)
+#define FLAG_n (FORCED_FLAG<<2)
+#define FLAG_u (FORCED_FLAG<<3)
+#define FLAG_l (FORCED_FLAG<<4)
+#define FLAG_i (FORCED_FLAG<<5)
+#define FLAG_a (FORCED_FLAG<<6)
+#define FLAG_A (FORCED_FLAG<<7)
+#define FLAG_p (FORCED_FLAG<<8)
 #endif
 
 #ifdef FOR_demo_many_options
@@ -5078,9 +5111,9 @@
 #endif
 #endif
 
-#ifdef FOR_logwrapper
+#ifdef FOR_logpath
 #ifndef TT
-#define TT this.logwrapper
+#define TT this.logpath
 #endif
 #endif
 
@@ -6659,7 +6692,8 @@
 #define TT this.wget
 #endif
 #define FLAG_O (FORCED_FLAG<<0)
-#define FLAG_no_check_certificate (FORCED_FLAG<<1)
+#define FLAG_d (FORCED_FLAG<<1)
+#define FLAG_max_redirect (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_which
