@@ -3303,6 +3303,19 @@
 #undef FLAG_t
 #endif
 
+// uclampset   p#am#<-1>1024M#<-1>1024R
+#undef OPTSTR_uclampset
+#define OPTSTR_uclampset "p#am#<-1>1024M#<-1>1024R"
+#ifdef CLEANUP_uclampset
+#undef CLEANUP_uclampset
+#undef FOR_uclampset
+#undef FLAG_R
+#undef FLAG_M
+#undef FLAG_m
+#undef FLAG_a
+#undef FLAG_p
+#endif
+
 // ulimit   >1P#<1SHavutsrRqpnmlifedc[-SH][!apvutsrRqnmlifedc]
 #undef OPTSTR_ulimit
 #define OPTSTR_ulimit ">1P#<1SHavutsrRqpnmlifedc[-SH][!apvutsrRqnmlifedc]"
@@ -6456,6 +6469,17 @@
 #define FLAG_u (FORCED_FLAG<<1)
 #define FLAG_d (FORCED_FLAG<<2)
 #define FLAG_t (FORCED_FLAG<<3)
+#endif
+
+#ifdef FOR_uclampset
+#ifndef TT
+#define TT this.uclampset
+#endif
+#define FLAG_R (FORCED_FLAG<<0)
+#define FLAG_M (FORCED_FLAG<<1)
+#define FLAG_m (FORCED_FLAG<<2)
+#define FLAG_a (FORCED_FLAG<<3)
+#define FLAG_p (FORCED_FLAG<<4)
 #endif
 
 #ifdef FOR_ulimit
