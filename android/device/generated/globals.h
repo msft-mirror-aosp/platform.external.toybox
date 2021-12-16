@@ -482,6 +482,12 @@ struct truncate_data {
   int type;
 };
 
+// toys/other/uclampset.c
+
+struct uclampset_data {
+  long M, m, p;
+};
+
 // toys/other/watch.c
 
 struct watch_data {
@@ -1671,6 +1677,7 @@ extern union global_union {
 	struct tac_data tac;
 	struct timeout_data timeout;
 	struct truncate_data truncate;
+	struct uclampset_data uclampset;
 	struct watch_data watch;
 	struct watchdog_data watchdog;
 	struct xxd_data xxd;
