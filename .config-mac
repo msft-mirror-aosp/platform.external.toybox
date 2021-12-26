@@ -319,6 +319,7 @@ CONFIG_TRUNCATE=y
 CONFIG_TR=y
 # CONFIG_TTY is not set
 # CONFIG_TUNCTL is not set
+# CONFIG_UCLAMPSET is not set
 # CONFIG_ULIMIT is not set
 # CONFIG_UMOUNT is not set
 CONFIG_UNAME=y
