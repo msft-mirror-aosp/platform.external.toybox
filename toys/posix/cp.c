@@ -15,7 +15,7 @@
 // options shared between mv/cp must be in same order (right to left)
 // for FLAG macros to work out right in shared infrastructure.
 
-USE_CP(NEWTOY(cp, "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu]", TOYFLAG_BIN))
+USE_CP(NEWTOY(cp, "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]", TOYFLAG_BIN))
 USE_MV(NEWTOY(mv, "<1vnF(remove-destination)fit:T[-ni]", TOYFLAG_BIN))
 USE_INSTALL(NEWTOY(install, "<1cdDpsvt:m:o:g:", TOYFLAG_USR|TOYFLAG_BIN))
 
@@ -190,7 +190,7 @@ static int cp_node(struct dirtree *try)
       if (S_ISDIR(try->st.st_mode)) {
         struct stat st2;
 
-        if (!(flags & (FLAG_a|FLAG_r|FLAG_R))) {
+        if (!(flags & (FLAG_a|FLAG_r))) {
           err = "Skipped dir '%s'";
           catch = try->name;
           break;
@@ -257,7 +257,7 @@ static int cp_node(struct dirtree *try)
 
       // Copy contents of file.
       } else {
-        int fdin;
+        int fdin, ii;
 
         fdin = openat(tfd, try->name, O_RDONLY);
         if (fdin < 0) {
@@ -282,8 +282,9 @@ static int cp_node(struct dirtree *try)
             xattr_flist(fdin, list, listlen);
             list[listlen-1] = 0; // I do not trust this API.
             for (name = list; name-list < listlen; name += strlen(name)+1) {
-              if (!(TT.pflags&_CP_xattr) && strncmp(name, "security.", 9))
-                continue;
+              // context copies security, xattr copies everything else
+              ii = strncmp(name, "security.", 9) ? _CP_xattr : _CP_context;
+              if (!(TT.pflags&ii)) continue;
               if ((len = xattr_fget(fdin, name, 0, 0))>0) {
                 value = xmalloc(len);
                 if (len == xattr_fget(fdin, name, value, len))
@@ -464,7 +465,7 @@ void cp_main(void)
 
 void mv_main(void)
 {
-  toys.optflags |= FLAG_d|FLAG_p|FLAG_R;
+  toys.optflags |= FLAG_d|FLAG_p|FLAG_r;
 
   cp_main();
 }

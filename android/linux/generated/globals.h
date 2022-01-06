@@ -482,6 +482,12 @@ struct truncate_data {
   int type;
 };
 
+// toys/other/uclampset.c
+
+struct uclampset_data {
+  long M, m, p;
+};
+
 // toys/other/watch.c
 
 struct watch_data {
@@ -936,14 +942,11 @@ struct sh_data {
 // toys/pending/strace.c
 
 struct strace_data {
-  long s;
-  long p;
+  long s, p;
 
-  // 216 for x86-64.
-  char regs_buf[256];
+  char ioctl[32], *fmt;
+  long regs[256/sizeof(long)], syscall;
   pid_t pid;
-  char *fmt;
-  char ioctl[32];
   int arg;
 };
 
@@ -1146,6 +1149,16 @@ struct vi_data {
 
 struct wget_data {
   char *filename;
+  long redirects;
+
+  int sock;
+  char *url;
+#if CFG_WGET_LIBTLS
+  struct tls *tls;
+#elif CFG_WGET_OPENSSL
+  struct ssl_ctx_st *ctx;
+  struct ssl_st *ssl;
+#endif
 };
 
 // toys/posix/basename.c
@@ -1664,6 +1677,7 @@ extern union global_union {
 	struct tac_data tac;
 	struct timeout_data timeout;
 	struct truncate_data truncate;
+	struct uclampset_data uclampset;
 	struct watch_data watch;
 	struct watchdog_data watchdog;
 	struct xxd_data xxd;

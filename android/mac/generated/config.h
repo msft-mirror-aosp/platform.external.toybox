@@ -336,6 +336,8 @@
 #define USE_LOG(...)
 #define CFG_LOGNAME 0
 #define USE_LOGNAME(...)
+#define CFG_LOGPATH 0
+#define USE_LOGPATH(...)
 #define CFG_LOGWRAPPER 0
 #define USE_LOGWRAPPER(...)
 #define CFG_LOSETUP 0
@@ -610,6 +612,8 @@
 #define USE_TTY(...)
 #define CFG_TUNCTL 0
 #define USE_TUNCTL(...)
+#define CFG_UCLAMPSET 0
+#define USE_UCLAMPSET(...)
 #define CFG_ULIMIT 0
 #define USE_ULIMIT(...)
 #define CFG_UMOUNT 0

@@ -338,6 +338,8 @@
 #define USE_LOGIN(...)
 #define CFG_LOGNAME 1
 #define USE_LOGNAME(...) __VA_ARGS__
+#define CFG_LOGPATH 0
+#define USE_LOGPATH(...)
 #define CFG_LOG 1
 #define USE_LOG(...) __VA_ARGS__
 #define CFG_LOGWRAPPER 0
@@ -632,6 +634,8 @@
 #define USE_TTY(...) __VA_ARGS__
 #define CFG_TUNCTL 1
 #define USE_TUNCTL(...) __VA_ARGS__
+#define CFG_UCLAMPSET 1
+#define USE_UCLAMPSET(...) __VA_ARGS__
 #define CFG_ULIMIT 1
 #define USE_ULIMIT(...) __VA_ARGS__
 #define CFG_UMOUNT 1
