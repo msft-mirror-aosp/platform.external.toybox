@@ -457,7 +457,6 @@ static const struct signame signames[] = {
   // Non-POSIX signals that don't cause termination
   SIGNIFY(WINCH),
 };
-int signames_len = ARRAY_LEN(signames);
 
 #undef SIGNIFY
 
@@ -465,7 +464,6 @@ void xsignal_all_killers(void *handler)
 {
   int i;
 
-  if (!handler) handler = SIG_DFL;
   for (i = 1; signames[i].num != SIGCHLD; i++)
     if (signames[i].num != SIGKILL) xsignal(signames[i].num, handler);
 }
@@ -477,8 +475,8 @@ int sig_to_num(char *sigstr)
   char *s;
 
   // Numeric?
-  i = estrtol(sigstr, &s, 10);
-  if (!errno && !*s) return i;
+  offset = estrtol(sigstr, &s, 10);
+  if (!errno && !*s) return offset;
 
   // Skip leading "SIG".
   strcasestart(&sigstr, "sig");
@@ -512,7 +510,7 @@ char *num_to_sig(int sig)
   int i;
 
   // A named signal?
-  for (i=0; i<signames_len; i++)
+  for (i=0; i<ARRAY_LEN(signames); i++)
     if (signames[i].num == sig) return signames[i].name;
 
   // A real-time signal?

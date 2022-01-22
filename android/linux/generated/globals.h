@@ -151,6 +151,15 @@ struct ftpget_data {
   int fd;
 };
 
+// toys/net/host.c
+
+struct host_data {
+  char *t;
+
+  char **nsname;
+  unsigned nslen;
+};
+
 // toys/net/ifconfig.c
 
 struct ifconfig_data {
@@ -330,6 +339,12 @@ struct lspci_data {
   long n;
 
   FILE *db;
+};
+
+// toys/other/lsusb.c
+
+struct lsusb_data {
+  void *ids;
 };
 
 // toys/other/makedevs.c
@@ -739,12 +754,6 @@ struct hexdump_data {
     char linebuf[16];  // line buffer - serves double duty for sqeezing repeat
                        // lines and for accumulating full lines accross file
                        // boundaries if necessesary.
-};
-
-// toys/pending/host.c
-
-struct host_data {
-  char *type_str;
 };
 
 // toys/pending/ip.c
@@ -1197,6 +1206,8 @@ struct cksum_data {
 // toys/posix/cmp.c
 
 struct cmp_data {
+  long n;
+
   int fd;
   char *name;
 };
@@ -1393,8 +1404,7 @@ struct nl_data {
   long w, l, v;
 
   // Count of consecutive blank lines for -l has to persist between files
-  long lcount;
-  long slen;
+  long lcount, slen;
 };
 
 // toys/posix/od.c
@@ -1495,7 +1505,7 @@ struct sort_data {
   char *o, *T, S;
 
   void *key_list;
-  int linecount;
+  unsigned linecount;
   char **lines, *name;
 };
 
@@ -1633,6 +1643,7 @@ extern union global_union {
 	struct su_data su;
 	struct umount_data umount;
 	struct ftpget_data ftpget;
+	struct host_data host;
 	struct ifconfig_data ifconfig;
 	struct microcom_data microcom;
 	struct netcat_data netcat;
@@ -1657,6 +1668,7 @@ extern union global_union {
 	struct losetup_data losetup;
 	struct lsattr_data lsattr;
 	struct lspci_data lspci;
+	struct lsusb_data lsusb;
 	struct makedevs_data makedevs;
 	struct mix_data mix;
 	struct mkpasswd_data mkpasswd;
@@ -1704,7 +1716,6 @@ extern union global_union {
 	struct getty_data getty;
 	struct groupadd_data groupadd;
 	struct hexdump_data hexdump;
-	struct host_data host;
 	struct ip_data ip;
 	struct ipcrm_data ipcrm;
 	struct ipcs_data ipcs;
