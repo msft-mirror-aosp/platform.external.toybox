@@ -5,7 +5,7 @@
 #define FORCED_FLAGLL 1ULL
 #else
 #define FORCED_FLAG 0
-#define FORCED_FLAGLL 0
+#define FORCED_FLAGLL 0LL
 #endif
 
 // acpi abctV abctV
@@ -352,12 +352,13 @@
 #undef FOR_clear
 #endif
 
-// cmp <1>2ls(silent)(quiet)[!ls] <1>2ls(silent)(quiet)[!ls]
+// cmp <1>4ls(silent)(quiet)n#<1[!ls] <1>4ls(silent)(quiet)n#<1[!ls]
 #undef OPTSTR_cmp
-#define OPTSTR_cmp "<1>2ls(silent)(quiet)[!ls]"
+#define OPTSTR_cmp "<1>4ls(silent)(quiet)n#<1[!ls]"
 #ifdef CLEANUP_cmp
 #undef CLEANUP_cmp
 #undef FOR_cmp
+#undef FLAG_n
 #undef FLAG_s
 #undef FLAG_l
 #endif
@@ -2124,16 +2125,16 @@
 #undef FLAG_n
 #endif
 
-// nl v#=1l#w#<0=6Eb:n:s: v#=1l#w#<0=6Eb:n:s:
+// nl v#=1l#w#<0=6b:n:s:E v#=1l#w#<0=6b:n:s:E
 #undef OPTSTR_nl
-#define OPTSTR_nl "v#=1l#w#<0=6Eb:n:s:"
+#define OPTSTR_nl "v#=1l#w#<0=6b:n:s:E"
 #ifdef CLEANUP_nl
 #undef CLEANUP_nl
 #undef FOR_nl
+#undef FLAG_E
 #undef FLAG_s
 #undef FLAG_n
 #undef FLAG_b
-#undef FLAG_E
 #undef FLAG_w
 #undef FLAG_l
 #undef FLAG_v
@@ -3980,8 +3981,9 @@
 #ifndef TT
 #define TT this.cmp
 #endif
-#define FLAG_s (1<<0)
-#define FLAG_l (1<<1)
+#define FLAG_n (1<<0)
+#define FLAG_s (1<<1)
+#define FLAG_l (1<<2)
 #endif
 
 #ifdef FOR_comm
@@ -5478,10 +5480,10 @@
 #ifndef TT
 #define TT this.nl
 #endif
-#define FLAG_s (1<<0)
-#define FLAG_n (1<<1)
-#define FLAG_b (1<<2)
-#define FLAG_E (1<<3)
+#define FLAG_E (1<<0)
+#define FLAG_s (1<<1)
+#define FLAG_n (1<<2)
+#define FLAG_b (1<<3)
 #define FLAG_w (1<<4)
 #define FLAG_l (1<<5)
 #define FLAG_v (1<<6)
