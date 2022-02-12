@@ -242,7 +242,7 @@
 
 #define HELP_lsusb "usage: lsusb\n\nList USB hosts/devices."
 
-#define HELP_lspci_text "usage: lspci [-n] [-i FILE ]\n\n-n	Numeric output (repeat for readable and numeric)\n-i	PCI ID database (default /usr/share/misc/pci.ids)"
+#define HELP_lspci_text "usage: lspci [-n] [-i FILE]\n\n-n	Numeric output (repeat for readable and numeric)\n-i	PCI ID database (default /usr/share/misc/pci.ids)"
 
 #define HELP_lspci "usage: lspci [-ekm]\n\nList PCI devices.\n\n-e	Print all 6 digits in class\n-k	Print kernel driver\n-m	Machine readable format"
 
