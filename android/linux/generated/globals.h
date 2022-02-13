@@ -1465,7 +1465,7 @@ struct ps_data {
 
   struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
-  unsigned width, height;
+  unsigned width, height, scroll;
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
