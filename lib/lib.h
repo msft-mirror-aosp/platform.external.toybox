@@ -302,18 +302,8 @@ char *xpop_env(char *name); // because xpopenv() looks like xpopen_v()
 void xclearenv(void);
 void reset_env(struct passwd *p, int clear);
 
-// linestack.c
+// utf8.c
 
-struct linestack {
-  long len, max;
-  struct ptr_len idx[];
-};
-
-void linestack_addstack(struct linestack **lls, struct linestack *throw,
-  long pos);
-void linestack_insert(struct linestack **lls, long pos, char *line, long len);
-void linestack_append(struct linestack **lls, char *line);
-struct linestack *linestack_load(char *name);
 int crunch_escape(FILE *out, int cols, int wc);
 int crunch_rev_escape(FILE *out, int cols, int wc);
 int crunch_str(char **str, int width, FILE *out, char *escmore,
@@ -348,8 +338,6 @@ int scan_key_getsize(char *scratch, int timeout_ms, unsigned *xx, unsigned *yy);
 void xsetspeed(struct termios *tio, int speed);
 int set_terminal(int fd, int raw, int speed, struct termios *old);
 void xset_terminal(int fd, int raw, int speed, struct termios *old);
-void tty_esc(char *s);
-void tty_jump(int x, int y);
 void tty_reset(void);
 void tty_sigreset(int i);
 void start_redraw(unsigned *width, unsigned *height);
