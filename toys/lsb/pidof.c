@@ -5,18 +5,18 @@
  *
  * http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/pidof.html
 
-USE_PIDOF(NEWTOY(pidof, "so:x", TOYFLAG_BIN))
+USE_PIDOF(NEWTOY(pidof, "<1so:x", TOYFLAG_BIN))
 
 config PIDOF
   bool "pidof"
   default y
   help
-    usage: pidof [-s] [-o omitpid[,omitpid...]] [NAME...]
+    usage: pidof [-s] [-o omitpid[,omitpid...]] [NAME]...
 
     Print the PIDs of all processes with the given names.
 
-    -o	Omit PID(s)
     -s	Single shot, only return one pid
+    -o	Omit PID(s)
     -x	Match shell scripts too
 */
 
@@ -24,17 +24,17 @@ config PIDOF
 #include "toys.h"
 
 GLOBALS(
-  char *o;
+  char *omit;
 )
 
 static int print_pid(pid_t pid, char *name)
 {
   sprintf(toybuf, "%d", (int)pid);
-  if (comma_scan(TT.o, toybuf, 0)) return 0;
+  if (comma_scan(TT.omit, toybuf, 0)) return 0;
   xprintf(" %s"+!!toys.exitval, toybuf);
   toys.exitval = 0;
 
-  return FLAG(s);
+  return toys.optflags & FLAG_s;
 }
 
 void pidof_main(void)
