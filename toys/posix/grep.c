@@ -10,7 +10,7 @@
 * echo hello | grep -f </dev/null
 *
 
-USE_GREP(NEWTOY(grep, "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
+USE_GREP(NEWTOY(grep, "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcl(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EFw]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 USE_EGREP(OLDTOY(egrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 USE_FGREP(OLDTOY(fgrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 
@@ -44,10 +44,9 @@ config GREP
     -x  whole line               -z  input NUL terminated
 
     display modes: (default: matched line)
-    -L  filenames with no match  -Z  output is NUL terminated
-    -c  count of matching lines  -l  filenames with a match
+    -c  count of matching lines  -l  show only matching filenames
     -o  only matching part       -q  quiet (errors only)
-    -s  silent (no error msg)
+    -s  silent (no error msg)    -Z  output NUL terminated
 
     output prefix (default: filename if checking more than 1 file)
     -H  force filename           -b  byte offset of match
@@ -125,7 +124,7 @@ static void do_grep(int fd, char *name)
   if (!FLAG(a) && !lseek(fd, 0, SEEK_CUR)) {
     char buf[256];
     int len, i = 0;
-    unsigned wc;
+    wchar_t wc;
 
     // If the first 256 bytes don't parse as utf8, call it binary.
     if (0<(len = read(fd, buf, 256))) {
@@ -264,14 +263,12 @@ static void do_grep(int fd, char *name)
       }
       matched++;
       TT.found = 1;
-
-      // Are we NOT showing the matching text?
       if (FLAG(q)) {
         toys.exitval = 0;
         xexit();
       }
-      if (FLAG(L) || FLAG(l)) {
-        if (FLAG(l)) xprintf("%s%c", name, TT.outdelim);
+      if (FLAG(l)) {
+        xprintf("%s%c", name, TT.outdelim);
         free(line);
         fclose(file);
         return;
@@ -299,9 +296,9 @@ static void do_grep(int fd, char *name)
             outline(FLAG(color) ? 0 : line, ':', name, lcount, bcount, ulen);
           if (FLAG(color)) {
             xputsn(TT.grey);
-            if (mm->rm_so) xputsl(start, mm->rm_so);
+            if (mm->rm_so) xputsl(line, mm->rm_so);
             xputsn(TT.red);
-            xputsl(start+mm->rm_so, mm->rm_eo-mm->rm_so);
+            xputsl(line+mm->rm_so, mm->rm_eo-mm->rm_so);
           }
 
           if (TT.A) after = TT.A+1;
@@ -310,6 +307,7 @@ static void do_grep(int fd, char *name)
 
       start += mm->rm_eo;
       if (mm->rm_so == mm->rm_eo) break;
+      if (!FLAG(o) && FLAG(color)) break;
     } while (*start);
     offset += len;
 
@@ -355,8 +353,7 @@ static void do_grep(int fd, char *name)
     if (FLAG(m) && mcount >= TT.m) break;
   }
 
-  if (FLAG(L)) xprintf("%s%c", name, TT.outdelim);
-  else if (FLAG(c)) outline(0, ':', name, mcount, 0, 1);
+  if (FLAG(c)) outline(0, ':', name, mcount, 0, 1);
 
   // loopfiles will also close the fd, but this frees an (opaque) struct.
   fclose(file);
@@ -461,11 +458,11 @@ void grep_main(void)
     toys.optflags &= ~FLAG_color;
 
   if (FLAG(color)) {
-    TT.purple = "\e[35m";
-    TT.cyan = "\e[36m";
-    TT.red = "\e[1;31m";
-    TT.green = "\e[32m";
-    TT.grey = "\e[m";
+    TT.purple = "\033[35m";
+    TT.cyan = "\033[36m";
+    TT.red = "\033[1;31m";
+    TT.green = "\033[32m";
+    TT.grey = "\033[0m";
   } else TT.purple = TT.cyan = TT.red = TT.green = TT.grey = "";
 
   if (FLAG(R)) toys.optflags |= FLAG_r;

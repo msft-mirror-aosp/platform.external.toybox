@@ -23,8 +23,8 @@ config SLEEP
 
 void sleep_main(void)
 {
-  struct timespec ts;
+  struct timespec tv;
 
-  xparsetimespec(*toys.optargs, &ts);
-  toys.exitval = !!nanosleep(&ts, NULL);
+  tv.tv_sec = xparsetime(*toys.optargs, 9, &tv.tv_nsec);
+  toys.exitval = !!nanosleep(&tv, NULL);
 }
