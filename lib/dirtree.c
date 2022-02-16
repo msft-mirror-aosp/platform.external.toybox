@@ -162,6 +162,7 @@ int dirtree_recurse(struct dirtree *node,
   // according to the fddir() man page, the filehandle in the DIR * can still
   // be externally used by things that don't lseek() it.
 
+  // The extra parentheses are to shut the stupid compiler up.
   while ((entry = readdir(dir))) {
     if ((flags&DIRTREE_PROC) && !isdigit(*entry->d_name)) continue;
     if (!(new = dirtree_add_node(node, entry->d_name, flags))) continue;

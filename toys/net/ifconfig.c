@@ -248,7 +248,7 @@ static void display_ifconfig(char *name, int always, unsigned long long val[])
 
     for (s = str; *s; s++) {
       if (flags & mask) xprintf("%s ", *s);
-      mask <<= 1;
+      mask = mask << 1;
     }
   } else xprintf("[NO FLAGS] ");
 

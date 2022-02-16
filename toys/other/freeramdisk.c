@@ -19,5 +19,9 @@ config FREERAMDISK
 
 void freeramdisk_main(void)
 {
-  xioctl(xopen(*toys.optargs, O_RDWR), BLKFLSBUF, 0);
+  int fd;
+
+  fd = xopen(toys.optargs[0], O_RDWR);
+  xioctl(fd, BLKFLSBUF, toys.optargs[0]);
+  if (CFG_TOYBOX_FREE) xclose(fd);
 }
