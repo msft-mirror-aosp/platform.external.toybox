@@ -7,7 +7,6 @@
  * Our "unspecified" behavior for no paths is to use "."
  * Parentheses can only stack 4096 deep
  * Not treating two {} as an error, but only using last
- * TODO: -context
 
 USE_FIND(NEWTOY(find, "?^HL[-HL]", TOYFLAG_USR|TOYFLAG_BIN))
 
@@ -23,22 +22,21 @@ config FIND
     -H  Follow command line symlinks         -L  Follow all symlinks
 
     Match filters:
-    -name  PATTERN   filename with wildcards   -iname      ignore case -name
-    -path  PATTERN   path name with wildcards  -ipath      ignore case -path
+    -name  PATTERN   filename with wildcards  (-iname case insensitive)
+    -path  PATTERN   path name with wildcards (-ipath case insensitive)
     -user  UNAME     belongs to user UNAME     -nouser     user ID not known
     -group GROUP     belongs to group GROUP    -nogroup    group ID not known
     -perm  [-/]MODE  permissions (-=min /=any) -prune      ignore dir contents
     -size  N[c]      512 byte blocks (c=bytes) -xdev       only this filesystem
     -links N         hardlink count            -atime N[u] accessed N units ago
     -ctime N[u]      created N units ago       -mtime N[u] modified N units ago
+    -newer FILE      newer mtime than FILE     -mindepth N at least N dirs down
+    -depth           ignore contents of dir    -maxdepth N at most N dirs down
     -inum N          inode number N            -empty      empty files and dirs
+    -type [bcdflps]  type is (block, char, dir, file, symlink, pipe, socket)
     -true            always true               -false      always false
     -context PATTERN security context          -executable access(X_OK) perm+ACL
-    -samefile FILE   hardlink to FILE          -quit       exit immediately
-    -depth           ignore contents of dir    -maxdepth N at most N dirs down
-    -newer FILE      newer mtime than FILE     -mindepth N at least N dirs down
     -newerXY FILE    X=acm time > FILE's Y=acm time (Y=t: FILE is literal time)
-    -type [bcdflps]  type is (block, char, dir, file, symlink, pipe, socket)
 
     Numbers N may be prefixed by a - (less than) or + (greater than). Units for
     -Xtime are d (days, default), h (hours), m (minutes), or s (seconds).
@@ -212,7 +210,7 @@ static int do_find(struct dirtree *new)
 {
   int pcount = 0, print = 0, not = 0, active = !!new, test = active, recurse;
   struct double_list *argdata = TT.argdata;
-  char *s, **ss, *arg;
+  char *s, **ss;
 
   recurse = DIRTREE_STATLESS|DIRTREE_COMEAGAIN|
     (DIRTREE_SYMFOLLOW*!!(toys.optflags&FLAG_L));
@@ -266,10 +264,10 @@ static int do_find(struct dirtree *new)
   // not: a pending ! applies to this test (only set if performing tests)
   // print: saw one of print/ok/exec, no need for default -print
 
-  if (TT.filter) for (ss = TT.filter; (s = *ss); ss++) {
+  if (TT.filter) for (ss = TT.filter; *ss; ss++) {
     int check = active && test;
 
-    // if (!new) perform one-time setup, if (check) perform test
+    s = *ss;
 
     // handle ! ( ) using toybuf as a stack
     if (*s != '-') {
@@ -307,7 +305,7 @@ static int do_find(struct dirtree *new)
       if (new && check)
         test = !unlinkat(dirtree_parentfd(new), new->name,
           S_ISDIR(new->st.st_mode) ? AT_REMOVEDIR : 0);
-    } else if (!strcmp(s, "depth") || !strcmp(s, "d")) TT.depth = 1;
+    } else if (!strcmp(s, "depth")) TT.depth = 1;
     else if (!strcmp(s, "o") || !strcmp(s, "or")) {
       if (not) goto error;
       if (active) {
@@ -354,27 +352,18 @@ static int do_find(struct dirtree *new)
       if (check && S_ISDIR(new->st.st_mode) && !TT.depth) recurse = 0;
     } else if (!strcmp(s, "executable")) {
       if (check && faccessat(dirtree_parentfd(new), new->name,X_OK,0)) test = 0;
-    } else if (!strcmp(s, "quit")) {
-      if (check) {
-        execdir(0, 1);
-        xexit();
-      }
 
     // Remaining filters take an argument
     } else {
-      arg = *++ss;
       if (!strcmp(s, "name") || !strcmp(s, "iname")
         || !strcmp(s, "wholename") || !strcmp(s, "iwholename")
-        || !strcmp(s, "path") || !strcmp(s, "ipath")
-        || !strcmp(s, "lname") || !strcmp(s, "ilname"))
+        || !strcmp(s, "path") || !strcmp(s, "ipath"))
       {
         int i = (*s == 'i'), is_path = (s[i] != 'n');
-        char *path = 0, *name = new ? new->name : arg;
+        char *arg = ss[1], *path = 0, *name = new ? new->name : arg;
 
         // Handle path expansion and case flattening
-        if (new && s[i] == 'l')
-          name = path = xreadlinkat(dirtree_parentfd(new), new->name);
-        else if (new && is_path) name = path = dirtree_path(new, 0);
+        if (new && is_path) name = path = dirtree_path(new, 0);
         if (i) {
           if ((check || !new) && name) name = strlower(name);
           if (!new) dlist_add(&TT.argdata, name);
@@ -382,7 +371,7 @@ static int do_find(struct dirtree *new)
         }
 
         if (check) {
-          test = !fnmatch(arg, path ? name : basename(name),
+          test = !fnmatch(arg, is_path ? name : basename(name),
             FNM_PATHNAME*(!is_path));
           if (i) free(name);
         }
@@ -392,15 +381,17 @@ static int do_find(struct dirtree *new)
           char *path = dirtree_path(new, 0), *context;
 
           if (lsm_get_context(path, &context) != -1) {
-            test = !fnmatch(arg, context, 0);
+            test = !fnmatch(ss[1], context, 0);
             free(context);
           } else test = 0;
           free(path);
         }
       } else if (!strcmp(s, "perm")) {
         if (check) {
-          int match_min = *arg == '-', match_any = *arg == '/';
-          mode_t m1 = string_to_mode(arg+(match_min || match_any), 0),
+          char *m = ss[1];
+          int match_min = *m == '-',
+              match_any = *m == '/';
+          mode_t m1 = string_to_mode(m+(match_min || match_any), 0),
                  m2 = new->st.st_mode & 07777;
 
           if (match_min || match_any) m2 &= m1;
@@ -410,42 +401,44 @@ static int do_find(struct dirtree *new)
         if (check) {
           int types[] = {S_IFBLK, S_IFCHR, S_IFDIR, S_IFLNK, S_IFIFO,
                          S_IFREG, S_IFSOCK}, i;
+          char *t = ss[1];
 
-          for (; *arg; arg++) {
-            if (*arg == ',') continue;
-            i = stridx("bcdlpfs", *arg);
-            if (i<0) error_exit("bad -type '%c'", *arg);
+          for (; *t; t++) {
+            if (*t == ',') continue;
+            i = stridx("bcdlpfs", *t);
+            if (i<0) error_exit("bad -type '%c'", *t);
             if ((new->st.st_mode & S_IFMT) == types[i]) break;
           }
-          test = *arg;
+          test = *t;
         }
 
       } else if (strchr("acm", *s)
         && (!strcmp(s+1, "time") || !strcmp(s+1, "min")))
       {
         if (check) {
+          char *copy = ss[1];
           time_t thyme = (int []){new->st.st_atime, new->st.st_ctime,
                                   new->st.st_mtime}[stridx("acm", *s)];
-          int len = strlen(arg), uu, units = (s[1]=='m') ? 60 : 86400;
+          int len = strlen(copy), uu, units = (s[1]=='m') ? 60 : 86400;
 
-          if (len && -1!=(uu = stridx("dhms",tolower(arg[len-1])))) {
-            arg = xstrdup(arg);
-            arg[--len] = 0;
+          if (len && -1!=(uu = stridx("dhms",tolower(copy[len-1])))) {
+            copy = xstrdup(copy);
+            copy[--len] = 0;
             units = (int []){86400, 3600, 60, 1}[uu];
           }
-          test = compare_numsign(TT.now - thyme, units, arg);
-          if (*ss != arg) free(arg);
+          test = compare_numsign(TT.now - thyme, units, copy);
+          if (copy != ss[1]) free(copy);
         }
       } else if (!strcmp(s, "size")) {
-        if (check) test = compare_numsign(new->st.st_size, 512, arg);
+        if (check) test = compare_numsign(new->st.st_size, 512, ss[1]);
       } else if (!strcmp(s, "links")) {
-        if (check) test = compare_numsign(new->st.st_nlink, 0, arg);
+        if (check) test = compare_numsign(new->st.st_nlink, 0, ss[1]);
       } else if (!strcmp(s, "inum")) {
-        if (check) test = compare_numsign(new->st.st_ino, 0, arg);
+        if (check) test = compare_numsign(new->st.st_ino, 0, ss[1]);
       } else if (!strcmp(s, "mindepth") || !strcmp(s, "maxdepth")) {
         if (check) {
           struct dirtree *dt = new;
-          int i = 0, d = atolx(arg);
+          int i = 0, d = atolx(ss[1]);
 
           while ((dt = dt->parent)) i++;
           if (s[1] == 'i') {
@@ -457,7 +450,7 @@ static int do_find(struct dirtree *new)
           }
         }
       } else if (!strcmp(s, "user") || !strcmp(s, "group")
-              || !strncmp(s, "newer", 5) || !strcmp(s, "samefile"))
+              || strstart(&s, "newer"))
       {
         int macoff[] = {offsetof(struct stat, st_mtim),
           offsetof(struct stat, st_atim), offsetof(struct stat, st_ctim)};
@@ -467,51 +460,45 @@ static int do_find(struct dirtree *new)
             uid_t uid;
             gid_t gid;
             struct timespec tm;
-            struct {
-              dev_t d;
-              ino_t i;
-            };
-          };
+          } u;
         } *udl;
-        struct stat st;
 
         if (!new) {
-          if (arg) {
+          if (ss[1]) {
             udl = xmalloc(sizeof(*udl));
             dlist_add_nomalloc(&TT.argdata, (void *)udl);
 
-            if (strchr("sn", *s)) {
-              if (*s=='n' && s[5] && (s[7] || !strchr("Bmac", s[5]) || !strchr("tBmac", s[6])))
+            if (s != 1+*ss) {
+              if (*s && (s[2] || !strchr("Bmac", *s) || !strchr("tBmac", s[1])))
                 goto error;
-              if (*s=='s' || !s[5] || s[6]!='t') {
-                xstat(arg, &st);
-                if (*s=='s') udl->d = st.st_dev, udl->i = st.st_ino;
-                else udl->tm = *(struct timespec *)(((char *)&st)
-                               + macoff[!s[5] ? 0 : stridx("ac", s[6])+1]);
-              } else if (s[6] == 't') {
+              if (!*s || s[1]!='t') {
+                struct stat st;
+
+                xstat(ss[1], &st);
+                udl->u.tm = *(struct timespec *)(((char *)&st)
+                  + macoff[!*s ? 0 : stridx("ac", s[1])+1]);
+              } else if (s[1] == 't') {
                 unsigned nano;
 
-                xparsedate(arg, &(udl->tm.tv_sec), &nano, 1);
-                udl->tm.tv_nsec = nano;
+                xparsedate(ss[1], &(udl->u.tm.tv_sec), &nano, 1);
+                udl->u.tm.tv_nsec = nano;
               }
-            } else if (*s == 'u') udl->uid = xgetuid(arg);
-            else udl->gid = xgetgid(arg);
+            } else if (*s == 'u') udl->u.uid = xgetuid(ss[1]);
+            else udl->u.gid = xgetgid(ss[1]);
           }
         } else {
           udl = (void *)llist_pop(&argdata);
           if (check) {
-            if (*s == 'u') test = new->st.st_uid == udl->uid;
-            else if (*s == 'g') test = new->st.st_gid == udl->gid;
-            else if (*s == 's')
-              test = new->st.st_dev == udl->d && new->st.st_ino == udl->i;
+            if (*s == 'u') test = new->st.st_uid == udl->u.uid;
+            else if (*s == 'g') test = new->st.st_gid == udl->u.gid;
             else {
               struct timespec *tm = (void *)(((char *)&new->st)
                 + macoff[!s[5] ? 0 : stridx("ac", s[5])+1]);
 
               if (s[5] == 'B') test = 0;
-              else test = (tm->tv_sec == udl->tm.tv_sec)
-                ? tm->tv_nsec > udl->tm.tv_nsec
-                : tm->tv_sec > udl->tm.tv_sec;
+              else test = (tm->tv_sec == udl->u.tm.tv_sec)
+                ? tm->tv_nsec > udl->u.tm.tv_nsec
+                : tm->tv_sec > udl->u.tm.tv_sec;
             }
           }
         }
@@ -527,10 +514,10 @@ static int do_find(struct dirtree *new)
           int len;
 
           // catch "-exec" with no args and "-exec \;"
-          if (!arg || !strcmp(arg, ";")) error_exit("'%s' needs 1 arg", s);
+          if (!ss[1] || !strcmp(ss[1], ";")) error_exit("'%s' needs 1 arg", s);
 
           dlist_add_nomalloc(&TT.argdata, (void *)(aa = xzalloc(sizeof(*aa))));
-          aa->argstart = ss;
+          aa->argstart = ++ss;
           aa->curly = -1;
 
           // Record command line arguments to -exec
@@ -554,19 +541,19 @@ static int do_find(struct dirtree *new)
 
         // collect names and execute commands
         } else {
-          char *name;
+          char *name, *ss1 = ss[1];
           struct execdir_data *bb;
 
           // Grab command line exec argument list
           aa = (void *)llist_pop(&argdata);
-          ss += aa->arglen;
+          ss += aa->arglen + 1;
 
           if (!check) goto cont;
           // name is always a new malloc, so we can always free it.
           name = aa->dir ? xstrdup(new->name) : dirtree_path(new, 0);
 
           if (*s == 'o') {
-            fprintf(stderr, "[%s] %s", arg, name);
+            fprintf(stderr, "[%s] %s", ss1, name);
             if (!(test = yesno(0))) {
               free(name);
               goto cont;
@@ -603,7 +590,7 @@ static int do_find(struct dirtree *new)
         int len;
 
         print++;
-        if (check) for (fmt = arg; *fmt; fmt++) {
+        if (check) for (fmt = ss[1]; *fmt; fmt++) {
           // Print the parts that aren't escapes
           if (*fmt == '\\') {
             unsigned u;
@@ -637,7 +624,10 @@ static int do_find(struct dirtree *new)
               else if (ch == 'g') ll = (long)getgroupname(new->st.st_gid);
               else if (ch == 'u') ll = (long)getusername(new->st.st_uid);
               else if (ch == 'l') {
-                ll = (long)(ff = xreadlinkat(dirtree_parentfd(new), new->name));
+                char *path = dirtree_path(new, 0);
+
+                ll = (long)(ff = xreadlink(path));
+                free(path);
                 if (!ll) ll = (long)"";
               } else if (ch == 'M') {
                 mode_to_string(new->st.st_mode, buf);
@@ -670,7 +660,7 @@ static int do_find(struct dirtree *new)
       // This test can go at the end because we do a syntax checking
       // pass first. Putting it here gets the error message (-unknown
       // vs -known noarg) right.
-      if (!check && !arg) error_exit("'%s' needs 1 arg", s-1);
+      if (!*++ss) error_exit("'%s' needs 1 arg", --s);
     }
 cont:
     // Apply pending "!" to result

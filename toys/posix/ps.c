@@ -43,7 +43,6 @@
  *       at right edge? (Not adjusting to screen size at all? Header wraps?)
  * TODO: top: thread support and SMP
  * TODO: pgrep -f only searches the amount of cmdline that fits in toybuf.
- * TODO: pgrep qemu-system-i386 never matches because one char too long
 
 USE_PS(NEWTOY(ps, "k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]", TOYFLAG_BIN|TOYFLAG_LOCALE))
 // stayroot because iotop needs root to read other process' proc/$$/io
@@ -106,8 +105,8 @@ config TOP
     -u	Show these USERs
     -q	Quiet (no header lines)
 
-    Cursor UP/DOWN or LEFT/RIGHT to move list, SHIFT LEFT/RIGHT to change sort,
-    space to force update, R to reverse sort, Q to exit.
+    Cursor LEFT/RIGHT to change sort, UP/DOWN move list, space to force
+    update, R to reverse sort, Q to exit.
 
 # Requires CONFIG_IRQ_TIME_ACCOUNTING in the kernel for /proc/$$/io
 config IOTOP
@@ -210,7 +209,7 @@ GLOBALS(
 
   struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
-  unsigned width, height, scroll;
+  unsigned width, height;
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
@@ -638,14 +637,11 @@ static char *string_field(struct procpid *tb, struct ofields *field)
 static void show_ps(void *p)
 {
   struct procpid *tb = p;
-  struct ofields *field = TT.fields;
-  int pad, len, width = TT.width, abslen, sign, olen, scroll, extra = 0;
-
-  // Skip TT.scroll many fields (but not last one)
-  for (scroll = TT.scroll; scroll && field->next; scroll--) field = field->next;
+  struct ofields *field;
+  int pad, len, width = TT.width, abslen, sign, olen, extra = 0;
 
   // Loop through fields to display
-  for (; field; field = field->next) {
+  for (field = TT.fields; field; field = field->next) {
     char *out = string_field(tb, field);
 
     // Output the field, appropriately padded
@@ -1128,10 +1124,7 @@ static char *parse_ko(void *data, char *type, int length)
 static long long get_headers(struct ofields *field, char *buf, int blen)
 {
   long long bits = 0;
-  int len = 0, scroll;
-
-  // Skip TT.scroll many fields (but not last one)
-  for (scroll = TT.scroll; scroll && field->next; scroll--) field = field->next;
+  int len = 0;
 
   for (; field; field = field->next) {
     len += snprintf(buf+len, blen-len, " %*s"+!bits, field->len,
@@ -1407,7 +1400,6 @@ void ps_main(void)
     if (CFG_TOYBOX_FREE) free(tbsort);
   }
 
-  if (!TT.kcount) toys.exitval = 1;
   if (CFG_TOYBOX_FREE) {
     free(TT.gg.ptr);
     free(TT.GG.ptr);
@@ -1464,8 +1456,8 @@ static int header_line(int line, int rev)
 
   if (FLAG(b)) puts(toybuf);
   else {
-    printf("%s%-*.*s%s\r\n", rev?"\e[7m":"", rev?TT.width:0, TT.width, toybuf,
-      rev?"\e[0m":"");
+    printf("%s%-*.*s%s\r\n", rev?"\033[7m":"", rev?TT.width:0, TT.width, toybuf,
+      rev?"\033[0m":"");
   }
 
   return line-1;
@@ -1473,7 +1465,7 @@ static int header_line(int line, int rev)
 
 static void top_cursor_cleanup(void)
 {
-  xputsn("\e[?25h");
+  tty_esc("?25h");
 }
 
 static void top_common(
@@ -1497,7 +1489,7 @@ static void top_common(
   if (!FLAG(b)) {
     setbuf(stdout, stdout_buf);
     sigatexit(top_cursor_cleanup);
-    xputsn("\e[?25l");
+    tty_esc("?25l");
   }
 
   toys.signal = SIGWINCH;
@@ -1572,7 +1564,7 @@ static void top_common(
       if (recalc) {
         qsort(mix.tb, mix.count, sizeof(struct procpid *), (void *)ksort);
         if (!FLAG(b)) {
-          printf("\e[H\e[J");
+          printf("\033[H\033[J");
           if (toys.signal) {
             toys.signal = 0;
             terminal_probesize(&TT.width, &TT.height);
@@ -1642,7 +1634,6 @@ static void top_common(
             pos += sprintf(pos, "% *lld%%%s", j, (ll+5)/10, cpufields[i]);
           }
           lines = header_line(lines, 0);
-        // Display "iotop" header.
         } else {
           struct ofields *field;
           struct procpid tb;
@@ -1679,16 +1670,18 @@ static void top_common(
         *pos = 0;
         lines = header_line(lines, 1);
       }
-      if (!recalc && !FLAG(b)) printf("\e[%dH\e[J", 1+TT.height-lines);
+      if (!recalc && !FLAG(b))
+        printf("\033[%dH\033[J", 1+TT.height-lines);
+      recalc = 1;
 
       for (i = 0; i<lines && i+topoff<mix.count; i++) {
         // Running processes are shown in bold.
         int bold = !FLAG(b) && mix.tb[i+topoff]->state == 'R';
 
         if (!FLAG(b) && i) putchar('\n');
-        if (bold) printf("\e[1m");
+        if (bold) printf("\033[1m");
         show_ps(mix.tb[i+topoff]);
-        if (bold) printf("\e[m");
+        if (bold) printf("\033[m");
       }
 
       if (TT.top.n && !--TT.top.n) {
@@ -1708,7 +1701,6 @@ static void top_common(
         break;
       } else fflush(stdout);
 
-      recalc = 1;
       i = scan_key_getsize(scratch, timeout-now, &TT.width, &TT.height);
       if (i==-1 || i==3 || toupper(i)=='Q') {
         done++;
@@ -1726,18 +1718,21 @@ static void top_common(
         ((struct ofields *)TT.kfields)->reverse *= -1;
       else {
         i -= 256;
-        if (i == (KEY_SHIFT|KEY_LEFT)) setsort(TT.sortpos-1);
-        else if (i == (KEY_SHIFT|KEY_RIGHT)) setsort(TT.sortpos+1);
-        else if (i == KEY_RIGHT) TT.scroll++;
-        else if (i == KEY_LEFT && TT.scroll) TT.scroll--;
-        else if (recalc-- && i == KEY_UP) topoff--;
-        else if (i == KEY_DOWN) topoff++;
-        else if (i == KEY_PGDN) topoff += lines;
-        else if (i == KEY_PGUP) topoff -= lines;
-        else continue;
-        if (topoff<0) topoff = 0;
-        if (topoff>mix.count) topoff = mix.count;
+        if (i == KEY_LEFT) setsort(TT.sortpos-1);
+        else if (i == KEY_RIGHT) setsort(TT.sortpos+1);
+        // KEY_UP is 0, so at end of strchr
+        else if (strchr((char []){KEY_DOWN,KEY_PGUP,KEY_PGDN,KEY_UP}, i)) {
+          recalc = 0;
+
+          if (i == KEY_UP) topoff--;
+          else if (i == KEY_DOWN) topoff++;
+          else if (i == KEY_PGDN) topoff += lines;
+          else if (i == KEY_PGUP) topoff -= lines;
+          if (topoff<0) topoff = 0; 
+          if (topoff>mix.count) topoff = mix.count;
+        }
       }
+      continue;
     }
 
     free(mix.tb);

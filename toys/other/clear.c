@@ -15,5 +15,5 @@ config CLEAR
 
 void clear_main(void)
 {
-  printf("\e[2J\e[H");
+  printf("\033[2J\033[H");
 }
