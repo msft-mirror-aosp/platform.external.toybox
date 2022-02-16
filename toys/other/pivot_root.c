@@ -22,6 +22,9 @@ config PIVOT_ROOT
 #define FOR_pivot_root
 #include "toys.h"
 
+#include <sys/syscall.h>
+#include <unistd.h>
+
 void pivot_root_main(void)
 {
   if (syscall(__NR_pivot_root, toys.optargs[0], toys.optargs[1]))
