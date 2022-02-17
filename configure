@@ -13,7 +13,7 @@ fi
 
 # CFLAGS and OPTIMIZE are different so you can add extra CFLAGS without
 # disabling default optimizations
-[ -z "$CFLAGS" ] && CFLAGS="-Wall -Wundef -Wno-char-subscripts -Werror=implicit-function-declaration"
+[ -z "$CFLAGS" ] && CFLAGS="-Wall -Wundef -Wno-char-subscripts -Werror=implicit-function-declaration -Wno-pointer-sign"
 # Required for our expected ABI. we're 8-bit clean thus "char" must be unsigned.
 CFLAGS="$CFLAGS -funsigned-char"
 [ -z "$OPTIMIZE" ] && OPTIMIZE="-Os -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-strict-aliasing"
@@ -21,8 +21,10 @@ CFLAGS="$CFLAGS -funsigned-char"
 [ -z "$ASAN" ] || { CFLAGS="$CFLAGS -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address"; NOSTRIP=1; }
 
 # We accept LDFLAGS, but by default don't have anything in it
-if [ "$(uname)" != "Darwin" ]
+if [ "$(uname)" == "Darwin" ]
 then
+  [ -z "$LDOPTIMIZE" ] && LDOPTIMIZE="-Wl,-dead_strip"
+else
   [ -z "$LDOPTIMIZE" ] && LDOPTIMIZE="-Wl,--gc-sections"
   LDASNEEDED="-Wl,--as-needed"
 fi
@@ -31,7 +33,14 @@ fi
 # you call scripts/make.sh and friends directly.
 
 [ -z "$CC" ] && CC=cc
+
+# Strip harder on Linux.
+# Darwin's strip doesn't have equivalents of the binutils -s or -R.
 [ -z "$STRIP" ] && STRIP=strip
+if [ "$(uname)" != "Darwin" ]
+then
+  [ -z "$STRIP" ] && STRIP="strip -s -R .note* -R .comment"
+fi
 
 # If HOSTCC needs CFLAGS or LDFLAGS, just add them to the variable
 # ala HOSTCC="blah-cc --static"
