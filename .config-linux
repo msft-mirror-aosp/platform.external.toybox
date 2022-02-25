@@ -132,6 +132,11 @@ CONFIG_GETCONF=y
 # CONFIG_GETFATTR is not set
 CONFIG_GETOPT=y
 # CONFIG_GETTY is not set
+# CONFIG_GPIODETECT is not set
+# CONFIG_GPIOFIND is not set
+# CONFIG_GPIOGET is not set
+# CONFIG_GPIOINFO is not set
+# CONFIG_GPIOSET is not set
 CONFIG_GREP=y
 # CONFIG_GROUPADD is not set
 # CONFIG_GROUPDEL is not set

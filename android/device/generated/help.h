@@ -46,7 +46,7 @@
 
 #define HELP_getenforce "usage: getenforce\n\nShows whether SELinux is disabled, enforcing, or permissive."
 
-#define HELP_skeleton_alias "usage: skeleton_alias [-dq] [-b NUMBER]\n\nExample of a second command with different arguments in the same source\nfile as the first. This allows shared infrastructure not added to lib/."
+#define HELP_skeleton_alias "usage: skeleton_alias [-dq] [-b NUMBER]\n\nExample of a second command with different arguments in the same source\nfile as the first. This allows shared infrastructure outside of lib/."
 
 #define HELP_skeleton "usage: skeleton [-a] [-b STRING] [-c NUMBER] [-d LIST] [-e COUNT] [...]\n\nTemplate for new commands. You don't need this.\n\nWhen creating a new command, copy this file and delete the parts you\ndon't need. Be sure to replace all instances of \"skeleton\" (upper and lower\ncase) with your new command name.\n\nFor simple commands, \"hello.c\" is probably a better starting point."
 
@@ -238,9 +238,9 @@
 
 #define HELP_makedevs "usage: makedevs [-d device_table] rootdir\n\nCreate a range of special files as specified in a device table.\n\n-d	File containing device table (default reads from stdin)\n\nEach line of the device table has the fields:\n<name> <type> <mode> <uid> <gid> <major> <minor> <start> <increment> <count>\nWhere name is the file name, and type is one of the following:\n\nb	Block device\nc	Character device\nd	Directory\nf	Regular file\np	Named pipe (fifo)\n\nOther fields specify permissions, user and group id owning the file,\nand additional fields for device special files. Use '-' for blank entries,\nunspecified fields are treated as '-'."
 
-#define HELP_lsusb "usage: lsusb\n\nList USB hosts/devices."
+#define HELP_lsusb "usage: lsusb [-i]\n\nList USB hosts/devices.\n\n-i	ID database (default /etc/usb.ids)"
 
-#define HELP_lspci "usage: lspci [-ekmn] [-i FILE] \n\nList PCI devices.\n-e	Print all 6 digits in class\n-i	PCI ID database (default /usr/share/misc/pci.ids)\n-k	Print kernel driver\n-m	Machine readable format\n-n	Numeric output (repeat for readable and numeric)"
+#define HELP_lspci "usage: lspci [-ekmn] [-i FILE]\n\nList PCI devices.\n\n-e  Extended (6 digit) class\n-i  ID database (default /etc/pci.ids[.gz])\n-k  Show kernel driver\n-m  Machine readable\n-n  Numeric output (-nn for both)"
 
 #define HELP_lsmod "usage: lsmod\n\nDisplay the currently loaded modules, their sizes and their dependencies."
 
@@ -274,7 +274,17 @@
 
 #define HELP_help "usage: help [-ahu] [COMMAND]\n\n-a	All commands\n-u	Usage only\n-h	HTML output\n\nShow usage information for toybox commands.\nRun \"toybox\" with no arguments for a list of available commands."
 
-#define HELP_fsync "usage: fsync [-d] [FILE...]\n\nSynchronize a file's in-core state with storage device.\n\n-d	Avoid syncing metadata"
+#define HELP_gpioset "usage: gpioset [-l] CHIP LINE=VALUE...\n\nSet the lines on CHIP to the given values. Use gpiofind to convert line\nnames to numbers.\n\n-l	Active low"
+
+#define HELP_gpioget "usage: gpioget [-l] CHIP LINE...\n\nGets the values of the given lines on CHIP. Use gpiofind to convert line\nnames to numbers.\n\n-l	Active low"
+
+#define HELP_gpioinfo "usage: gpioinfo [CHIP...]\n\nShow gpio chips' lines."
+
+#define HELP_gpiofind "usage: gpiofind NAME\n\nShow the chip and line number for the given line name."
+
+#define HELP_gpiodetect "usage: gpiodetect\n\nShow all gpio chips' names, labels, and number of lines."
+
+#define HELP_fsync "usage: fsync [-d] [FILE...]\n\nFlush disk cache for FILE(s), writing cached data to storage device.\n\n-d	Skip directory info (sync file contents only)."
 
 #define HELP_fsfreeze "usage: fsfreeze {-f | -u} MOUNTPOINT\n\nFreeze or unfreeze a filesystem.\n\n-f	Freeze\n-u	Unfreeze"
 
@@ -548,7 +558,7 @@
 
 #define HELP_iotop "usage: iotop [-AaKObq] [-n NUMBER] [-d SECONDS] [-p PID,] [-u USER,]\n\nRank processes by I/O.\n\n-A	All I/O, not just disk\n-a	Accumulated I/O (not percentage)\n-H	Show threads\n-K	Kilobytes\n-k	Fallback sort FIELDS (default -[D]IO,-ETIME,-PID)\n-m	Maximum number of tasks to show\n-O	Only show processes doing I/O\n-o	Show FIELDS (default PID,PR,USER,[D]READ,[D]WRITE,SWAP,[D]IO,COMM)\n-s	Sort by field number (0-X, default 6)\n-b	Batch mode (no tty)\n-d	Delay SECONDS between each cycle (default 3)\n-n	Exit after NUMBER iterations\n-p	Show these PIDs\n-u	Show these USERs\n-q	Quiet (no header lines)\n\nCursor LEFT/RIGHT to change sort, UP/DOWN move list, space to force\nupdate, R to reverse sort, Q to exit."
 
-#define HELP_top "usage: top [-Hbq] [-k FIELD,] [-o FIELD,] [-s SORT] [-n NUMBER] [-m LINES] [-d SECONDS] [-p PID,] [-u USER,]\n\nShow process activity in real time.\n\n-H	Show threads\n-k	Fallback sort FIELDS (default -S,-%CPU,-ETIME,-PID)\n-o	Show FIELDS (def PID,USER,PR,NI,VIRT,RES,SHR,S,%CPU,%MEM,TIME+,CMDLINE)\n-O	Add FIELDS (replacing PR,NI,VIRT,RES,SHR,S from default)\n-s	Sort by field number (1-X, default 9)\n-b	Batch mode (no tty)\n-d	Delay SECONDS between each cycle (default 3)\n-m	Maximum number of tasks to show\n-n	Exit after NUMBER iterations\n-p	Show these PIDs\n-u	Show these USERs\n-q	Quiet (no header lines)\n\nCursor UP/DOWN or LEFT/RIGHT to move list, SHIFT LEFT/RIGHT to change sort,\nspace to force update, R to reverse sort, Q to exit."
+#define HELP_top "usage: top [-Hhbq] [-k FIELD,] [-o FIELD,] [-s SORT] [-n NUMBER] [-m LINES] [-d SECONDS] [-p PID,] [-u USER,]\n\nShow process activity in real time.\n\n-H	Show threads\n-h	Usage graphs instead of text\n-k	Fallback sort FIELDS (default -S,-%CPU,-ETIME,-PID)\n-o	Show FIELDS (def PID,USER,PR,NI,VIRT,RES,SHR,S,%CPU,%MEM,TIME+,CMDLINE)\n-O	Add FIELDS (replacing PR,NI,VIRT,RES,SHR,S from default)\n-s	Sort by field number (1-X, default 9)\n-b	Batch mode (no tty)\n-d	Delay SECONDS between each cycle (default 3)\n-m	Maximum number of tasks to show\n-n	Exit after NUMBER iterations\n-p	Show these PIDs\n-u	Show these USERs\n-q	Quiet (no header lines)\n\nCursor UP/DOWN or LEFT/RIGHT to move list, SHIFT LEFT/RIGHT to change sort,\nspace to force update, R to reverse sort, Q to exit."
 
 #define HELP_ps "usage: ps [-AadefLlnwZ] [-gG GROUP,] [-k FIELD,] [-o FIELD,] [-p PID,] [-t TTY,] [-uU USER,]\n\nList processes.\n\nWhich processes to show (-gGuUpPt selections may be comma separated lists):\n\n-A  All					-a  Has terminal not session leader\n-d  All but session leaders		-e  Synonym for -A\n-g  In GROUPs				-G  In real GROUPs (before sgid)\n-p  PIDs (--pid)			-P  Parent PIDs (--ppid)\n-s  In session IDs			-t  Attached to selected TTYs\n-T  Show threads also			-u  Owned by selected USERs\n-U  Real USERs (before suid)\n\nOutput modifiers:\n\n-k  Sort FIELDs (-FIELD to reverse)	-M  Measure/pad future field widths\n-n  Show numeric USER and GROUP		-w  Wide output (don't truncate fields)\n\nWhich FIELDs to show. (-o HELP for list, default = -o PID,TTY,TIME,CMD)\n\n-f  Full listing (-o USER:12=UID,PID,PPID,C,STIME,TTY,TIME,ARGS=CMD)\n-l  Long listing (-o F,S,UID,PID,PPID,C,PRI,NI,ADDR,SZ,WCHAN,TTY,TIME,CMD)\n-o  Output FIELDs instead of defaults, each with optional :size and =title\n-O  Add FIELDS to defaults\n-Z  Include LABEL"
 
