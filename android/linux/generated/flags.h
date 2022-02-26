@@ -1505,7 +1505,7 @@
 #undef FOR_insmod
 #endif
 
-// install   <1cdDpsvt:m:o:g:
+// install <1cdDpsvt:m:o:g: <1cdDpsvt:m:o:g:
 #undef OPTSTR_install
 #define OPTSTR_install "<1cdDpsvt:m:o:g:"
 #ifdef CLEANUP_install
@@ -5120,16 +5120,16 @@
 #ifndef TT
 #define TT this.install
 #endif
-#define FLAG_g (FORCED_FLAG<<0)
-#define FLAG_o (FORCED_FLAG<<1)
-#define FLAG_m (FORCED_FLAG<<2)
-#define FLAG_t (FORCED_FLAG<<3)
-#define FLAG_v (FORCED_FLAG<<4)
-#define FLAG_s (FORCED_FLAG<<5)
-#define FLAG_p (FORCED_FLAG<<6)
-#define FLAG_D (FORCED_FLAG<<7)
-#define FLAG_d (FORCED_FLAG<<8)
-#define FLAG_c (FORCED_FLAG<<9)
+#define FLAG_g (1<<0)
+#define FLAG_o (1<<1)
+#define FLAG_m (1<<2)
+#define FLAG_t (1<<3)
+#define FLAG_v (1<<4)
+#define FLAG_s (1<<5)
+#define FLAG_p (1<<6)
+#define FLAG_D (1<<7)
+#define FLAG_d (1<<8)
+#define FLAG_c (1<<9)
 #endif
 
 #ifdef FOR_ionice

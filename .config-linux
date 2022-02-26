@@ -165,7 +165,7 @@ CONFIG_ID=y
 # CONFIG_INIT is not set
 # CONFIG_INOTIFYD is not set
 # CONFIG_INSMOD is not set
-# CONFIG_INSTALL is not set
+CONFIG_INSTALL=y
 # CONFIG_IONICE is not set
 # CONFIG_IORENICE is not set
 # CONFIG_IOTOP is not set
