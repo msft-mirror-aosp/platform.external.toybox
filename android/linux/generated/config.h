@@ -304,8 +304,8 @@
 #define USE_INOTIFYD(...)
 #define CFG_INSMOD 0
 #define USE_INSMOD(...)
-#define CFG_INSTALL 0
-#define USE_INSTALL(...)
+#define CFG_INSTALL 1
+#define USE_INSTALL(...) __VA_ARGS__
 #define CFG_IONICE 0
 #define USE_IONICE(...)
 #define CFG_IORENICE 0
