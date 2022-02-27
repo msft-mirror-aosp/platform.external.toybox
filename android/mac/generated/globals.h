@@ -281,6 +281,13 @@ struct free_data {
   char *buf;
 };
 
+// toys/other/gpiod.c
+
+struct gpiod_data {
+  struct double_list *chips;
+  int chip_count;
+};
+
 // toys/other/hexedit.c
 
 struct hexedit_data {
@@ -332,19 +339,14 @@ struct lsattr_data {
   int have_set;
 };
 
-// toys/other/lspci.c
-
-struct lspci_data {
-  char *i;
-  long n;
-
-  FILE *db;
-};
-
 // toys/other/lsusb.c
 
 struct lsusb_data {
-  void *ids;
+  char *i;
+  long n;
+
+  void *ids, *class;
+  int count;
 };
 
 // toys/other/makedevs.c
@@ -1661,13 +1663,13 @@ extern union global_union {
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
 	struct free_data free;
+	struct gpiod_data gpiod;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
 	struct lsattr_data lsattr;
-	struct lspci_data lspci;
 	struct lsusb_data lsusb;
 	struct makedevs_data makedevs;
 	struct mix_data mix;
