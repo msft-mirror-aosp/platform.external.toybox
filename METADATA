@@ -9,11 +9,11 @@ third_party {
     type: GIT
     value: "https://github.com/landley/toybox"
   }
-  version: "d9301d2b7e772ccfcb4d2b1b4e1f9c3925a62b83"
+  version: "7a5cb958177d4a1efd96f7b4074307731bfe9c06"
   license_type: UNENCUMBERED
   last_upgrade_date {
     year: 2022
-    month: 2
-    day: 23
+    month: 3
+    day: 4
   }
 }
