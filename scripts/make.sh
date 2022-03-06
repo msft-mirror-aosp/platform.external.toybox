@@ -5,10 +5,6 @@
 set -o pipefail
 source scripts/portability.sh
 
-[ -z "$KCONFIG_CONFIG" ] && KCONFIG_CONFIG=.config
-[ -z "$OUTNAME" ] && OUTNAME=toybox"${TARGET:+-$TARGET}"
-UNSTRIPPED="generated/unstripped/$(basename "$OUTNAME")"
-
 # Default to running one more parallel cc instance than we have processors
 : ${CPUS:=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))}
 
@@ -59,8 +55,7 @@ fi
 # Extract a list of toys/*/*.c files to compile from the data in $KCONFIG_CONFIG
 # (First command names, then filenames with relevant {NEW,OLD}TOY() macro.)
 
-[ -d ".git" ] && GITHASH="$(git describe --tags --abbrev=12 2>/dev/null)"
-[ ! -z "$GITHASH" ] && GITHASH="-DTOYBOX_VERSION=\"$GITHASH\""
+[ -d ".git" ] && GITHASH="-DTOYBOX_VERSION=\"$(git describe --tags --abbrev=12 2>/dev/null)\""
 TOYFILES="$($SED -n 's/^CONFIG_\([^=]*\)=.*/\1/p' "$KCONFIG_CONFIG" | xargs | tr ' [A-Z]' '|[a-z]')"
 TOYFILES="main.c $(egrep -l "TOY[(]($TOYFILES)[ ,]" toys/*/*.c | xargs)"
 BUILD="$(echo ${CROSS_COMPILE}${CC} $CFLAGS -I . $OPTIMIZE $GITHASH)"
@@ -92,7 +87,7 @@ then
   for i in util crypt m resolv selinux smack attr crypto z log iconv tls ssl
   do
     echo "int main(int argc, char *argv[]) {return 0;}" | \
-    ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -o generated/libprobe $LDASNEEDED -l$i > /dev/null 2>/dev/null &&
+    ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -o generated/libprobe -l$i > /dev/null 2>/dev/null &&
     echo -l$i >> generated/optlibs.dat
     echo -n .
   done
@@ -102,7 +97,7 @@ fi
 
 # LINK needs optlibs.dat, above
 
-LINK="$(echo $LDOPTIMIZE $LDFLAGS -o "$UNSTRIPPED" $LDASNEEDED $(cat generated/optlibs.dat))"
+LINK="$(echo $LDOPTIMIZE $LDFLAGS -o "$UNSTRIPPED" $(cat generated/optlibs.dat))"
 genbuildsh > generated/build.sh && chmod +x generated/build.sh || exit 1
 
 #TODO: "make $SED && make" doesn't regenerate config.h because diff .config
