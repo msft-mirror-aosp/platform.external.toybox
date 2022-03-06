@@ -238,7 +238,7 @@
 
 #define HELP_makedevs "usage: makedevs [-d device_table] rootdir\n\nCreate a range of special files as specified in a device table.\n\n-d	File containing device table (default reads from stdin)\n\nEach line of the device table has the fields:\n<name> <type> <mode> <uid> <gid> <major> <minor> <start> <increment> <count>\nWhere name is the file name, and type is one of the following:\n\nb	Block device\nc	Character device\nd	Directory\nf	Regular file\np	Named pipe (fifo)\n\nOther fields specify permissions, user and group id owning the file,\nand additional fields for device special files. Use '-' for blank entries,\nunspecified fields are treated as '-'."
 
-#define HELP_lsusb "usage: lsusb [-i]\n\nList USB hosts/devices.\n\n-i	ID database (default /etc/usb.ids)"
+#define HELP_lsusb "usage: lsusb [-i]\n\nList USB hosts/devices.\n\n-i	ID database (default /etc/usb.ids[.gz])"
 
 #define HELP_lspci "usage: lspci [-ekmn] [-i FILE]\n\nList PCI devices.\n\n-e  Extended (6 digit) class\n-i  ID database (default /etc/pci.ids[.gz])\n-k  Show kernel driver\n-m  Machine readable\n-n  Numeric output (-nn for both)"
 
