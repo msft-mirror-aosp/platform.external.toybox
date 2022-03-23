@@ -56,16 +56,15 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-// Internationalization support (also in POSIX)
+// Internationalization support (also in POSIX and LSB)
 
 #include <langinfo.h>
 #include <locale.h>
 #include <wchar.h>
 #include <wctype.h>
 
-// Non-posix headers
+// LSB 4.1 headers
 #include <sys/ioctl.h>
-#include <sys/syscall.h>
 
 #include "lib/lib.h"
 #include "lib/lsm.h"
@@ -83,10 +82,8 @@
 // These live in main.c
 
 struct toy_list *toy_find(char *name);
-void show_help(FILE *out, int full);
-void check_help(char **arg);
-void toy_singleinit(struct toy_list *which, char *argv[]);
 void toy_init(struct toy_list *which, char *argv[]);
+void toy_singleinit(struct toy_list *which, char *argv[]);
 void toy_exec(char *argv[]);
 
 // Array of available commands
@@ -122,7 +119,9 @@ extern struct toy_context {
 
 // Two big temporary buffers: one for use by commands, one for library functions
 
-extern char **environ, *toybox_version, toybuf[4096], libbuf[4096];
+extern char *toybox_version, toybuf[4096], libbuf[4096];
+
+extern char **environ;
 
 #define FLAG(x) (toys.optflags&FLAG_##x)
 
@@ -134,5 +133,5 @@ extern char **environ, *toybox_version, toybuf[4096], libbuf[4096];
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.6"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.4"TOYBOX_VENDOR
 #endif
