@@ -4,22 +4,19 @@
  * Copyright 2013 Kyungwan Han <asura321@gmail.com>
  *
  * No Standard.
- *
- * TODO: two passes so we can auto-size the columns?
 
-USE_PMAP(NEWTOY(pmap, "<1pqx", TOYFLAG_USR|TOYFLAG_BIN))
+USE_PMAP(NEWTOY(pmap, "<1xq", TOYFLAG_USR|TOYFLAG_BIN))
 
 config PMAP
   bool "pmap"
   default y
   help
-    usage: pmap [-pqx] PID...
+    usage: pmap [-xq] [pids...]
 
     Report the memory map of a process or processes.
 
-    -q	Show full paths
-    -q	Do not show header or footer
     -x	Show the extended format
+    -q	Do not display some header/footer lines
 */
 
 #define FOR_pmap
@@ -27,77 +24,90 @@ config PMAP
 
 void pmap_main(void)
 {
-  char **optargs, *line = 0;
-  size_t len = 0;
+  char **optargs;
 
   for (optargs = toys.optargs; *optargs; optargs++) {
-    long long start, end, pss, tpss=0, dirty, tdirty=0, swap, tswap=0, total=0;
-    char *name = 0, *k = FLAG(x) ? "" : "K", mode[5];
     pid_t pid = atolx(*optargs);
-    int extras = 0, off, count;
     FILE *fp;
+    char *line, *oldline = 0, *name = 0,
+         *k = (toys.optflags & FLAG_x) ? "" : "K";
+    size_t len;
+    long long start, end, pss, tpss = 0, dirty, tdirty = 0, swap, tswap = 0,
+              total = 0;
+    int xx = 0;
 
-    sprintf(toybuf, "/proc/%u/cmdline", pid);
-    if (!(name = readfile(toybuf, 0, 0))) {
-      error_msg("no %s", toybuf);
-      continue;
-    }
-    xprintf("%d: %s\n", pid, name);
-    free(name);
+    snprintf(toybuf, sizeof(toybuf), "/proc/%u/cmdline", pid);
+    line = readfile(toybuf, 0, 0);
+    if (!line) error_msg("No %lu", (long)pid);
+    xprintf("%u: %s\n", (int)pid, line);
+    free(line);
 
-    // Only bother scanning the more verbose smaps file in -x mode.
-    sprintf(toybuf, "/proc/%u/%smaps", pid, "s"+!FLAG(x));
+    // Header
+    // Only use the more verbose file in -x mode
+    sprintf(toybuf, "/proc/%u/%smaps", pid,
+      (toys.optflags & FLAG_x) ? "s" : "");
     if (!(fp = fopen(toybuf, "r"))) {
-      error_msg("no %s", toybuf);
-      continue;
+      error_msg("No %ld\n", (long)pid);
+      return;
     }
 
-    if (FLAG(x) && !FLAG(q))
-      xprintf("Address%*cKbytes     PSS   Dirty    Swap Mode  Mapping\n",
-          (int)(sizeof(long)*2)-5, ' ');
+    if ((toys.optflags & (FLAG_q|FLAG_x)) == FLAG_x)
+      xprintf("Address%*cKbytes     PSS   Dirty    Swap  Mode  Mapping\n",
+        (int)(sizeof(long)*2)-4, ' ');
 
-    while (getline(&line, &len, fp) > 0) {
-      count = sscanf(line, "%llx-%llx %4s %*s %*s %*s %n", &start, &end, mode,
-          &off);
+    // Loop through mappings
+    for (;;) {
+      int off, count;
+
+      line = 0;
+      if (0 >= getline(&line, &len, fp)) break;
+      count = sscanf(line, "%llx-%llx %s %*s %*s %*s %n",
+        &start, &end, toybuf, &off);
+
       if (count == 3) {
         name = line[off] ? line+off : "  [anon]\n";
-        if (mode[3] == 'p') mode[3] = '-';
+        if (toybuf[3] == 'p') toybuf[3] = '-';
         total += end = (end-start)/1024;
-        printf("%0*llx % *lld%s ", (int)(2*sizeof(long)), start, 6+!!FLAG(x),
-            end, k);
-        if (FLAG(x)) {
-          strcpy(toybuf, name);
-          name = toybuf;
+        printf("%0*llx % *lld%s ", (int)(2*sizeof(long)), start,
+          6+!!(toys.optflags & FLAG_x), end, k);
+        if (toys.optflags & FLAG_x) {
+          oldline = line;
           continue;
         }
       } else {
-        if (sscanf(line, "Pss: %lld", &pss) ||
-            sscanf(line, "Private_Dirty: %lld", &dirty) ||
-            sscanf(line, "Swap: %lld", &swap)) extras++;
-        if (extras==3) {
-          printf("% 7lld %7lld %7lld ", pss, dirty, swap);
-          tpss += pss;
-          tdirty += dirty;
-          tswap += swap;
-          extras = 0;
-        } else continue;
+        if (0<sscanf(line, "Pss: %lld", &pss)
+            || 0<sscanf(line, "Private_Dirty: %lld", &dirty)
+            || 0<sscanf(line, "Swap: %lld", &swap)) xx++;
+        free(line);
+        if (xx<3) continue;
+        line = oldline;
+        name = basename(name);
+        xx = 0;
+        printf("% 7lld %7lld %7lld ", pss, dirty, swap);
+        tpss += pss;
+        tdirty += dirty;
+        tswap += swap;
       }
 
-      xprintf("%s- %s%s", mode, *name == '[' ? "  " : "",
-              FLAG(p) ? name : basename(name));
+      xprintf("%s-  %s%s", toybuf, line[off]=='[' ? "  " : "", name);
+
+      free(line);
+      line = 0;
     }
 
-    if (!FLAG(q)) {
-      if (FLAG(x)) {
-        xprintf("----------------  ------  ------  ------  ------\n" +
-            ((sizeof(long)==4)?8:0));
+    // Trailer
+    if (!(toys.optflags & FLAG_q)) {
+      int x = !!(toys.optflags & FLAG_x);
+      if (x) {
+        memset(toybuf, '-', 16);
+        xprintf("%.*s  ------  ------  ------  ------\n", (int)(sizeof(long)*2),
+          toybuf);
       }
-      printf("total% *lld%s", 2*(int)(sizeof(long)+1)+!!FLAG(x), total, k);
-      if (FLAG(x)) printf("% 8lld% 8lld% 8lld", tpss, tdirty, tswap);
+      printf("total% *lld%s", 2*(int)(sizeof(long)+1)+x, total, k);
+      if (x) printf("% 8lld% 8lld% 8lld", tpss, tdirty, tswap);
       xputc('\n');
     }
-
+ 
     fclose(fp);
   }
-  free(line);
 }
