@@ -12,9 +12,9 @@ config FSYNC
   help
     usage: fsync [-d] [FILE...]
 
-    Flush disk cache for FILE(s), writing cached data to storage device.
+    Synchronize a file's in-core state with storage device.
 
-    -d	Skip directory info (sync file contents only).
+    -d	Avoid syncing metadata
 */
 
 #define FOR_fsync
@@ -22,7 +22,8 @@ config FSYNC
 
 static void do_fsync(int fd, char *name)
 {
-  if (FLAG(d) ? fdatasync(fd) : fsync(fd)) perror_msg("can't sync '%s'", name);
+  if (((toys.optflags & FLAG_d) ? fdatasync(fd) : fsync(fd)))
+    perror_msg("can't sync '%s'", name);
 }
 
 void fsync_main(void)
