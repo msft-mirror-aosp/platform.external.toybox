@@ -12,8 +12,10 @@ config TTY
   help
     usage: tty [-s]
 
-    Show filename of terminal connected to stdin. If none print "not a tty"
-    and exit with nonzero status.
+    Show filename of terminal connected to stdin.
+
+    Prints "not a tty" and exits with nonzero status if no terminal
+    is connected to stdin.
 
     -s	Silent, exit code only
 */
@@ -24,6 +26,7 @@ void tty_main(void)
 {
   char *tty = ttyname(0);
 
+  if (!toys.optflags) puts(tty ? tty : "not a tty");
+
   toys.exitval = !tty;
-  if (!toys.optflags) puts(tty ? : "not a tty");
 }

@@ -9,14 +9,14 @@ source scripts/portability.sh
 
 probecc()
 {
-  ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc -o /dev/null - "$@"
+  ${CROSS_COMPILE}${CC} $CFLAGS -xc -o /dev/null $1 -
 }
 
 # Probe for a single config symbol with a "compiles or not" test.
 # Symbol name is first argument, flags second, feed C file to stdin
 probesymbol()
 {
-  probecc "${@:2}" 2>/dev/null && DEFAULT=y || DEFAULT=n
+  probecc $2 2>/dev/null && DEFAULT=y || DEFAULT=n
   rm a.out 2>/dev/null
   echo -e "config $1\n\tbool" || exit 1
   echo -e "\tdefault $DEFAULT\n" || exit 1
@@ -24,6 +24,13 @@ probesymbol()
 
 probeconfig()
 {
+  > generated/cflags
+  # llvm produces its own really stupid warnings about things that aren't wrong,
+  # and although you can turn the warning off, gcc reacts badly to command line
+  # arguments it doesn't understand. So probe.
+  [ -z "$(probecc -Wno-string-plus-int <<< \#warn warn 2>&1 | grep string-plus-int)" ] &&
+    echo -Wno-string-plus-int >> generated/cflags
+
   # Probe for container support on target
   probesymbol TOYBOX_CONTAINER << EOF
     #include <stdio.h>
@@ -105,11 +112,6 @@ EOF
     #include <sys/syscall.h>
     #include <unistd.h>
     int main(void) { copyfilerange(0, 0, 1, 0, 123, 0); }
-EOF
-  probesymbol TOYBOX_HASTIMERS << EOF
-    #include <signal.h>
-    #include <time.h>
-    int main(void) {void *x=0;timer_create(CLOCK_MONOTONIC,x,x);}
 EOF
 }
 
