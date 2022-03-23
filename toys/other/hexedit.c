@@ -2,7 +2,7 @@
  *
  * Copyright 2015 Rob Landley <rob@landley.net>
  *
- * No standard.
+ * No standard
 
 USE_HEXEDIT(NEWTOY(hexedit, "<1>1r", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LOCALE))
 
@@ -24,7 +24,6 @@ config HEXEDIT
     ^J or :        Jump (+/- for relative offset, otherwise absolute address)
     ^F or /        Find string (^G/n: next, ^D/p: previous match)
     u              Undo
-    x              Toggle bw/color display
     q/^C/^Q/Esc    Quit
 */
 
@@ -32,17 +31,22 @@ config HEXEDIT
 #include "toys.h"
 
 GLOBALS(
-  char *data, *search, keybuf[16], input[80];
-  long long len, base, pos;
-  int numlen, undo, undolen, mode;
+  char *data;
+  long long len, base;
+  int numlen, undo, undolen;
   unsigned rows, cols;
+  long long pos;
+  char keybuf[16];
+  char input[80];
+  char *search;
 )
 
 #define UNDO_LEN (sizeof(toybuf)/(sizeof(long long)+1))
 
 static void show_error(char *what)
 {
-  printf("\e[%dH\e[41m\e[37m\e[K\e[1m%s\e[0m", TT.rows+1, what);
+  tty_jump(0, TT.rows);
+  printf("\e[41m\e[37m\e[K\e[1m%s\e[0m", what);
   xflush(1);
   msleep(500);
 }
@@ -54,7 +58,10 @@ static int prompt(char *prompt, char *initial_value)
 
   strcpy(TT.input, initial_value);
   while (1) {
-    printf("\e[%dH\e[K\e[1m%s: \e[0m%s\e[?25h", TT.rows+1, prompt, TT.input);
+    tty_jump(0, TT.rows);
+    tty_esc("K");
+    printf("\e[1m%s: \e[0m%s", prompt, TT.input);
+    tty_esc("?25h");
     xflush(1);
 
     key = scan_key(TT.keybuf, -1);
@@ -64,36 +71,24 @@ static int prompt(char *prompt, char *initial_value)
       break;
     }
 
-    if (key == 0x7f && (len > 0)) TT.input[--len] = 0;
-    else if (key == 'U'-'@') while (len > 0) TT.input[--len] = 0;
-    else if (key >= ' ' && key < 0x7f && len < sizeof(TT.input))
+    if (key == 0x7f) {
+      if (len > 0) TT.input[--len] = 0;
+    } else if (key == 'U'-'@') {
+      while (len > 0) TT.input[--len] = 0;
+    } else if (key >= ' ' && key < 0x7f && len < sizeof(TT.input)) {
       TT.input[len++] = key;
+    }
   }
-  printf("\e[?25l");
 
+  tty_esc("?25l");
   return yes;
 }
 
 // Render all characters printable, using color to distinguish.
 static void draw_char(int ch)
 {
-  if (ch >= ' ' && ch < 0x7f) {
-    putchar(ch);
-    return;
-  }
-
-  if (TT.mode) {
-    if (ch>127) {
-      printf("\e[2m");
-      ch &= 127;
-    }
-    if (ch<32 || ch==127) {
-      printf("\e[7m");
-      if (ch==127) ch = 32;
-      else ch += 64;
-    }
-    xputc(ch);
-  } else {
+  if (ch >= ' ' && ch < 0x7f) putchar(ch);
+  else {
     if (ch < ' ') printf("\e[31m%c", ch + '@');
     else printf("\e[35m?");
   }
@@ -104,7 +99,8 @@ static void draw_status(void)
 {
   char line[80];
 
-  printf("\e[%dH\e[K", TT.rows+1);
+  tty_jump(0, TT.rows);
+  tty_esc("K");
 
   snprintf(line, sizeof(line), "\"%s\"%s, %#llx/%#llx", *toys.optargs,
     FLAG(r) ? " [readonly]" : "", TT.pos, TT.len);
@@ -125,7 +121,7 @@ static void draw_line(long long yy)
   if (yy+xx>=TT.len) xx = TT.len-yy;
 
   if (yy<TT.len) {
-    printf("\r\e[%dm%0*llx\e[0m ", 33*!TT.mode, TT.numlen, yy);
+    printf("\r\e[33m%0*llx\e[0m ", TT.numlen, yy);
     for (x=0; x<xx; x++) {
       putchar(' ');
       draw_byte(TT.data[yy+x]);
@@ -134,15 +130,16 @@ static void draw_line(long long yy)
     for (x=0; x<xx; x++) draw_char(TT.data[yy+x]);
     printf("%*s", 16-xx, "");
   }
-  printf("\e[K");
+  tty_esc("K");
 }
 
 static void draw_page(void)
 {
   int y;
 
+  tty_jump(0, 0);
   for (y = 0; y<TT.rows; y++) {
-    printf(y ? "\r\n" : "\e[H");
+    if (y) printf("\r\n");
     draw_line(y);
   }
   draw_status();
@@ -155,15 +152,18 @@ static void highlight(int xx, int yy, int side)
   int i;
 
   // Display cursor in hex area.
-  printf("\e[%u;%uH\e[%dm", yy+1, TT.numlen+3*(xx+1), 7*(side!=2));
+  tty_jump(2+TT.numlen+3*xx, yy);
+  tty_esc("0m");
+  if (side!=2) tty_esc("7m");
   if (side>1) draw_byte(cc);
   else for (i=0; i<2;) {
-    if (side==i) printf("\e[32m");
+    if (side==i) tty_esc("32m");
     printf("%x", (cc>>(4*(1&++i)))&15);
   }
+  tty_jump(TT.numlen+17*3+xx, yy);
 
   // Display cursor in text area.
-  printf("\e[7m\e[%u;%uH"+4*(side==2), yy+1, 1+TT.numlen+17*3+xx);
+  if (side!=2) tty_esc("7m");
   draw_char(cc);
 }
 
@@ -201,7 +201,9 @@ void hexedit_main(void)
   if (TT.rows) TT.rows--;
   xsignal(SIGWINCH, generic_signal);
   sigatexit(tty_sigreset);
-  dprintf(1, "\e[0m\e[?25l");
+  tty_esc("0m");
+  tty_esc("?25l");
+  xflush(1);
   xset_terminal(1, 1, 0, 0);
 
   if (access(*toys.optargs, W_OK)) toys.optflags |= FLAG_r;
@@ -223,30 +225,29 @@ void hexedit_main(void)
     x = TT.pos&15;
     y = TT.pos/16;
 
-    // scroll up
     while (y<TT.base) {
       if (TT.base-y>(TT.rows/2)) {
         TT.base = y;
         draw_page();
       } else {
         TT.base--;
-        printf("\e[H\e[1L");
+        tty_jump(0, 0);
+        tty_esc("1L");
         draw_line(0);
       }
     }
-
-    // scroll down
     while (y>=TT.base+TT.rows) {
       if (y-(TT.base+TT.rows)>(TT.rows/2)) {
         TT.base = y-TT.rows-1;
         draw_page();
       } else {
         TT.base++;
-        printf("\e[H\e[1M\e[%uH", TT.rows);
+        tty_jump(0, 0);
+        tty_esc("1M");
+        tty_jump(0, TT.rows-1);
         draw_line(TT.rows-1);
       }
     }
-
     draw_status();
     y -= TT.base;
 
@@ -262,13 +263,6 @@ void hexedit_main(void)
       toys.signal = 0;
       terminal_size(&TT.cols, &TT.rows);
       if (TT.rows) TT.rows--;
-      draw_page();
-      continue;
-    }
-
-    if (key == 'x') {
-      TT.mode = !TT.mode;
-      printf("\e[0m");
       draw_page();
       continue;
     }
@@ -359,8 +353,8 @@ void hexedit_main(void)
         if (TT.pos > TT.len-1) TT.pos = TT.len-1;
         TT.base = TT.pos/16;
         draw_page();
-      } else if (key==KEY_HOME) TT.pos &= ~0xf;
-      else if (key==KEY_END) TT.pos |= 0xf;
+      } else if (key==KEY_HOME) TT.pos = TT.pos & ~0xf;
+      else if (key==KEY_END) TT.pos = TT.pos | 0xf;
       else if (key==(KEY_CTRL|KEY_HOME)) TT.pos = 0;
       else if (key==(KEY_CTRL|KEY_END)) TT.pos = TT.len-1;
     }

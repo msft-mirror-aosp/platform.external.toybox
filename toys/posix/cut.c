@@ -10,13 +10,13 @@
  *
  * todo: -n, -s with -c
 
-USE_CUT(NEWTOY(cut, "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_CUT(NEWTOY(cut, "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbf]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config CUT
   bool "cut"
   default y
   help
-    usage: cut [-Ds] [-bcCfF LIST] [-dO DELIM] [FILE...]
+    usage: cut [-Ds] [-bcfF LIST] [-dO DELIM] [FILE...]
 
     Print selected parts of lines from each FILE to standard output.
 
@@ -42,36 +42,26 @@ GLOBALS(
   char *d, *O;
   struct arg_list *select[5]; // we treat them the same, so loop through
 
-  unsigned line;
   int pairs;
   regex_t reg;
 )
 
+
 // Apply selections to an input line, producing output
 static void cut_line(char **pline, long len)
 {
-  unsigned *pairs = (void *)toybuf, wc;
+  unsigned *pairs = (void *)toybuf;
   char *line;
-  int i, j, k;
+  int i, j;
 
   if (!pline) return;
   line = *pline;
   if (len && line[len-1]=='\n') line[--len] = 0;
-  TT.line++;
 
   // Loop through selections
   for (i=0; i<TT.pairs; i++) {
     unsigned start = pairs[2*i], end = pairs[(2*i)+1], count;
-    char *s = line, *ss, *sss;
-
-    // when the delimiter is \n output lines.
-    if (*TT.d == '\n') {
-      if (TT.line<start || TT.line>end) {
-        if (i+1 == TT.pairs) return;
-        continue;
-      }
-      goto write_line;
-    }
+    char *s = line, *ss;
 
     // input: start/end position, count=difference between them
     // output: s = start of string, len = bytes to output
@@ -82,20 +72,8 @@ static void cut_line(char **pline, long len)
     count = end-start;
 
     // Find start and end of output string for the relevant selection type
-    if (FLAG(b)) {
-      if (!FLAG(n)) s += start;
-      else {
-        if (end>len) end = len;
-        for (sss = ss = s; (k = (ss-line))<end;) {
-          if (0>(j = utf8towc(&wc, ss, len))) ss++;
-          else {
-            if (((ss += j)-line)<=end) sss = ss;
-            if ((ss-line)<=start) s = ss;
-          }
-        }
-        if (!(count = sss-s)) continue;
-      }
-    } else if (FLAG(C)) {
+    if (toys.optflags&FLAG_b) s += start;
+    else if (toys.optflags&FLAG_C) {
       // crunch_str() currently assumes that combining characters get
       // escaped, to provide an unambiguous visual representation.
       // This assumes the input string is null terminated.
@@ -106,7 +84,9 @@ static void cut_line(char **pline, long len)
       crunch_str(&ss, count, 0, 0, 0);
       count = ss-s;
 
-    } else if (FLAG(c)) {
+    } else if (toys.optflags&FLAG_c) {
+      wchar_t wc;
+      char *sss;
 
       // Find start
       ss = line+len;
@@ -133,7 +113,7 @@ static void cut_line(char **pline, long len)
         if (j) start = count;
         else end = start;
         while (*ss && start) {
-          if (FLAG(f)) {
+          if (toys.optflags&FLAG_f) {
             if (!strchr(TT.d, *ss++)) continue;
             if (!--start && j) ss--;
           } else {
@@ -150,9 +130,8 @@ static void cut_line(char **pline, long len)
 
       // If we never encountered even one separator, print whole line (posix!)
       if (!j && end == start) {
-        if (FLAG(D)) break;
-        if (FLAG(s)) return;
-write_line:
+        if (toys.optflags&FLAG_D) break;
+        if (toys.optflags&FLAG_s) return;
         fwrite(line, len, 1, stdout);
         break;
       } else if (!*s) continue;
@@ -213,11 +192,11 @@ void cut_main(void)
     error_exit("-s needs -Ff");
   if ((toys.optflags&(FLAG_d|FLAG_f|FLAG_F))==FLAG_d)
     error_exit("-d needs -Ff");
-  if (!TT.d) TT.d = (FLAG(F)) ? "[[:space:]][[:space:]]*" : "\t";
-  if (FLAG(F)) xregcomp(&TT.reg, TT.d, REG_EXTENDED);
+  if (!TT.d) TT.d = (toys.optflags&FLAG_F) ? "[[:space:]][[:space:]]*" : "\t";
+  if (toys.optflags&FLAG_F) xregcomp(&TT.reg, TT.d, REG_EXTENDED);
   if (!TT.O) {
-    if (FLAG(F)) TT.O = " ";
-    else if (FLAG(f)) TT.O = TT.d;
+    if (toys.optflags&FLAG_F) TT.O = " ";
+    else if (toys.optflags&FLAG_f) TT.O = TT.d;
   }
 
   // Parse ranges, which are attached to a selection type (only one can be set)
@@ -228,7 +207,7 @@ void cut_main(void)
   if (!TT.pairs) error_exit("no selections");
 
   // Sort and collate selections
-  if (!FLAG(D)) {
+  if (!(toys.optflags&FLAG_D)) {
     int from, to;
     unsigned *pairs = (void *)toybuf;
 
