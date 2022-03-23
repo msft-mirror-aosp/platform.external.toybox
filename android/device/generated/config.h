@@ -242,6 +242,16 @@
 #define USE_GETOPT(...) __VA_ARGS__
 #define CFG_GETTY 0
 #define USE_GETTY(...)
+#define CFG_GPIODETECT 0
+#define USE_GPIODETECT(...)
+#define CFG_GPIOFIND 0
+#define USE_GPIOFIND(...)
+#define CFG_GPIOGET 0
+#define USE_GPIOGET(...)
+#define CFG_GPIOINFO 0
+#define USE_GPIOINFO(...)
+#define CFG_GPIOSET 0
+#define USE_GPIOSET(...)
 #define CFG_GREP 1
 #define USE_GREP(...) __VA_ARGS__
 #define CFG_GROUPADD 0
@@ -356,8 +366,8 @@
 #define USE_LSOF(...) __VA_ARGS__
 #define CFG_LSPCI 1
 #define USE_LSPCI(...) __VA_ARGS__
-#define CFG_LSPCI_TEXT 0
-#define USE_LSPCI_TEXT(...)
+#define CFG_LSPCI_TEXT 1
+#define USE_LSPCI_TEXT(...) __VA_ARGS__
 #define CFG_LSUSB 1
 #define USE_LSUSB(...) __VA_ARGS__
 #define CFG_LS 1

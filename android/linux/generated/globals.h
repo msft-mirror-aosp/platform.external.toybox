@@ -281,6 +281,13 @@ struct free_data {
   char *buf;
 };
 
+// toys/other/gpiod.c
+
+struct gpiod_data {
+  struct double_list *chips;
+  int chip_count;
+};
+
 // toys/other/hexedit.c
 
 struct hexedit_data {
@@ -332,19 +339,14 @@ struct lsattr_data {
   int have_set;
 };
 
-// toys/other/lspci.c
-
-struct lspci_data {
-  char *i;
-  long n;
-
-  FILE *db;
-};
-
 // toys/other/lsusb.c
 
 struct lsusb_data {
-  void *ids;
+  char *i;
+  long n;
+
+  void *ids, *class;
+  int count;
 };
 
 // toys/other/makedevs.c
@@ -888,7 +890,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
+  int hfd, pid, bangpid, varslen, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -1465,7 +1467,7 @@ struct ps_data {
 
   struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
-  unsigned width, height;
+  unsigned width, height, scroll;
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
@@ -1661,13 +1663,13 @@ extern union global_union {
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
 	struct free_data free;
+	struct gpiod_data gpiod;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
 	struct lsattr_data lsattr;
-	struct lspci_data lspci;
 	struct lsusb_data lsusb;
 	struct makedevs_data makedevs;
 	struct mix_data mix;
