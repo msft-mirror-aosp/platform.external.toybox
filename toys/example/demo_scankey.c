@@ -30,17 +30,20 @@ void demo_scankey_main(void)
   y = 1;
 
   sigatexit(tty_sigreset);  // Make ctrl-c restore tty
-  // hide cursor, reset color to default, clear screen
-  xputsn("\e[?25l\e0m\e[2J");
+  tty_esc("?25l");          // hide cursor
+  tty_esc("0m");            // reset color to default
+  tty_esc("2J");            // Clear screen
   xset_terminal(1, 1, 0, 0); // Raw mode
 
   for (;;) {
-    printf("\e[%u;%uH%c", y+1, x+1, c);
+    tty_jump(x, y);
+    xputc(c);
     t[1&++tick] = time(0);
     if (t[0] != t[1]) terminal_probesize(&width, &height);
     // Don't block first time through, to force header print
     key = scan_key_getsize(scratch, -1*!!t[0], &width, &height);
-    printf("\e[HESC to exit: ");
+    tty_jump(0, 0);
+    printf("ESC to exit: ");
     // Print unknown escape sequence
     if (*scratch) {
       printf("key=[ESC");
@@ -49,13 +52,14 @@ void demo_scankey_main(void)
         printf("%c", key);
       printf("] ");
     } else printf("key=%d ", key);
-    printf("x=%d y=%d width=%d height=%d\e[K", x, y, width, height);
+    printf("x=%d y=%d width=%d height=%d\033[K", x, y, width, height);
     fflush(0);
 
     if (key == -2) continue;
     if (key <= ' ') break;
     if (key>=256) {
-      printf("\e[%u;%uH ", y+1, x+1);
+      tty_jump(x, y);
+      xputc(' ');
 
       key -= 256;
       if (key==KEY_UP) y--;
