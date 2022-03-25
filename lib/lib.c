@@ -178,7 +178,8 @@ int mkpathat(int atfd, char *dir, mode_t lastmode, int flags)
   // test for. Might as well do it up front.
 
   if (!fstatat(atfd, dir, &buf, 0)) {
-    if ((flags&MKPATHAT_MKLAST) && !S_ISDIR(buf.st_mode)) {
+    // Note that mkdir should return EEXIST for already existed directory/file.
+    if (!(flags&MKPATHAT_MAKE) || ((flags&MKPATHAT_MKLAST) && !S_ISDIR(buf.st_mode))) {
       errno = EEXIST;
       return 1;
     } else return 0;
@@ -370,7 +371,7 @@ int wctoutf8(char *s, unsigned wc)
 
 // Convert utf8 sequence to a unicode wide character
 // returns bytes consumed, or -1 if err, or -2 if need more data.
-int utf8towc(wchar_t *wc, char *str, unsigned len)
+int utf8towc(unsigned *wc, char *str, unsigned len)
 {
   unsigned result, mask, first;
   char *s, c;
@@ -403,7 +404,7 @@ char *strlower(char *s)
 {
   char *try, *new;
   int len, mlen = (strlen(s)|7)+9;
-  wchar_t c;
+  unsigned c;
 
   try = new = xmalloc(mlen);
 
@@ -456,7 +457,7 @@ char *chomp(char *s)
 
 int unescape(char c)
 {
-  char *from = "\\abefnrtv", *to = "\\\a\b\033\f\n\r\t\v";
+  char *from = "\\abefnrtv", *to = "\\\a\b\e\f\n\r\t\v";
   int idx = stridx(from, c);
 
   return (idx == -1) ? 0 : to[idx];
@@ -482,7 +483,7 @@ int unescape2(char **c, int echo)
   if (-1 == (idx = stridx("\\abeEfnrtv'\"?0", **c))) return '\\';
   ++*c;
 
-  return "\\\a\b\033\033\f\n\r\t\v'\"?"[idx];
+  return "\\\a\b\e\e\f\n\r\t\v'\"?"[idx];
 }
 
 // If string ends with suffix return pointer to start of suffix in string,
@@ -713,9 +714,9 @@ void poke(void *ptr, long long val, unsigned size)
 void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name))
 {
-  int fd, failok = !(flags&WARN_ONLY);
+  int fd, failok = !(flags&WARN_ONLY), anyway = flags & LOOPFILES_ANYWAY;
 
-  flags &= ~WARN_ONLY;
+  flags &= ~(WARN_ONLY|LOOPFILES_ANYWAY);
 
   // If no arguments, read from stdin.
   if (!*argv) function((flags & O_ACCMODE) != O_RDONLY ? 1 : 0, "-");
@@ -726,10 +727,10 @@ void loopfiles_rw(char **argv, int flags, int permissions,
     if (!strcmp(*argv, "-")) fd = 0;
     else if (0>(fd = notstdio(open(*argv, flags, permissions))) && !failok) {
       perror_msg_raw(*argv);
-      continue;
+      if (!anyway) continue;
     }
     function(fd, *argv);
-    if ((flags & O_CLOEXEC) && fd) close(fd);
+    if ((flags & O_CLOEXEC) && fd>0) close(fd);
   } while (*++argv);
 }
 
@@ -739,7 +740,7 @@ void loopfiles(char **argv, void (*function)(int fd, char *name))
   loopfiles_rw(argv, O_RDONLY|O_CLOEXEC|WARN_ONLY, 0, function);
 }
 
-// glue to call dl_lines() from loopfiles
+// glue to call do_lines() from loopfiles
 static void (*do_lines_bridge)(char **pline, long len);
 static void loopfile_lines_bridge(int fd, char *name)
 {
@@ -751,25 +752,6 @@ void loopfiles_lines(char **argv, void (*function)(char **pline, long len))
   do_lines_bridge = function;
   // No O_CLOEXEC because we need to call fclose.
   loopfiles_rw(argv, O_RDONLY|WARN_ONLY, 0, loopfile_lines_bridge);
-}
-
-// Slow, but small.
-char *get_line(int fd)
-{
-  char c, *buf = NULL;
-  long len = 0;
-
-  for (;;) {
-    if (1>read(fd, &c, 1)) break;
-    if (!(len & 63)) buf=xrealloc(buf, len+65);
-    if ((buf[len++]=c) == '\n') break;
-  }
-  if (buf) {
-    buf[len]=0;
-    if (buf[--len]=='\n') buf[len]=0;
-  }
-
-  return buf;
 }
 
 int wfchmodat(int fd, char *name, mode_t mode)
@@ -843,7 +825,7 @@ void replace_tempfile(int fdin, int fdout, char **tempname)
 
 // Create a 256 entry CRC32 lookup table.
 
-void crc_init(unsigned int *crc_table, int little_endian)
+void crc_init(unsigned *crc_table, int little_endian)
 {
   unsigned int i;
 
@@ -931,7 +913,7 @@ void sigatexit(void *handler)
 // Output a nicely formatted table of all the signals.
 void list_signals(void)
 {
-  int i = 0, count = 0;
+  int i = 1, count = 0;
   unsigned cols = 80;
   char *name;
 
@@ -1068,7 +1050,7 @@ char *getbasename(char *name)
 // Return pointer to xabspath(file) if file is under dir, else 0
 char *fileunderdir(char *file, char *dir)
 {
-  char *s1 = xabspath(dir, 1), *s2 = xabspath(file, -1), *ss = s2;
+  char *s1 = xabspath(dir, ABS_FILE), *s2 = xabspath(file, 0), *ss = s2;
   int rc = s1 && s2 && strstart(&ss, s1) && (!s1[1] || s2[strlen(s1)] == '/');
 
   free(s1);
@@ -1083,8 +1065,8 @@ char *relative_path(char *from, char *to)
   char *s, *ret = 0;
   int i, j, k;
 
-  if (!(from = xabspath(from, -1))) return 0;
-  if (!(to = xabspath(to, -1))) goto error;
+  if (!(from = xabspath(from, 0))) return 0;
+  if (!(to = xabspath(to, 0))) goto error;
 
   // skip common directories from root
   for (i = j = 0; from[i] && from[i] == to[i]; i++) if (to[i] == '/') j = i+1;
@@ -1164,9 +1146,10 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
       if (scripts && !strcmp(bb, getbasename(cmd+strlen(cmd)+1))) goto match;
       continue;
 match:
-      if (callback(u, *cur)) break;
+      if (callback(u, *cur)) goto done;
     }
   }
+done:
   closedir(dp);
 }
 
