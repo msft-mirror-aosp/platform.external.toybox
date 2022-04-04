@@ -404,7 +404,7 @@
 
 #define HELP_declare "usage: declare [-pAailunxr] [NAME...]\n\nSet or print variable attributes and values.\n\n-p	Print variables instead of setting\n-A	Associative array\n-a	Indexed array\n-i	Integer\n-l	Lower case\n-n	Name reference (symlink)\n-r	Readonly\n-u	Uppercase\n-x	Export"
 
-#define HELP_cd "usage: cd [-PL] [path]\n\nChange current directory.  With no arguments, go $HOME.\n\n-P	Physical path: resolve symlinks in path\n-L	Local path: .. trims directories off $PWD (default)"
+#define HELP_cd "usage: cd [-PL] [-] [path]\n\nChange current directory. With no arguments, go $HOME. Sets $OLDPWD to\nprevious directory: cd - to return to $OLDPWD.\n\n-P	Physical path: resolve symlinks in path\n-L	Local path: .. trims directories off $PWD (default)"
 
 #define HELP_sh "usage: sh [-c command] [script]\n\nCommand shell.  Runs a shell script, or reads input interactively\nand responds to it.\n\n-c	command line to execute\n-i	interactive mode (default when STDIN is a tty)"
 
@@ -520,7 +520,7 @@
 
 #define HELP_ulimit "usage: ulimit [-P PID] [-SHRacdefilmnpqrstuv] [LIMIT]\n\nPrint or set resource limits for process number PID. If no LIMIT specified\n(or read-only -ap selected) display current value (sizes in bytes).\nDefault is ulimit -P $PPID -Sf\" (show soft filesize of your shell).\n\n-P  PID to affect (default $PPID)  -a  Show all limits\n-S  Set/show soft limit            -H  Set/show hard (maximum) limit\n\n-c  Core file size (blocks)        -d  Process data segment (KiB)\n-e  Max scheduling priority        -f  File size (KiB)\n-i  Pending signal count           -l  Locked memory (KiB)\n-m  Resident Set Size (KiB)        -n  Number of open files\n-p  Pipe buffer (512 bytes)        -q  POSIX message queues\n-r  Max realtime priority          -R  Realtime latency (us)\n-s  Stack size (KiB)               -t  Total CPU time (s)\n-u  Maximum processes (this UID)   -v  Virtual memory size (KiB)"
 
-#define HELP_tty "usage: tty [-s]\n\nShow filename of terminal connected to stdin.\n\nPrints \"not a tty\" and exits with nonzero status if no terminal\nis connected to stdin.\n\n-s	Silent, exit code only"
+#define HELP_tty "usage: tty [-s]\n\nShow filename of terminal connected to stdin. If none print \"not a tty\"\nand exit with nonzero status.\n\n-s	Silent, exit code only"
 
 #define HELP_true "usage: true\n\nReturn zero."
 
