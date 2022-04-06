@@ -890,7 +890,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
+  int hfd, pid, bangpid, varslen, srclvl, recursion;
 
   // Callable function array
   struct sh_function {

@@ -441,11 +441,7 @@ cc_defaults {
     ],
 
     target: {
-        linux_glibc: {
-            local_include_dirs: ["android/linux"],
-        },
-
-        linux_bionic: {
+        host_linux: {
             local_include_dirs: ["android/linux"],
         },
 
