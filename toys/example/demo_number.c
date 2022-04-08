@@ -2,17 +2,14 @@
  *
  * Copyright 2015 Rob Landley <rob@landley.net>
 
-USE_DEMO_NUMBER(NEWTOY(demo_number, "D#=3<3M#<0hcdbs", TOYFLAG_BIN))
+USE_DEMO_NUMBER(NEWTOY(demo_number, "D#=3<3hdbs", TOYFLAG_BIN))
 
 config DEMO_NUMBER
   bool "demo_number"
   default n
   help
-    usage: demo_number [-hsbi] [-D LEN] NUMBER...
+    usage: demo_number [-hsbi] NUMBER...
 
-    -D	output field is LEN chars
-    -M	input units (index into bkmgtpe)
-    -c	Comma comma down do be do down down
     -b	Use "B" for single byte units (HR_B)
     -d	Decimal units
     -h	Human readable
@@ -23,7 +20,7 @@ config DEMO_NUMBER
 #include "toys.h"
 
 GLOBALS(
-  long M, D;
+  long D;
 )
 
 void demo_number_main(void)
@@ -34,7 +31,7 @@ void demo_number_main(void)
     long long ll = atolx(*arg);
 
     if (toys.optflags) {
-      human_readable_long(toybuf, ll, TT.D, TT.M, toys.optflags);
+      human_readable_long(toybuf, ll, TT.D, toys.optflags);
       xputs(toybuf);
     } else printf("%lld\n", ll);
   }

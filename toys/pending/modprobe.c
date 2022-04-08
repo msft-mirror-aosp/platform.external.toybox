@@ -32,9 +32,11 @@ config MODPROBE
 GLOBALS(
   struct arg_list *dirs;
 
-  struct arg_list *probes, *dbase[256];
+  struct arg_list *probes;
+  struct arg_list *dbase[256];
   char *cmdopts;
-  int nudeps, symreq;
+  int nudeps;
+  uint8_t symreq;
 )
 
 /* Note: if "#define DBASE_SIZE" modified, 
@@ -168,7 +170,7 @@ static int read_line(FILE *fl, char **li)
   ssize_t len, nxtlen;
   size_t linelen, nxtlinelen;
 
-  for (;;) {
+  while (1) {
     line = NULL;
     linelen = nxtlinelen = 0;
     len = getline(&line, &linelen, fl);
@@ -271,7 +273,7 @@ static int config_action(struct dirtree *node)
       get_mod(tokens[1], 1)->flags |= MOD_BLACKLIST;
     else if (!strcmp(tokens[0], "install")) continue;
     else if (!strcmp(tokens[0], "remove")) continue;
-    else if (!FLAG(q))
+    else if (toys.optflags & FLAG_q)
       error_msg("Invalid option %s found in file %s", tokens[0], filename);
   }
   fclose(fc);
@@ -297,7 +299,7 @@ static int depmode_read_entry(char *cmdname)
       if (tmp) *tmp = '\0';
       if (!cmdname || !fnmatch(cmdname, name, 0)) {
         if (tmp) *tmp = '.';
-        if (FLAG(v)) puts(line);
+        if (toys.optflags&FLAG_v) puts(line);
         ret = 0;
       }
     }
@@ -321,10 +323,11 @@ static void find_dep(void)
       *tmp = '\0';
       mod = get_mod(line, 0);
       if (!mod) continue;
-      if ((mod->flags & MOD_ALOADED) && !(FLAG(r)|FLAG(D))) continue;
+      if ((mod->flags & MOD_ALOADED) &&
+          !(toys.optflags & (FLAG_r | FLAG_D))) continue;
       
       mod->flags |= MOD_FNDDEPMOD;
-      if ((mod->flags & MOD_NDDEPS) && !mod->dep) {
+      if ((mod->flags & MOD_NDDEPS) && (!mod->dep)) {
         TT.nudeps--;
         llist_add(&mod->dep, xstrdup(line));
         tmp++;
@@ -343,13 +346,16 @@ static void find_dep(void)
 }
 
 // Remove a module from the Linux Kernel. if !modules does auto remove.
-static int rm_mod(char *modules, unsigned flags)
+static int rm_mod(char *modules, uint32_t flags)
 {
-  char *s;
+  if (modules) {
+    int len = strlen(modules);
 
-  if (modules && (s = strend(modules, ".ko"))) *s = 0;
+    if (len > 3 && !strcmp(modules+len-3, ".ko" )) modules[len-3] = 0;
+  }
+
   errno = 0;
-  syscall(__NR_delete_module, modules, flags ? : O_NONBLOCK|O_EXCL);
+  syscall(__NR_delete_module, modules, flags ? flags : O_NONBLOCK|O_EXCL);
 
   return errno;
 }
@@ -391,11 +397,11 @@ static void add_mod(char *name)
 {
   struct module_s *mod = get_mod(name, 1);
 
-  if (!(FLAG(r)|FLAG(D)) && (mod->flags & MOD_ALOADED)) {
-    if (FLAG(v)) printf("%s already loaded\n", name);
+  if (!(toys.optflags & (FLAG_r | FLAG_D)) && (mod->flags & MOD_ALOADED)) {
+    if (toys.optflags&FLAG_v) printf("skipping %s, already loaded\n", name);
     return;
   }
-  if (FLAG(v)) printf("queuing %s\n", name);
+  if (toys.optflags&FLAG_v) printf("queuing %s\n", name);
   mod->cmdname = name;
   mod->flags |= MOD_NDDEPS;
   llist_add_tail(&TT.probes, mod);
@@ -429,11 +435,12 @@ static int go_probe(struct module_s *m)
   int rc = 0, first = 1;
 
   if (!(m->flags & MOD_FNDDEPMOD)) {
-    if (!FLAG(q)) error_msg("module %s not found in modules.dep", m->name);
+    if (!(toys.optflags & FLAG_q))
+      error_msg("module %s not found in modules.dep", m->name);
     return -ENOENT;
   }
-  if (FLAG(v)) printf("go_prob'ing %s\n", m->name);
-  if (!FLAG(r)) m->dep = llist_rev(m->dep);
+  if (toys.optflags & FLAG_v) printf("go_prob'ing %s\n", m->name);
+  if (!(toys.optflags & FLAG_r)) m->dep = llist_rev(m->dep);
   
   while (m->dep) {
     struct module_s *m2;
@@ -443,7 +450,7 @@ static int go_probe(struct module_s *m)
     fn = llist_popme(&m->dep);
     m2 = get_mod(fn, 1);
     // are we removing ?
-    if (FLAG(r)) {
+    if (toys.optflags & FLAG_r) {
       if (m2->flags & MOD_ALOADED) {
         if ((rc = rm_mod(m2->name, O_EXCL))) {
           if (first) {
@@ -455,27 +462,27 @@ static int go_probe(struct module_s *m)
       first = 0;
       continue;
     }
-// TODO how does free work here without leaking?
     options = m2->opts;
     m2->opts = NULL;
     if (m == m2) options = add_opts(options, TT.cmdopts);
 
     // are we only checking dependencies ?
-    if (FLAG(D)) {
-      if (FLAG(v))
+    if (toys.optflags & FLAG_D) {
+      if (toys.optflags & FLAG_v)
         printf(options ? "insmod %s %s\n" : "insmod %s\n", fn, options);
       if (options) free(options);
       continue;
     }
     if (m2->flags & MOD_ALOADED) {
-      if (FLAG(v)) printf("%s already loaded\n", fn);
+      if (toys.optflags&FLAG_v)
+        printf("%s is already loaded, skipping\n", fn);
       if (options) free(options);
       continue;
     }
     // none of above is true insert the module.
     errno = 0;
     rc = ins_mod(fn, options);
-    if (FLAG(v))
+    if (toys.optflags&FLAG_v)
       printf("loaded %s '%s': %s\n", fn, options, strerror(errno));
     if (errno == EEXIST) rc = 0;
     free(options);
@@ -490,31 +497,35 @@ static int go_probe(struct module_s *m)
 
 void modprobe_main(void)
 {
+  struct utsname uts;
   char **argv = toys.optargs, *procline = NULL;
   FILE *fs;
   struct module_s *module;
+  unsigned flags = toys.optflags;
   struct arg_list *dirs;
 
-  if (toys.optc<1 && !FLAG(r) == !FLAG(l)) help_exit("bad syntax");
+  if ((toys.optc < 1) && (((flags & FLAG_r) && (flags & FLAG_l))
+        ||(!((flags & FLAG_r)||(flags & FLAG_l)))))
+  {
+    help_exit("bad syntax");
+  }
   // Check for -r flag without arg if yes then do auto remove.
-  if (FLAG(r) && !toys.optc) {
-    if (rm_mod(0, O_NONBLOCK|O_EXCL)) perror_exit("rmmod");
+  if ((flags & FLAG_r) && !toys.optc) {
+    if (rm_mod(NULL, O_NONBLOCK | O_EXCL)) perror_exit("rmmod");
     return;
   }
 
   if (!TT.dirs) {
-    struct utsname uts;
-
     uname(&uts);
     TT.dirs = xzalloc(sizeof(struct arg_list));
     TT.dirs->arg = xmprintf("/lib/modules/%s", uts.release);
   }
 
   // modules.dep processing for dependency check.
-  if (FLAG(l)) {
+  if (flags & FLAG_l) {
     for (dirs = TT.dirs; dirs; dirs = dirs->next) {
       xchdir(dirs->arg);
-      if (!depmode_read_entry(*toys.optargs)) return;
+      if (!depmode_read_entry(toys.optargs[0])) return;
     }
     error_exit("no module found.");
   }
@@ -523,19 +534,22 @@ void modprobe_main(void)
   fs = xfopen("/proc/modules", "r");
   
   while (read_line(fs, &procline) > 0) {
-    *strchr(procline, ' ') = 0;
+    *(strchr(procline, ' ')) = '\0';
     get_mod(procline, 1)->flags = MOD_ALOADED;
     free(procline);
     procline = NULL;
   }
   fclose(fs);
-  if (FLAG(a) || FLAG(r)) while (argv) add_mod(*argv++);
-  else {
-    add_mod(*argv);
+  if ((flags & FLAG_a) || (flags & FLAG_r)) {
+    do {
+      add_mod(*argv++);
+    } while (*argv);
+  } else {
+    add_mod(argv[0]);
     TT.cmdopts = add_cmdopt(argv);
   }
   if (!TT.probes) {
-    if (FLAG(v)) puts("All modules loaded");
+    if (toys.optflags&FLAG_v) puts("All modules loaded");
     return;
   }
   dirtree_flagread("/etc/modprobe.conf", DIRTREE_SHUTUP, config_action);
@@ -554,23 +568,23 @@ void modprobe_main(void)
 
   while ((module = llist_popme(&TT.probes))) {
     if (!module->rnames) {
-      if (FLAG(v)) puts("probing by module name");
+      if (toys.optflags&FLAG_v) puts("probing by module name");
       /* This is not an alias. Literal names are blacklisted
        * only if '-b' is given.
        */
-      if (!FLAG(b) || !(module->flags & MOD_BLACKLIST))
+      if (!(flags & FLAG_b) || !(module->flags & MOD_BLACKLIST))
         go_probe(module);
       continue;
     }
     do { // Probe all real names for the alias.
-      char *real = ((struct arg_list *)llist_pop(&module->rnames))->arg;
+      char *real = ((struct arg_list*)llist_pop(&module->rnames))->arg;
       struct module_s *m2 = get_mod(real, 0);
       
-      if (FLAG(v))
+      if (toys.optflags&FLAG_v)
         printf("probing alias %s by realname %s\n", module->name, real);
       if (!m2) continue;
       if (!(m2->flags & MOD_BLACKLIST) 
-          && (!(m2->flags & MOD_ALOADED) || FLAG(r) || FLAG(D)))
+          && (!(m2->flags & MOD_ALOADED) || (flags & (FLAG_r | FLAG_D))))
         go_probe(m2);
       free(real);
     } while (module->rnames);

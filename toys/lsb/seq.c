@@ -28,7 +28,7 @@ config SEQ
 GLOBALS(
   char *s, *f;
 
-  int precision, buflen;
+  int precision;
 )
 
 // Ensure there's one %f escape with correct attributes
@@ -37,8 +37,10 @@ static void insanitize(char *f)
   char *s = next_printf(f, 0);
 
   if (!s) error_exit("bad -f no %%f");
-  if (-1 == stridx("aAeEfFgG", *s) || (s = next_printf(s, 0)))
+  if (-1 == stridx("aAeEfFgG", *s) || (s = next_printf(s, 0))) {
+    // The @ is a byte offset, not utf8 chars. Waiting for somebody to complain.
     error_exit("bad -f '%s'@%d", f, (int)(s-f+1));
+  }
 }
 
 // Parse a numeric argument setting *prec to the precision of this argument.
@@ -52,39 +54,11 @@ static double parsef(char *s)
   return xstrtod(s);
 }
 
-// fast integer conversion to decimal string
-// TODO move to lib?
-static char *itoa(char *s, int i)
-{
-  char buf[16], *ff = buf;
-  unsigned n = i;
-
-  if (i<0) {
-    *s++ = '-';
-    n = -i;
-  }
-  do *ff++ = '0'+n%10; while ((n /= 10));
-  do *s++ = *--ff; while (ff>buf);
-  *s++ = '\n';
-
-  return s;
-}
-
-static char *flush_toybuf(char *ss)
-{
-  if (ss-toybuf<TT.buflen) return ss;
-  xwrite(1, toybuf, ss-toybuf); 
-
-  return toybuf;
-}
-
 void seq_main(void)
 {
-  char fbuf[32], *ss;
   double first = 1, increment = 1, last, dd;
-  int ii, inc = 1, len, slen;
+  int i;
 
-  // parse arguments
   if (!TT.s) TT.s = "\n";
   switch (toys.optc) {
     case 3: increment = parsef(toys.optargs[1]);
@@ -92,32 +66,19 @@ void seq_main(void)
     default: last = parsef(toys.optargs[toys.optc-1]);
   }
 
-  // measure arguments
-  if (FLAG(f)) insanitize(TT.f);
-  for (ii = len = 0; ii<3; ii++) {
-    dd = (double []){first, increment, last}[ii];
-    len = maxof(len, snprintf(0, 0, "%.*f", TT.precision, fabs(dd)));
-    if (ii == 2) dd += increment;
-    slen = dd;
-    if (dd != slen) inc = 0;
-  }
-  if (!FLAG(f)) sprintf(TT.f = fbuf, "%%0%d.%df", len, TT.precision);
-  TT.buflen = sizeof(toybuf) - 32 - len - TT.precision - strlen(TT.s);
-  if (TT.buflen<0) error_exit("bad -s");
+  // Prepare format string with appropriate precision. Can't use %g because 1e6
+  if (toys.optflags & FLAG_f) insanitize(TT.f);
+  else sprintf(TT.f = toybuf, "%%.%df", TT.precision);
 
-  // fast path: when everything fits in an int with no flags.
-  if (!toys.optflags && inc) {
-    ii = first;
-    len = last;
-    inc = increment;
-    ss = toybuf;
-    if (inc>0) for (; ii<=len; ii += inc)
-      ss = flush_toybuf(itoa(ss, ii));
-    else if (inc<0) for (; ii>=len; ii += inc)
-      ss = flush_toybuf(itoa(ss, ii));
-    if (ss != toybuf) xwrite(1, toybuf, ss-toybuf);
+  // Pad to largest width
+  if (toys.optflags & FLAG_w) {
+    int len = 0;
 
-    return;
+    for (i=0; i<3; i++) {
+      dd = (double []){first, increment, last}[i];
+      len = maxof(len, snprintf(0, 0, TT.f, dd));
+    }
+    sprintf(TT.f = toybuf, "%%0%d.%df", len, TT.precision);
   }
 
   // Other implementations output nothing if increment is 0 and first > last,
@@ -125,14 +86,14 @@ void seq_main(void)
   // nothing for all three, if you want endless output use "yes".
   if (!increment) return;
 
-  // Slow path, floating point and fancy sprintf() patterns
-  for (ii = 0, ss = toybuf;; ii++) {
+  i = 0;
+  for (;;) {
     // Multiply to avoid accumulating rounding errors from increment.
-    dd = first+ii*increment;
+    dd = first+i*increment;
     if ((increment<0 && dd<last) || (increment>0 && dd>last)) break;
-    if (ii) ss = flush_toybuf(stpcpy(ss, TT.s));
-    ss += sprintf(ss, TT.f, dd);
+    if (i++) printf("%s", TT.s);
+    printf(TT.f, dd);
   }
-  *ss++ = '\n';
-  xwrite(1, toybuf, ss-toybuf);
+
+  if (i) printf("\n");
 }

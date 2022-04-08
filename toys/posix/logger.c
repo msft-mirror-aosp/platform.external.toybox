@@ -6,7 +6,7 @@
  *
  * Deviations from posix: specified manner and format, defined implementation.
 
-USE_LOGGER(NEWTOY(logger, "t:p:s", TOYFLAG_USR|TOYFLAG_BIN))
+USE_LOGGER(NEWTOY(logger, "st:p:", TOYFLAG_USR|TOYFLAG_BIN))
 
 config LOGGER
   bool "logger"
@@ -30,44 +30,46 @@ GLOBALS(
 
 // find str in names[], accepting unambiguous short matches
 // returns offset into array of match, or -1 if no match
-// TODO: move to lib?
-static int arrayfind(char *str, char *names[], int len)
+int arrayfind(char *str, char *names[], int len)
 {
-  int j, i, ll = 0, maybe = -1;
+  int try, i, matchlen = 0, found = -1, ambiguous = 1;
 
-  for (j = 0; j<len; j++) for (i=0; ; i++) {
-    if (!str[i]) {
-      if (!names[j][i]) return j;
-      if (i>ll) maybe = j;
-      else if (i==ll) maybe = -1;
-      break;
+  for (try = 0; try<len; try++) {
+    for (i=0; ; i++) {
+      if (!str[i]) {
+        if (matchlen<i) found = try, ambiguous = 0;
+        if (matchlen==i) ambiguous++;
+        if (!names[try][i]) return try;
+        break;
+      }
+      if (!names[try][i]) break;
+      if (toupper(str[i]) != toupper(names[try][i])) break;
     }
-    if (!names[j][i] || toupper(str[i])!=toupper(names[j][i])) break;
   }
-
-  return maybe;
+  return ambiguous ? -1 : found;
 }
 
 void logger_main(void)
 {
-  int facility = LOG_USER, priority = LOG_NOTICE, len = 0;
+  int facility = LOG_USER, priority = LOG_NOTICE, len;
   char *s1, *s2, **arg,
     *priorities[] = {"emerg", "alert", "crit", "error", "warning", "notice",
                      "info", "debug"},
     *facilities[] = {"kern", "user", "mail", "daemon", "auth", "syslog",
                      "lpr", "news", "uucp", "cron", "authpriv", "ftp"};
 
-  if (!TT.t) TT.t = xgetpwuid(geteuid())->pw_name;
-  if (TT.p) {
+  if (!TT.t) TT.t = xstrdup(xgetpwuid(geteuid())->pw_name);
+  if (toys.optflags & FLAG_p) {
     if (!(s1 = strchr(TT.p, '.'))) s1 = TT.p;
     else {
-      *s1++ = 0;
+      *s1++ = len = 0;
       facility = arrayfind(TT.p, facilities, ARRAY_LEN(facilities));
-      if (facility<0) {
-        if (sscanf(TT.p, "local%d", &facility)>0 && !(facility&~7))
-          facility += 16;
-        else error_exit("bad facility: %s", TT.p);
+      if (facility == -1 && strncasecmp(TT.p, "local", 5)) {
+        facility = s1[5]-'0';
+        if (facility>7 || s1[6]) facility = -1;
+        if (facility>=0) facility += 16;
       }
+      if (facility<0) error_exit("bad facility: %s", TT.p);
       facility *= 8;
     }
 
@@ -76,15 +78,18 @@ void logger_main(void)
   }
 
   if (toys.optc) {
-    for (arg = toys.optargs; *arg; arg++) len += strlen(*arg)+1;
+    for (len = 0, arg = toys.optargs; *arg; arg++) len += strlen(*arg)+1;
     s1 = s2 = xmalloc(len);
     for (arg = toys.optargs; *arg; arg++) {
       if (arg != toys.optargs) *s2++ = ' ';
       s2 = stpcpy(s2, *arg);
     }
-  } else toybuf[readall(0, s1 = toybuf, sizeof(toybuf)-1)] = 0;
+  } else {
+    toybuf[readall(0, toybuf, sizeof(toybuf)-1)] = 0;
+    s1 = toybuf;
+  }
 
-  openlog(TT.t, LOG_PERROR*FLAG(s), facility);
+  openlog(TT.t, LOG_PERROR*!!(toys.optflags&FLAG_s), facility);
   syslog(priority, "%s", s1);
   closelog();
 }

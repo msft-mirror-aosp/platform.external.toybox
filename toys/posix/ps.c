@@ -213,7 +213,7 @@ GLOBALS(
   dev_t tty;
   void *fields, *kfields;
   long long ticks, bits, time;
-  int kcount, forcek, sortpos, pidlen;
+  int kcount, forcek, sortpos;
   int (*match_process)(long long *slot);
   void (*show_process)(void *tb);
 )
@@ -311,6 +311,7 @@ struct procpid {
 #define XX 64 // force string representation for sorting, etc
 
 // TODO: Android uses -30 for LABEL, but ideally it would auto-size.
+// TODO: ideally, PID and PPID would auto-size too.
 struct typography {
   char *name, *help;
   signed char width, slot;
@@ -599,7 +600,7 @@ static char *string_field(struct procpid *tb, struct ofields *field)
     }
     if (which <= PS_SHR) ll *= sysconf(_SC_PAGESIZE);
     if (TT.forcek) sprintf(out, "%lldk", ll/1024);
-    else human_readable_long(s, ll, i-1, 0, 0);
+    else human_readable_long(s, ll, i-1, 0);
 
   // Posix doesn't specify what flags should say. Man page says
   // 1 for PF_FORKNOEXEC and 4 for PF_SUPERPRIV from linux/sched.h
@@ -1111,9 +1112,8 @@ static char *parse_ko(void *data, char *type, int length)
   }
   if (i==ARRAY_LEN(typos)) return type;
   if (!field->title) field->title = typos[field->which].name;
-  k = i<2 ? TT.pidlen : typos[field->which].width;
-  if (!field->len) field->len = k;
-  else if (k<0) field->len *= -1;
+  if (!field->len) field->len = typos[field->which].width;
+  else if (typos[field->which].width<0) field->len *= -1;
   dlist_add_nomalloc(data, (void *)field);
 
   return 0;
@@ -1280,9 +1280,11 @@ static void default_ko(char *s, void *fields, char *err, struct arg_list *arg)
   if (x) help_help();
 }
 
-static void common_setup(void)
+void ps_main(void)
 {
-  char buf[128];
+  char **arg;
+  struct dirtree *dt;
+  char *not_o;
   int i;
 
   TT.ticks = sysconf(_SC_CLK_TCK); // units for starttime/uptime
@@ -1292,20 +1294,6 @@ static void common_setup(void)
 
     if (!fstat(i, &st)) TT.tty = st.st_rdev;
   }
-
-  if (readfile("/proc/sys/kernel/pid_max", buf, 128))
-    while (isdigit(buf[TT.pidlen])) TT.pidlen++;
-  else TT.pidlen = 6;
-}
-
-void ps_main(void)
-{
-  char **arg;
-  struct dirtree *dt;
-  char *not_o;
-  int i;
-
-  common_setup();
 
   // If we can't query terminal size pad to 80 but do -w
   TT.width = 80;
@@ -1580,7 +1568,7 @@ static void top_common(
           char hr[4][32];
           long long ll, up = 0;
           long run[6];
-          int j, k;
+          int j;
 
           // Count running, sleeping, stopped, zombie processes.
           // The kernel has more states (and different sets in different
@@ -1602,19 +1590,19 @@ static void top_common(
               j = i%3;
               pos = strafter(toybuf+256, (char *[]){"MemTotal:","\nMemFree:",
                     "\nBuffers:","\nSwapTotal:","\nSwapFree:","\nCached:"}[i]);
-              run[i] = pos ? atol(pos) : 0;
-              k = (*run>=10000000);
-              human_readable_long(hr[j+!!j], run[i]>>(10*k), 9, k+1, HR_NODOT);
-              if (j==1) human_readable_long(hr[1], (run[i-1]-run[i])>>(10*k),
-                8, k+1, HR_NODOT);
+              human_readable_long(hr[j+!!j], 1024*(run[i] = pos?atol(pos):0),
+                8, 0);
+              if (j==1) human_readable_long(hr[1], 1024*(run[i-1]-run[i]), 8,0);
               else if (j==2) {
-                sprintf(toybuf, " %s:%10s total,%10s used,%10s free,%10s %s",
-                  (i<3) ? " Mem" : "Swap", hr[0], hr[1], hr[2], hr[3],
-                  (i<3) ? "buffers" : "cached");
+                sprintf(toybuf, (i<3)
+                  ? "  Mem: %9s total, %9s used, %9s free, %9s buffers"
+                  : " Swap: %9s total, %9s used, %9s free, %9s cached",
+                  hr[0], hr[1], hr[2], hr[3]);
                 lines = header_line(lines, 0);
               }
             }
           }
+
           pos = toybuf;
           i = sysconf(_SC_NPROCESSORS_CONF);
           pos += sprintf(pos, "%d%%cpu", i*100);
@@ -1745,7 +1733,8 @@ static void top_common(
 
 static void top_setup(char *defo, char *defk)
 {
-  common_setup();
+  TT.ticks = sysconf(_SC_CLK_TCK); // units for starttime/uptime
+  TT.tty = tty_fd() != -1;
 
   // Are we doing "batch" output or interactive?
   if (FLAG(b)) TT.width = TT.height = 99999;

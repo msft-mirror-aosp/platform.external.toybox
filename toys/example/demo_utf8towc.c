@@ -22,6 +22,8 @@ void demo_utf8towc_main(void)
   unsigned u, h;
   wchar_t wc1, wc2;
 
+  setlocale(LC_ALL, "en_US.UTF-8");
+
   memset(&mb, 0, sizeof(mb));
   for (u=1; u; u++) {
     char *str = (void *)&h;

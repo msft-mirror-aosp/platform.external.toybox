@@ -49,7 +49,7 @@ int xgetrandom(void *buf, unsigned buflen, unsigned flags)
 // Get list of mounted filesystems, including stat and statvfs info.
 // Returns a reversed list, which is good for finding overmounts and such.
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__)
 
 #include <sys/mount.h>
 
@@ -126,15 +126,14 @@ int mountlist_istype(struct mtab_list *ml, char *typelist)
 
   if (!typelist) return 1;
 
-  // leading "no" indicates whether entire list is inverted
   skip = strncmp(typelist, "no", 2);
 
   for (;;) {
     if (!(t = comma_iterate(&typelist, &len))) break;
     if (!skip) {
-      // later "no" after first are ignored
-      strstart(&t, "no");
-      if (!strncmp(t, ml->type, len-2)) {
+      // If one -t starts with "no", the rest must too
+      if (strncmp(t, "no", 2)) error_exit("bad typelist");
+      if (!strncmp(t+2, ml->type, len-2)) {
         skip = 1;
         break;
       }
@@ -188,7 +187,7 @@ struct mtab_list *xgetmountlist(char *path)
 
 #endif
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
+#ifdef __APPLE__
 
 #include <sys/event.h>
 
@@ -332,7 +331,7 @@ ssize_t xattr_fset(int fd, const char* name,
   return fsetxattr(fd, name, value, size, 0, flags);
 }
 
-#elif !defined(__OpenBSD__)
+#else
 
 ssize_t xattr_get(const char *path, const char *name, void *value, size_t size)
 {
@@ -430,21 +429,10 @@ static const struct signame signames[] = {
   SIGNIFY(VTALRM), SIGNIFY(XCPU), SIGNIFY(XFSZ),
   // Non-POSIX signals that cause termination
   SIGNIFY(PROF), SIGNIFY(IO),
-  // signals only present/absent on some targets (mips and macos)
-#ifdef SIGEMT
-  SIGNIFY(EMT),
-#endif
-#ifdef SIGINFO
-  SIGNIFY(INFO),
-#endif
-#ifdef SIGPOLL
-  SIGNIFY(POLL),
-#endif
-#ifdef SIGPWR
-  SIGNIFY(PWR),
-#endif
-#ifdef SIGSTKFLT
-  SIGNIFY(STKFLT),
+#ifdef __linux__
+  SIGNIFY(STKFLT), SIGNIFY(POLL), SIGNIFY(PWR),
+#elif defined(__APPLE__)
+  SIGNIFY(EMT), SIGNIFY(INFO),
 #endif
 
   // Note: sigatexit relies on all the signals with a default disposition that
@@ -464,9 +452,9 @@ void xsignal_all_killers(void *handler)
 {
   int i;
 
-  if (!handler) handler = SIG_DFL;
-  for (i = 0; signames[i].num != SIGCHLD; i++)
-    if (signames[i].num != SIGKILL) xsignal(signames[i].num, handler);
+  for (i=0; signames[i].num != SIGCHLD; i++)
+    if (signames[i].num != SIGKILL)
+      xsignal(signames[i].num, handler ? exit_signal : SIG_DFL);
 }
 
 // Convert a string like "9", "KILL", "SIGHUP", or "SIGRTMIN+2" to a number.
@@ -534,8 +522,6 @@ int dev_minor(int dev)
   return ((dev&0xfff00000)>>12)|(dev&0xff);
 #elif defined(__APPLE__)
   return dev&0xffffff;
-#elif defined(__OpenBSD__)
-  return minor(dev);
 #else
 #error
 #endif
@@ -547,8 +533,6 @@ int dev_major(int dev)
   return (dev&0xfff00)>>8;
 #elif defined(__APPLE__)
   return (dev>>24)&0xff;
-#elif defined(__OpenBSD__)
-  return major(dev);
 #else
 #error
 #endif
@@ -560,8 +544,6 @@ int dev_makedev(int major, int minor)
   return (minor&0xff)|((major&0xfff)<<8)|((minor&0xfff00)<<12);
 #elif defined(__APPLE__)
   return (minor&0xffffff)|((major&0xff)<<24);
-#elif defined(__OpenBSD__)
-  return makedev(major, minor);
 #else
 #error
 #endif
@@ -569,7 +551,7 @@ int dev_makedev(int major, int minor)
 
 char *fs_type_name(struct statfs *statfs)
 {
-#if defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__APPLE__)
   // macOS has an `f_type` field, but assigns values dynamically as filesystems
   // are registered. They do give you the name directly though, so use that.
   return statfs->f_fstypename;
@@ -593,64 +575,3 @@ char *fs_type_name(struct statfs *statfs)
   return s;
 #endif
 }
-
-#if defined(__APPLE__)
-#include <sys/disk.h>
-int get_block_device_size(int fd, unsigned long long* size)
-{
-  unsigned long block_size, block_count;
-
-  if (!ioctl(fd, DKIOCGETBLOCKSIZE, &block_size) &&
-      !ioctl(fd, DKIOCGETBLOCKCOUNT, &block_count)) {
-    *size = block_count * block_size;
-    return 1;
-  }
-  return 0;
-}
-#elif defined(__linux__)
-int get_block_device_size(int fd, unsigned long long* size)
-{
-  return (ioctl(fd, BLKGETSIZE64, size) >= 0);
-}
-#elif defined(__OpenBSD__)
-#include <sys/dkio.h>
-#include <sys/disklabel.h>
-int get_block_device_size(int fd, unsigned long long* size)
-{
-  struct disklabel lab;
-  int status = (ioctl(fd, DIOCGDINFO, &lab) >= 0);
-  *size = lab.d_secsize * lab.d_nsectors;
-  return status;
-}
-#endif
-
-// TODO copy_file_range
-// Return bytes copied from in to out. If bytes <0 copy all of in to out.
-// If consuemd isn't null, amount read saved there (return is written or error)
-long long sendfile_len(int in, int out, long long bytes, long long *consumed)
-{
-  long long total = 0, len, ww;
-
-  if (consumed) *consumed = 0;
-  if (in<0) return 0;
-  while (bytes != total) {
-    ww = 0;
-    len = bytes-total;
-    if (bytes<0 || len>sizeof(libbuf)) len = sizeof(libbuf);
-
-    errno = 0;
-#if CFG_TOYBOX_COPYFILERANGE
-    len = copy_file_range(in, 0, out, 0, bytes, 0);
-#else
-    ww = len = read(in, libbuf, len);
-#endif
-    if (len<1 && errno==EAGAIN) continue;
-    if (len<1) break;
-    if (consumed) *consumed += len;
-    if (ww && writeall(out, libbuf, len) != len) return -1;
-    total += len;
-  }
-
-  return total;
-}
-

@@ -1285,7 +1285,7 @@ static int ipaddr_listflush(char **argv)
     if (!*argv)
       error_exit("Incomplete command for \"flush\"");
     if (TT.addressfamily == AF_PACKET)
-      error_exit("Can't flush link Addresses");
+      error_exit("Can't flush link Addressess");
   }
   addrinfo.scope = -1;
   while (*argv) {
@@ -1447,7 +1447,7 @@ static int ipaddr_print( struct linkdata *link, int flag_l)
         }
 
         for (; NLMSG_OK(addr_ptr, len); addr_ptr = NLMSG_NEXT(addr_ptr, len)) {
-          if (addr_ptr->nlmsg_type == RTM_NEWADDR)
+          if ((addr_ptr->nlmsg_type == RTM_NEWADDR))
             print_addrinfo(addr_ptr, flag_l);
           if ((addr_ptr->nlmsg_type == NLMSG_DONE) ||
               (addr_ptr->nlmsg_type == NLMSG_ERROR) ||
@@ -1499,13 +1499,15 @@ struct {
 
 static void show_iproute_help(void)
 {
-  error_exit("\n\n" \
+  char *errmsg = "\n\n" \
        "iproute { list | flush } SELECTOR\n" \
        "iproute get ADDRESS [from ADDRESS iif STRING]\n" \
        "	[oif STRING]\n" \
        "iproute { add | del | change | append | replace | test } ROUTE\n" \
        "	SELECTOR := [root PREFIX] [match PREFIX] [proto RTPROTO]\n" \
-       "	ROUTE := [TYPE] PREFIX [proto RTPROTO] [metric METRIC]");
+       "	ROUTE := [TYPE] PREFIX [proto RTPROTO] [metric METRIC]";
+
+  error_exit(errmsg);
 }
 
 static void print_rta_metrics(char* out, const struct rtattr *mxattr)
@@ -2172,10 +2174,12 @@ static int iproute(char **argv)
 // ===========================================================================
 static void show_iprule_help(void)
 {
-  error_exit("usage: ip rule [ list | add | del ] SELECTOR ACTION\n"
+  char *errmsg = "usage: ip rule [ list | add | del ] SELECTOR ACTION\n"
     "SELECTOR := [ from PREFIX ] [ to PREFIX ] [pref NUMBER] [ tos TOS ]\n"
     "            [ fwmark FWMARK] [ dev/iif STRING ] [type TYPE]\n"
-    "ACTION := [ table TABLE_ID ] [ realms [SRCREALM/]DSTREALM ]");
+    "ACTION := [ table TABLE_ID ] [ realms [SRCREALM/]DSTREALM ]";
+
+  error_exit(errmsg);
 }
 
 static int ruleupdate(char **argv)
@@ -2419,10 +2423,12 @@ static int iprule(char **argv)
 //============================================================================
 static void show_iptunnel_help(void)
 {
-  error_exit("usage: iptunnel { add | change | del | show } [NAME]\n"
+  char *errmsg = "usage: iptunnel { add | change | del | show } [NAME]\n"
     "           [mode { ipip | gre | sit }] [remote ADDR] [local ADDR]\n"
     "           [[i|o]seq] [[i|o]key KEY] [[i|o]csum] [ttl TTL]\n"
-    "           [tos TOS] [[no]pmtudisc] [dev PHYS_DEV]");
+    "           [tos TOS] [[no]pmtudisc] [dev PHYS_DEV]";
+
+  error_exit(errmsg);
 }
 
 static int tnl_ioctl(char *dev, int rtype, struct ip_tunnel_parm *ptnl)

@@ -102,8 +102,7 @@ static struct ext2_attr {
   {"No_Dump",                       FS_NODUMP_FL,       'd'},
   {"No_Atime",                      FS_NOATIME_FL,      'A'},
   {"Compression_Requested",         FS_COMPR_FL,        'c'},
-  // FS_ENCRYPT_FL added to linux 4.5 march 2016, +y7 = 2023
-  {"Encrypted",                     0x800,              'E'},
+  {"Encrypted",                     FS_ENCRYPT_FL,      'E'},
   {"Journaled_Data",                FS_JOURNAL_DATA_FL, 'j'},
   {"Indexed_directory",             FS_INDEX_FL,        'I'},
   {"No_Tailmerging",                FS_NOTAIL_FL,       't'},

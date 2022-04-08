@@ -51,7 +51,7 @@ int read_password(char *buf, int buflen, char *mesg)
 {
   struct termios oldtermio;
   struct sigaction sa, oldsa;
-  int i, tty = tty_fd(), ret = 1;
+  int i, ret = 1;
 
   // NOP signal handler to return from the read. Use sigaction() instead
   // of xsignal() because we want to restore the old handler afterwards.
@@ -59,12 +59,13 @@ int read_password(char *buf, int buflen, char *mesg)
   sa.sa_handler = generic_signal;
   sigaction(SIGINT, &sa, &oldsa);
 
-  tcflush(tty, TCIFLUSH);
-  xset_terminal(tty, 1, 0, &oldtermio);
-  dprintf(tty, "%s", mesg);
+  tcflush(0, TCIFLUSH);
+  xset_terminal(0, 1, 0, &oldtermio);
 
-  for (i = 0; i<buflen-1; i++) {
-    if ((ret = read(tty, buf+i, 1))<0 || (!ret&&!i) || *buf==4 || buf[i]==3) {
+  xprintf("%s", mesg);
+
+  for (i=0; i < buflen-1; i++) {
+    if ((ret = read(0, buf+i, 1)) < 0 || (!ret && !i)) {
       i = 0;
       ret = 1;
 
@@ -73,11 +74,11 @@ int read_password(char *buf, int buflen, char *mesg)
       ret = 0;
 
       break;
-    } else if (buf[i] == 8 || buf[i] == 127) i -= 2-!i;
+    } else if (buf[i] == 8 || buf[i] == 127) i -= i ? 2 : 1;
   }
 
   // Restore terminal/signal state, terminate string
-  sigaction(SIGINT, &oldsa, 0);
+  sigaction(SIGINT, &oldsa, NULL);
   tcsetattr(0, TCSANOW, &oldtermio);
   buf[i] = 0;
   xputc('\n');

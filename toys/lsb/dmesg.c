@@ -69,15 +69,15 @@ static void format_message(char *msg, int new)
   subsystem = p ? (p-text) : 0;
 
   // To get "raw" output for /dev/kmsg we need to add priority to each line
-  if (FLAG(r)) {
+  if (toys.optflags&FLAG_r) {
     color(0);
     printf("<%d>", facpri);
   }
 
   // Format the time.
-  if (!FLAG(t)) {
+  if (!(toys.optflags&FLAG_t)) {
     color(32);
-    if (FLAG(T)) {
+    if (toys.optflags&FLAG_T) {
       time_t t = TT.tea+time_s;
       char *ts = ctime(&t);
 
@@ -115,23 +115,23 @@ void dmesg_main(void)
 
   if (TT.use_color) sigatexit(dmesg_cleanup);
   // If we're displaying output, is it klogctl or /dev/kmsg?
-  if (FLAG(C)||FLAG(n)) goto no_output;
+  if (toys.optflags & (FLAG_C|FLAG_n)) goto no_output;
 
-  if (FLAG(T)) {
+  if (toys.optflags&FLAG_T) {
     struct sysinfo info;
 
     sysinfo(&info);
     TT.tea = time(0)-info.uptime;
   }
 
-  if (!FLAG(S)) {
+  if (!(toys.optflags&FLAG_S)) {
     char msg[8193]; // CONSOLE_EXT_LOG_MAX+1
     ssize_t len;
     int fd;
 
     // Each read returns one message. By default, we block when there are no
     // more messages (--follow); O_NONBLOCK is needed for for usual behavior.
-    fd = open("/dev/kmsg", O_RDONLY|(O_NONBLOCK*!FLAG(w)));
+    fd = open("/dev/kmsg", O_RDONLY|(O_NONBLOCK*!(toys.optflags&FLAG_w)));
     if (fd == -1) goto klogctl_mode;
 
     // SYSLOG_ACTION_CLEAR(5) doesn't actually remove anything from /dev/kmsg,
@@ -158,7 +158,7 @@ klogctl_mode:
     // Figure out how much data we need, and fetch it.
     if (!(size = TT.s)) size = xklogctl(10, 0, 0);
     data = from = xmalloc(size+1);
-    data[size = xklogctl(3+FLAG(c), data, size)] = 0;
+    data[size = xklogctl(3+(toys.optflags&FLAG_c), data, size)] = 0;
 
     // Send each line to format_message.
     to = data + size;
@@ -174,8 +174,8 @@ klogctl_mode:
 
 no_output:
   // Set the log level?
-  if (FLAG(n)) xklogctl(8, 0, TT.n);
+  if (toys.optflags & FLAG_n) xklogctl(8, 0, TT.n);
 
   // Clear the buffer?
-  if (FLAG(C)||FLAG(c)) xklogctl(5, 0, 0);
+  if (toys.optflags & (FLAG_C|FLAG_c)) xklogctl(5, 0, 0);
 }

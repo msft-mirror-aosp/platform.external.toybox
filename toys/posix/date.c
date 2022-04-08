@@ -7,19 +7,18 @@
  * Note: setting a 2 year date is 50 years back/forward from today,
  * not posix's hardwired magic dates.
 
-USE_DATE(NEWTOY(date, "d:D:I(iso)(iso-8601):;r:u(utc)[!dr]", TOYFLAG_BIN))
+USE_DATE(NEWTOY(date, "d:D:r:u[!dr]", TOYFLAG_BIN))
 
 config DATE
   bool "date"
   default y
   help
-    usage: date [-u] [-I RES] [-r FILE] [-d DATE] [+DISPLAY_FORMAT] [-D SET_FORMAT] [SET]
+    usage: date [-u] [-r FILE] [-d DATE] [+DISPLAY_FORMAT] [-D SET_FORMAT] [SET]
 
     Set/get the current date/time. With no SET shows the current date.
 
     -d	Show DATE instead of current time (convert date format)
     -D	+FORMAT for SET or -d (instead of MMDDhhmm[[CC]YY][.ss])
-    -I RES	ISO 8601 with RESolution d=date/h=hours/m=minutes/s=seconds/n=ns
     -r	Use modification time of FILE instead of current date
     -u	Use UTC instead of current timezone
 
@@ -29,9 +28,6 @@ config DATE
     @UNIXTIME[.FRACTION]      seconds since midnight 1970-01-01
     YYYY-MM-DD [hh:mm[:ss]]   ISO 8601
     hh:mm[:ss]                24-hour time today
-
-    All input formats can be followed by fractional seconds, and/or a UTC
-    offset such as -0800.
 
     All input formats can be preceded by TZ="id" to set the input time zone
     separately from the output time zone. Otherwise $TZ sets both.
@@ -47,19 +43,19 @@ config DATE
     %j day of year (001-366) %d day of month (01-31) %e day of month ( 1-31)
     %N nanosec (output only)
 
-    %U Week of year (0-53 start Sunday)   %W Week of year (0-53 start Monday)
-    %V Week of year (1-53 start Monday, week < 4 days not part of this year)
+    %U Week of year (0-53 start sunday)   %W Week of year (0-53 start monday)
+    %V Week of year (1-53 start monday, week < 4 days not part of this year)
 
-    %F "%Y-%m-%d"   %R "%H:%M"        %T "%H:%M:%S"        %z  timezone (-0800)
-    %D "%m/%d/%y"   %r "%I:%M:%S %p"  %h "%b"              %:z timezone (-08:00)
-    %x locale date  %X locale time    %c locale date/time  %s  unix epoch time
+    %F "%Y-%m-%d"     %R "%H:%M"        %T "%H:%M:%S"    %z numeric timezone
+    %D "%m/%d/%y"     %r "%I:%M:%S %p"  %h "%b"          %s unix epoch time
+    %x locale date    %X locale time    %c locale date/time
 */
 
 #define FOR_date
 #include "toys.h"
 
 GLOBALS(
-  char *r, *I, *D, *d;
+  char *r, *D, *d;
 
   unsigned nano;
 )
@@ -89,42 +85,30 @@ static void parse_date(char *str, time_t *t)
   }
 }
 
-// Print strftime plus %N and %:z escape(s). Note: modifies fmt in those cases.
+// Print strftime plus %N escape(s). note: modifies fmt for %N
 static void puts_time(char *fmt, struct tm *tm)
 {
-  char *s, *snap, *out;
+  char *s, *snap;
+  long width = width;
 
   for (s = fmt;;s++) {
-    long n = 0;
 
-    // Find next %N/%:z or end of format string.
-    if (*(snap = s)) {
-      if (*s != '%') continue;
-      if (*++s == 'N') n = 9;
-      else if (isdigit(*s) && s[1] == 'N') n = *s++-'0';
-      else if (*s == ':' && s[1] == 'z') s++, n++;
-      else continue;
-    }
+    // Find next %N or end
+    if (*(snap = s) == '%') {
+      width = isdigit(*++s) ? *(s++)-'0' : 9;
+      if (*s && *s != 'N') continue;
+    } else if (*s) continue;
 
-    // Only modify input string if needed (default format is constant string).
+    // Don't modify input string if no %N (default format is constant string).
     if (*s) *snap = 0;
-    // Do we have any regular work for strftime to do?
-    out = toybuf;
-    if (*fmt) {
-      if (!strftime(out, sizeof(toybuf)-12, fmt, tm))
-        perror_exit("bad format '%s'", fmt);
-      out += strlen(out);
+    if (!strftime(toybuf, sizeof(toybuf)-10, fmt, tm))
+      perror_exit("bad format '%s'", fmt);
+    if (*s) {
+      snap = toybuf+strlen(toybuf);
+      sprintf(snap, "%09u", TT.nano);
+      snap[width] = 0;
     }
-    // Do we have any custom formatting to append to that?
-    if (*s == 'N') {
-      sprintf(out, "%09u", TT.nano);
-      out[n] = 0;
-    } else if (*s == 'z') {
-      strftime(out, 10, "%z", tm);
-      memmove(out+4, out+3, strlen(out+3)+1);
-      out[3] = ':';
-    }
-    xputsn(toybuf);
+    fputs(toybuf, stdout);
     if (!*s || !*(fmt = s+1)) break;
   }
   xputc('\n');
@@ -135,14 +119,6 @@ void date_main(void)
   char *setdate = *toys.optargs, *format_string = "%a %b %e %H:%M:%S %Z %Y",
     *tz = NULL;
   time_t t;
-
-  if (FLAG(I)) {
-    char *iso_formats[] = {"%F","%FT%H%:z","%FT%R%:z","%FT%T%:z","%FT%T,%N%:z"};
-    int i = stridx("dhmsn", (TT.I && *TT.I) ? *TT.I : 'd');
-
-    if (i<0) help_exit("bad -I: %s", TT.I);
-    format_string = xstrdup(iso_formats[i]);
-  }
 
   if (FLAG(u)) {
     tz = getenv("TZ");
@@ -194,5 +170,6 @@ void date_main(void)
     else unsetenv("TZ");
     tzset();
   }
-  if (CFG_TOYBOX_FREE && FLAG(I)) free(format_string);
+
+  return;
 }

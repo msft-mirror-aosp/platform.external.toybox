@@ -41,7 +41,7 @@ config STTY
 #include <linux/tty.h>
 
 GLOBALS(
-  char *F;
+  char *device;
 
   int fd, col;
   unsigned output_cols;
@@ -120,15 +120,12 @@ static const struct synonym {
   char *from;
   char *to;
 } synonyms[] = {
-  { "cbreak", "-icanon" }, { "-cbreak", "icanon" },
-  { "-cooked", "raw" }, { "-raw", "cooked" },
-  { "crterase", "echoe" }, { "-crterase", "-echoe" },
-  { "crtkill", "echoke" }, { "-crtkill", "-echoke" },
-  { "ctlecho", "echoctl" }, { "-ctlecho", "-echoctl" },
-  { "-tandem", "-ixoff" }, { "tandem", "ixoff" },
-  { "hup", "hupcl" }, { "-hup", "-hupcl" },
-  { "prterase", "echoprt" }, { "-prterase", "-echoprt" },
-  { "tabs", "tab0" }, { "-tabs", "tab3" },
+  { "cbreak", "-icanon" }, { "-cbreak", "icanon" }, { "-cooked", "raw" },
+  { "crterase", "echoe" }, { "-crterase", "-echoe" }, { "crtkill", "echoke" },
+  { "-crtkill", "-echoke" }, { "ctlecho", "echoctl" }, { "-tandem", "-ixoff" },
+  { "-ctlecho", "-echoctl" }, { "hup", "hupcl" }, { "-hup", "-hupcl" },
+  { "prterase", "echoprt" }, { "-prterase", "-echoprt" }, { "-raw", "cooked" },
+  { "tabs", "tab0" }, { "-tabs", "tab3" }, { "tandem", "ixoff" },
 };
 
 static void out(const char *fmt, ...)
@@ -163,9 +160,9 @@ static void show_flags(tcflag_t actual, tcflag_t sane,
   int i, j, value, mask;
 
   // Implement -a by ensuring that sane != actual so we'll show everything.
-  if (FLAG(a)) sane = ~actual;
+  if (toys.optflags&FLAG_a) sane = ~actual;
 
-  for (i = j = 0; i<len; i++) {
+  for (i=j=0;i<len;i++) {
     value = flags[i].value;
     if ((mask = flags[i].mask)) {
       if ((actual&mask)==value && (sane&mask)!=value) {
@@ -186,7 +183,7 @@ static void show_size(int verbose)
 {
   struct winsize ws;
 
-  if (ioctl(TT.fd, TIOCGWINSZ, &ws)) perror_exit("TIOCGWINSZ %s", TT.F);
+  if (ioctl(TT.fd, TIOCGWINSZ, &ws)) perror_exit("TIOCGWINSZ %s", TT.device);
   out(verbose ? "rows %d; columns %d;" : "%d %d\n", ws.ws_row, ws.ws_col);
 }
 
@@ -199,11 +196,11 @@ static void show_speed(struct termios *t, int verbose)
   out(fmt, ispeed, ospeed);
 }
 
-static int get_arg(int *i, long long high)
+static int get_arg(int *i, long long low, long long high)
 {
   (*i)++;
   if (!toys.optargs[*i]) error_exit("missing arg");
-  return atolx_range(toys.optargs[*i], 0, high);
+  return atolx_range(toys.optargs[*i], low, high);
 }
 
 static int set_flag(tcflag_t *f, const struct flag *flags, int len,
@@ -252,10 +249,10 @@ static void set_size(int is_rows, unsigned short value)
 {
   struct winsize ws;
 
-  if (ioctl(TT.fd, TIOCGWINSZ, &ws)) perror_exit("TIOCGWINSZ %s", TT.F);
+  if (ioctl(TT.fd, TIOCGWINSZ, &ws)) perror_exit("TIOCGWINSZ %s", TT.device);
   if (is_rows) ws.ws_row = value;
   else ws.ws_col = value;
-  if (ioctl(TT.fd, TIOCSWINSZ, &ws)) perror_exit("TIOCSWINSZ %s", TT.F);
+  if (ioctl(TT.fd, TIOCSWINSZ, &ws)) perror_exit("TIOCSWINSZ %s", TT.device);
 }
 
 static int set_special_character(struct termios *new, int *i, char *char_name)
@@ -274,6 +271,7 @@ static int set_special_character(struct termios *new, int *i, char *char_name)
       else if (arg[0] == '^' && arg[2] == 0) ch = (toupper(arg[1])-'@');
       else if (!arg[1]) ch = arg[0];
       else error_exit("invalid arg: %s", arg);
+      xprintf("setting %s to %s (%02x)\n", char_name, arg, ch);
       new->c_cc[chars[j].value] = ch;
       return 1;
     }
@@ -313,61 +311,51 @@ static void make_sane(struct termios *t)
 
 static void xtcgetattr(struct termios *t)
 {
-  if (tcgetattr(TT.fd, t)) perror_exit("tcgetattr %s", TT.F);
+  if (tcgetattr(TT.fd, t)) perror_exit("tcgetattr %s", TT.device);
 }
 
-void stty_main(void)
+static void do_stty()
 {
   struct termios old, sane;
   int i, j, n;
 
-  if (toys.optflags&(FLAG_a|FLAG_g) && *toys.optargs)
-    error_exit("no settings with -a/-g");
-
-  if (!TT.F) TT.F = "standard input";
-  else TT.fd = xopen(TT.F, (O_RDWR*!!*toys.optargs)|O_NOCTTY|O_NONBLOCK);
-
   xtcgetattr(&old);
 
   if (*toys.optargs) {
-    struct termios new = old, tmp;
+    struct termios new = old;
 
     for (i=0; toys.optargs[i]; i++) {
       char *arg = toys.optargs[i];
 
       if (!strcmp(arg, "size")) show_size(0);
       else if (!strcmp(arg, "speed")) show_speed(&old, 0);
-      else if (!strcmp(arg, "line")) new.c_line = get_arg(&i, NR_LDISCS);
-      else if (!strcmp(arg, "min")) new.c_cc[VMIN] = get_arg(&i, 255);
-      else if (!strcmp(arg, "time")) new.c_cc[VTIME] = get_arg(&i, 255);
-      else if (sscanf(arg, "%x:%x:%x:%x:%n", &tmp.c_iflag, &tmp.c_oflag,
-                        &tmp.c_cflag, &tmp.c_lflag, &n) == 4)
+      else if (!strcmp(arg, "line")) new.c_line = get_arg(&i, N_TTY, NR_LDISCS);
+      else if (!strcmp(arg, "min")) new.c_cc[VMIN] = get_arg(&i, 0, 255);
+      else if (!strcmp(arg, "time")) new.c_cc[VTIME] = get_arg(&i, 0, 255);
+      else if (atoi(arg) > 0) {
+        int new_speed = speed(atolx_range(arg, 0, 4000000));
+
+        cfsetispeed(&new, new_speed);
+        cfsetospeed(&new, new_speed);
+      } else if (!strcmp(arg, "ispeed"))
+        cfsetispeed(&new, speed(get_arg(&i, 0, 4000000)));
+      else if (!strcmp(arg, "ospeed"))
+        cfsetospeed(&new, speed(get_arg(&i, 0, 4000000)));
+      else if (!strcmp(arg, "rows")) set_size(1, get_arg(&i, 0, USHRT_MAX));
+      else if (!strcmp(arg, "cols") || !strcmp(arg, "columns"))
+        set_size(0, get_arg(&i, 0, USHRT_MAX));
+      else if (sscanf(arg, "%x:%x:%x:%x:%n", &new.c_iflag, &new.c_oflag,
+                        &new.c_cflag, &new.c_lflag, &n) == 4)
       {
         int value;
 
-        new.c_iflag = tmp.c_iflag;
-        new.c_oflag = tmp.c_oflag;
-        new.c_cflag = tmp.c_cflag;
-        new.c_lflag = tmp.c_lflag;
         arg += n;
         for (j=0;j<NCCS;j++) {
           if (sscanf(arg, "%x%n", &value, &n) != 1) error_exit("bad -g string");
           new.c_cc[j] = value;
           arg += n+1;
         }
-      } else if (atoi(arg) > 0) {
-        int new_speed = speed(atolx_range(arg, 0, 4000000));
-
-        cfsetispeed(&new, new_speed);
-        cfsetospeed(&new, new_speed);
-      } else if (!strcmp(arg, "ispeed"))
-        cfsetispeed(&new, speed(get_arg(&i, 4000000)));
-      else if (!strcmp(arg, "ospeed"))
-        cfsetospeed(&new, speed(get_arg(&i, 4000000)));
-      else if (!strcmp(arg, "rows")) set_size(1, get_arg(&i, USHRT_MAX));
-      else if (!strcmp(arg, "cols") || !strcmp(arg, "columns"))
-        set_size(0, get_arg(&i, USHRT_MAX));
-      else if (set_special_character(&new, &i, arg));
+      } else if (set_special_character(&new, &i, arg));
         // Already done as a side effect.
       else if (!strcmp(arg, "cooked"))
         set_options(&new, "brkint", "ignpar", "istrip", "icrnl", "ixon",
@@ -396,7 +384,7 @@ void stty_main(void)
       } else if (!strcmp(arg, "sane")) make_sane(&new);
       else {
         // Translate historical cruft into canonical forms.
-        for (j=0; j<ARRAY_LEN(synonyms); j++) {
+        for (j=0;j<ARRAY_LEN(synonyms);j++) {
           if (!strcmp(synonyms[j].from, arg)) {
             arg = synonyms[j].to;
             break;
@@ -405,16 +393,15 @@ void stty_main(void)
         set_option(&new, arg);
       }
     }
-
     tcsetattr(TT.fd, TCSAFLUSH, &new);
     xtcgetattr(&old);
     if (memcmp(&old, &new, sizeof(old)))
-      error_exit("unable to perform all requested operations on %s", TT.F);
+      error_exit("unable to perform all requested operations on %s", TT.device);
 
     return;
   }
 
-  if (FLAG(g)) {
+  if (toys.optflags&FLAG_g) {
     xprintf("%x:%x:%x:%x:", old.c_iflag, old.c_oflag, old.c_cflag, old.c_lflag);
     for (i=0;i<NCCS;i++) xprintf("%x%c", old.c_cc[i], i==NCCS-1?'\n':':');
     return;
@@ -424,20 +411,21 @@ void stty_main(void)
   // special characters and any flags that differ from the "sane" settings.
   make_sane(&sane);
   show_speed(&old, 1);
-  if (FLAG(a)) show_size(1);
+  if (toys.optflags&FLAG_a) show_size(1);
   out("line = %d;\n", old.c_line);
 
-  for (i=j=0; i<ARRAY_LEN(chars); i++) {
+  for (i=j=0;i<ARRAY_LEN(chars);i++) {
     char vis[16] = {};
     cc_t ch = old.c_cc[chars[i].value];
 
-    if (ch == sane.c_cc[chars[i].value] && !FLAG(a))
+    if (ch == sane.c_cc[chars[i].value] && (toys.optflags&FLAG_a)==0)
       continue;
 
-    if (chars[i].value == VMIN || chars[i].value == VTIME)
+    if (chars[i].value == VMIN || chars[i].value == VTIME) {
       snprintf(vis, sizeof(vis), "%u", ch);
-    else if (ch == _POSIX_VDISABLE) strcat(vis, "<undef>");
-    else {
+    } else if (ch == _POSIX_VDISABLE) {
+      strcat(vis, "<undef>");
+    } else {
       if (ch > 0x7f) {
         strcat(vis, "M-");
         ch -= 128;
@@ -455,6 +443,17 @@ void stty_main(void)
   show_flags(old.c_iflag, sane.c_iflag, iflags, ARRAY_LEN(iflags));
   show_flags(old.c_oflag, sane.c_oflag, oflags, ARRAY_LEN(oflags));
   show_flags(old.c_lflag, sane.c_lflag, lflags, ARRAY_LEN(lflags));
+}
 
-  if (TT.fd) close(TT.fd);
+void stty_main(void)
+{
+  if (toys.optflags&(FLAG_a|FLAG_g) && *toys.optargs)
+    error_exit("can't make settings with -a/-g");
+
+  if (!TT.device) TT.device = "standard input";
+  else TT.fd=xopen(TT.device, (O_RDWR*!!*toys.optargs)|O_NOCTTY|O_NONBLOCK);
+
+  do_stty();
+
+  if (CFG_TOYBOX_FREE && TT.device) close(TT.fd);
 }
