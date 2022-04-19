@@ -13,20 +13,28 @@ then
   [ ! -z "$(command -v gsed 2>/dev/null)" ] && SED=gsed || SED=sed
 fi
 
-# Extra debug plumbing the Android guys want
+# Tell linker to do dead code elimination at function level
+if [ "$(uname)" == "Darwin" ]
+then
+  : ${LDOPTIMIZE:=-Wl,-dead_strip} ${STRIP:=strip}
+else
+  : ${LDOPTIMIZE:=-Wl,--gc-sections -Wl,--as-needed} ${STRIP:=strip -s -R .note* -R .comment}
+fi
+
+# Address Sanitizer
 if [ ! -z "$ASAN" ]; then
-  echo "Enabling ASan..."
   # Turn ASan on and disable most optimization to get more readable backtraces.
   # (Technically ASAN is just "-fsanitize=address" and the rest is optional.)
   ASAN_FLAGS="-fsanitize=address -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls"
-  CFLAGS="$ASAN_FLAGS $CFLAGS"
-  # Run this nonsense against temporary build tools that don't ship too
+  CFLAGS="$CFLAGS $ASAN_FLAGS"
   HOSTCC="$HOSTCC $ASAN_FLAGS"
+  NOSTRIP=1
   # Ignore leaks on exit. TODO
   export ASAN_OPTIONS="detect_leaks=0"
+  unset ASAN
 fi
 
-# Centos 7 bug workaround, EOL June 30 2024.
+# Centos 7 bug workaround, EOL June 30 2024. TODO
 DASHN=-n; wait -n 2>/dev/null; [ $? -eq 2 ] && unset DASHN
 
 # If the build is using gnu tools, make them behave less randomly.
