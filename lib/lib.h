@@ -3,11 +3,6 @@
  * Copyright 2006 Rob Landley <rob@landley.net>
  */
 
-struct ptr_len {
-  void *ptr;
-  long len;
-};
-
 // llist.c
 
 // All these list types can be handled by the same code because first element
@@ -260,7 +255,9 @@ int qstrcmp(const void *a, const void *b);
 void create_uuid(char *uuid);
 char *show_uuid(char *uuid);
 char *next_printf(char *s, char **start);
+struct passwd *bufgetpwnamuid(char *name, uid_t uid);
 struct passwd *bufgetpwuid(uid_t uid);
+struct group *bufgetgrnamgid(char *name, gid_t gid);
 struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
 int readlink0(char *path, char *buf, int len);
@@ -371,6 +368,8 @@ int comma_remove(char *optlist, char *opt);
 
 long long gzip_fd(int infd, int outfd);
 long long gunzip_fd(int infd, int outfd);
+long long gunzip_fd_preload(int infd, int outfd, char *buf, unsigned len);
+
 
 // getmountlist.c
 struct mtab_list {
