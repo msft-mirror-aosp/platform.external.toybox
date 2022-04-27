@@ -110,6 +110,10 @@
 
 #define HELP_dmesg "usage: dmesg [-Cc] [-r|-t|-T] [-n LEVEL] [-s SIZE] [-w]\n\nPrint or control the kernel ring buffer.\n\n-C	Clear ring buffer without printing\n-c	Clear ring buffer after printing\n-n	Set kernel logging LEVEL (1-9)\n-r	Raw output (with <level markers>)\n-S	Use syslog(2) rather than /dev/kmsg\n-s	Show the last SIZE many bytes\n-T	Human readable timestamps\n-t	Don't print timestamps\n-w	Keep waiting for more output (aka --follow)"
 
+#define HELP_wget_libtls "Enable HTTPS support for wget by linking to LibTLS.\nSupports using libtls, libretls or libtls-bearssl.\n\nUse TOYBOX_LIBCRYPTO to enable HTTPS support via OpenSSL."
+
+#define HELP_wget "usage: wget [OPTIONS]... [URL]\n    --max-redirect          maximum redirections allowed\n-d, --debug                 print lots of debugging information\n-O, --output-document=FILE  specify output filename\n-p, --post-data=DATA        send data in body of POST request\n\nexamples:\n  wget http://www.example.com"
+
 #define HELP_tunctl "usage: tunctl [-dtT] [-u USER] NAME\n\nCreate and delete tun/tap virtual ethernet devices.\n\n-T	Use tap (ethernet frames) instead of tun (ip packets)\n-d	Delete tun/tap device\n-t	Create tun/tap device\n-u	Set owner (user who can read/write device without root access)"
 
 #define HELP_sntp "usage: sntp [-saSdDq] [-r SHIFT] [-mM[ADDRESS]] [-p PORT] [SERVER]\n\nSimple Network Time Protocol client. Query SERVER and display time.\n\n-p	Use PORT (default 123)\n-s	Set system clock suddenly\n-a	Adjust system clock gradually\n-S	Serve time instead of querying (bind to SERVER address if specified)\n-m	Wait for updates from multicast ADDRESS (RFC 4330 default 224.0.1.1)\n-M	Multicast server on ADDRESS (default 224.0.0.1)\n-t	TTL (multicast only, default 1)\n-d	Daemonize (run in background re-querying )\n-D	Daemonize but stay in foreground: re-query time every 1000 seconds\n-r	Retry shift (every 1<<SHIFT seconds)\n-q	Quiet (don't display time)"
@@ -120,7 +124,7 @@
 
 #define HELP_netstat "usage: netstat [-pWrxwutneal]\n\nDisplay networking information. Default is netstat -tuwx\n\n-r	Routing table\n-a	All sockets (not just connected)\n-l	Listening server sockets\n-t	TCP sockets\n-u	UDP sockets\n-w	Raw sockets\n-x	Unix sockets\n-e	Extended info\n-n	Don't resolve names\n-W	Wide display\n-p	Show PID/program name of sockets"
 
-#define HELP_netcat "usage: netcat [-46ELUlt] [-u] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME|COMMAND...}\n\nForward stdin/stdout to a file or network connection.\n\n-4	Force IPv4\n-6	Force IPv6\n-E	Forward stderr\n-L	Listen and background each incoming connection (server mode)\n-U	Use a UNIX domain socket\n-W	SECONDS timeout for more data on an idle connection\n-f	Use FILENAME (ala /dev/ttyS0) instead of network\n-l	Listen for one incoming connection, then exit\n-p	Local port number\n-q	Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet\n-s	Local source address\n-t	Allocate tty\n-u	Use UDP\n-w	SECONDS timeout to establish connection\n\nUse \"stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho\" with\nnetcat -f to connect to a serial port.\n\nWhen listening the COMMAND line is executed as a child process to handle\nan incoming connection. With no COMMAND -l forwards the connection\nto stdin/stdout. If no -p specified, -l prints the port it bound to and\nbackgrounds itself (returning immediately).\n\nFor a quick-and-dirty server, try something like:\nnetcat -s 127.0.0.1 -p 1234 -tL sh -l"
+#define HELP_netcat "usage: netcat [-46ElLtUu] [-wpq #] [-s addr] {IPADDR PORTNUM|-f FILENAME|COMMAND...}\n\nForward stdin/stdout to a file or network connection.\n\n-4	Force IPv4\n-6	Force IPv6\n-E	Forward stderr\n-f	Use FILENAME (ala /dev/ttyS0) instead of network\n-l	Listen for one incoming connection, then exit\n-L	Listen and background each incoming connection (server mode)\n-p	Local port number\n-q	Quit SECONDS after EOF on stdin, even if stdout hasn't closed yet\n-s	Local source address\n-t	Allocate tty\n-u	Use UDP\n-U	Use a UNIX domain socket\n-w	SECONDS timeout to establish connection\n-W	SECONDS timeout for more data on an idle connection\n\nWhen listening the COMMAND line is executed as a child process to handle\nan incoming connection. With no COMMAND -l forwards the connection\nto stdin/stdout. If no -p specified, -l prints the port it bound to and\nbackgrounds itself (returning immediately).\n\nFor a quick-and-dirty server, try something like:\nnetcat -s 127.0.0.1 -p 1234 -tL sh -l\n\nOr use \"stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho\" with\nnetcat -f to connect to a serial port."
 
 #define HELP_microcom "usage: microcom [-s SPEED] [-X] DEVICE\n\nSimple serial console.\n\n-s	Set baud rate to SPEED (default 115200)\n-X	Ignore ^@ (send break) and ^] (exit)"
 
@@ -345,12 +349,6 @@
 #define HELP_acpi "usage: acpi [-abctV]\n\nShow status of power sources and thermal devices.\n\n-a	Show power adapters\n-b	Show batteries\n-c	Show cooling device state\n-t	Show temperatures\n-V	Show everything"
 
 #define HELP_xzcat "usage: xzcat [filename...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
-
-#define HELP_wget_openssl "Enable HTTPS support for wget by linking to OpenSSL."
-
-#define HELP_wget_libtls "Enable HTTPS support for wget by linking to LibTLS.\nSupports using libtls, libretls or libtls-bearssl."
-
-#define HELP_wget "usage: wget [OPTIONS]... [URL]\n    --max-redirect          maximum redirections allowed\n-d, --debug                 print lots of debugging information\n-O, --output-document=FILE  specify output filename\n-p, --post-data=DATA        send data in body of POST request\n\nexamples:\n  wget http://www.example.com"
 
 #define HELP_vi "usage: vi [-s script] FILE\n-s script: run script file\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical."
 
@@ -651,8 +649,6 @@
 #define HELP_chown "see: chgrp"
 
 #define HELP_chgrp "usage: chgrp/chown [-RHLP] [-fvh] GROUP FILE...\n\nChange group of one or more files.\n\n-f	Suppress most error messages\n-h	Change symlinks instead of what they point to\n-R	Recurse into subdirectories (implies -h)\n-H	With -R change target of symlink, follow command line symlinks\n-L	With -R change target of symlink, follow all symlinks\n-P	With -R change symlink, do not follow symlinks (default)\n-v	Verbose"
-
-#define HELP_catv "usage: catv [-evt] [FILE...]\n\nDisplay nonprinting characters as escape sequences. Use M-x for\nhigh ascii characters (>127), and ^x for other nonprinting chars.\n\n-e	Mark each newline with $\n-t	Show tabs as ^I\n-v	Don't use ^x or M-x escapes"
 
 #define HELP_cat "usage: cat [-etuv] [FILE...]\n\nCopy (concatenate) files to stdout.  If no files listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-e	Mark each newline with $\n-t	Show tabs as ^I\n-u	Copy one byte at a time (slow)\n-v	Display nonprinting characters as escape sequences with M-x for\n	high ascii characters (>127), and ^x for other nonprinting chars"
 
