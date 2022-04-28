@@ -11,7 +11,7 @@ for i in "$@"; do
   [ "${i/=/}" != "$i" ] && export "$i" || { [ "$i" != -- ] && PKG="$PKG $i"; }
 done
 
-# Set default values for directories (overrideable from command line)
+# Set default directory locations (overrideable from command line)
 : ${LOG:=${BUILD:=${TOP:=$PWD/root}/build}/log} ${AIRLOCK:=$BUILD/airlock}
 : ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/scripts/root}
 
@@ -145,8 +145,9 @@ echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group || exit 1
 
 # Build static toybox with existing .config if there is one, else defconfig+sh
 announce toybox
-[ -e .config ] && [ -z "$PENDING" ] && CONF=silentoldconfig || unset CONF
-for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
+[ ! -z "$PENDING" ] && rm -f .config
+[ -e .config ] && CONF=silentoldconfig || unset CONF
+for i in $PENDING sh route wget; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
 LDFLAGS=--static PREFIX="$ROOT" make clean \
   ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
 
@@ -204,7 +205,7 @@ else
     KCONF=$KCONF,UNWINDER_FRAME_POINTER,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_INTEL,E1000,SERIAL_8250,SERIAL_8250_CONSOLE,RTC_CLASS
   elif [ "$TARGET" == m68k ]; then
     QEMU="m68k -M q800" KARCH=m68k KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI_MAC_ESP,MACINTOSH_DRIVERS,ADB,ADB_MACII,NET_CORE,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
+    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI_MAC_ESP,MACINTOSH_DRIVERS,ADB,ADB_MACII,NET_CORE,NET_VENDOR_NATSEMI,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
   elif [ "$TARGET" == mips ] || [ "$TARGET" == mipsel ]; then
     QEMU="mips -M malta" KARCH=mips KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
@@ -236,10 +237,11 @@ else
   # Write the qemu launch script
   if [ -n "$QEMU" ]; then
     [ -z "$BUILTIN" ] && INITRD="-initrd ${CROSS}root.cpio.gz"
-    echo qemu-system-"$QEMU" '"$@"' $QEMU_MORE -nographic -no-reboot -m 256 \
-         -kernel $(basename $VMLINUX) $INITRD \
-         "-append \"panic=1 HOST=$TARGET console=$KARGS \$KARGS\"" \
-         ${DTB:+-dtb "$(basename "$DTB")"} > "$OUTPUT/qemu-$TARGET.sh" &&
+    { echo qemu-system-"$QEMU" '"$@"' $QEMU_MORE -nographic -no-reboot -m 256 \
+        -kernel $(basename $VMLINUX) $INITRD ${DTB:+-dtb "$(basename "$DTB")"} \
+        "-append \"panic=1 HOST=$TARGET console=$KARGS \$KARGS\"" &&
+      echo "echo -e '\\e[?7h'"
+    } > "$OUTPUT/qemu-$TARGET.sh" &&
     chmod +x "$OUTPUT/qemu-$TARGET.sh" || exit 1
   fi
 
