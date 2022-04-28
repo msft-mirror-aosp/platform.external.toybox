@@ -281,6 +281,13 @@ struct free_data {
   char *buf;
 };
 
+// toys/other/gpiod.c
+
+struct gpiod_data {
+  struct double_list *chips;
+  int chip_count;
+};
+
 // toys/other/hexedit.c
 
 struct hexedit_data {
@@ -332,19 +339,14 @@ struct lsattr_data {
   int have_set;
 };
 
-// toys/other/lspci.c
-
-struct lspci_data {
-  char *i;
-  long n;
-
-  FILE *db;
-};
-
 // toys/other/lsusb.c
 
 struct lsusb_data {
-  void *ids;
+  char *i;
+  long n;
+
+  void *ids, *class;
+  int count;
 };
 
 // toys/other/makedevs.c
@@ -393,6 +395,12 @@ struct nsenter_data {
 
 struct oneit_data {
   char *c;
+};
+
+// toys/other/openvt.c
+
+struct openvt_data {
+  long c;
 };
 
 // toys/other/pwgen.c
@@ -860,12 +868,6 @@ struct more_data {
   int cin_fd;
 };
 
-// toys/pending/openvt.c
-
-struct openvt_data {
-  long c;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -888,7 +890,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
+  int hfd, pid, bangpid, varslen, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -1157,10 +1159,10 @@ struct vi_data {
 // toys/pending/wget.c
 
 struct wget_data {
-  char *filename;
-  long redirects;
+  char *p, *O;
+  long max_redirect;
 
-  int sock;
+  int sock, https;
   char *url;
 #if CFG_WGET_LIBTLS
   struct tls *tls;
@@ -1547,6 +1549,7 @@ struct tar_data {
   struct arg_list *T, *X;
   char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
+  long strip_components;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
@@ -1661,13 +1664,13 @@ extern union global_union {
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
 	struct free_data free;
+	struct gpiod_data gpiod;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
 	struct lsattr_data lsattr;
-	struct lspci_data lspci;
 	struct lsusb_data lsusb;
 	struct makedevs_data makedevs;
 	struct mix_data mix;
@@ -1676,6 +1679,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
 	struct reboot_data reboot;
@@ -1726,7 +1730,6 @@ extern union global_union {
 	struct mke2fs_data mke2fs;
 	struct modprobe_data modprobe;
 	struct more_data more;
-	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
 	struct strace_data strace;
