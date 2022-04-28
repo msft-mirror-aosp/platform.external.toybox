@@ -1535,9 +1535,9 @@
 #undef FLAG_t
 #endif
 
-// iorenice   ?<1>3
+// iorenice   <1>3
 #undef OPTSTR_iorenice
-#define OPTSTR_iorenice "?<1>3"
+#define OPTSTR_iorenice "<1>3"
 #ifdef CLEANUP_iorenice
 #undef CLEANUP_iorenice
 #undef FOR_iorenice
@@ -2248,9 +2248,9 @@
 #undef FLAG_n
 #endif
 
-// openvt   c#<1>63sw
+// openvt   ^<1c#<1>63sw
 #undef OPTSTR_openvt
-#define OPTSTR_openvt "c#<1>63sw"
+#define OPTSTR_openvt "^<1c#<1>63sw"
 #ifdef CLEANUP_openvt
 #undef CLEANUP_openvt
 #undef FOR_openvt
@@ -2532,14 +2532,6 @@
 #undef FLAG_m
 #undef FLAG_q
 #undef FLAG_n
-#endif
-
-// realpath <1 <1
-#undef OPTSTR_realpath
-#define OPTSTR_realpath "<1"
-#ifdef CLEANUP_realpath
-#undef CLEANUP_realpath
-#undef FOR_realpath
 #endif
 
 // reboot   d:fn
@@ -3065,9 +3057,9 @@
 #undef FLAG_f
 #endif
 
-// tar &(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa] &(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]
+// tar &(strip-components)#(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa] &(strip-components)#(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]
 #undef OPTSTR_tar
-#define OPTSTR_tar "&(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]"
+#define OPTSTR_tar "&(strip-components)#(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]"
 #ifdef CLEANUP_tar
 #undef CLEANUP_tar
 #undef FOR_tar
@@ -3105,6 +3097,7 @@
 #undef FLAG_full_time
 #undef FLAG_restrict
 #undef FLAG_selinux
+#undef FLAG_strip_components
 #endif
 
 // taskset   <1^pa
@@ -3638,12 +3631,13 @@
 #undef FLAG_m
 #endif
 
-// wget   <1>1(max-redirect)#<0=20d(debug)O(output-document):
+// wget   <1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):
 #undef OPTSTR_wget
-#define OPTSTR_wget "<1>1(max-redirect)#<0=20d(debug)O(output-document):"
+#define OPTSTR_wget "<1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):"
 #ifdef CLEANUP_wget
 #undef CLEANUP_wget
 #undef FOR_wget
+#undef FLAG_p
 #undef FLAG_O
 #undef FLAG_d
 #undef FLAG_max_redirect
@@ -6065,13 +6059,6 @@
 #define FLAG_n (1<<4)
 #endif
 
-#ifdef FOR_realpath
-#define CLEANUP_realpath
-#ifndef TT
-#define TT this.realpath
-#endif
-#endif
-
 #ifdef FOR_reboot
 #define CLEANUP_reboot
 #ifndef TT
@@ -6590,6 +6577,7 @@
 #define FLAG_full_time (1LL<<31)
 #define FLAG_restrict (1LL<<32)
 #define FLAG_selinux (1LL<<33)
+#define FLAG_strip_components (1LL<<34)
 #endif
 
 #ifdef FOR_taskset
@@ -7084,9 +7072,10 @@
 #ifndef TT
 #define TT this.wget
 #endif
-#define FLAG_O (FORCED_FLAG<<0)
-#define FLAG_d (FORCED_FLAG<<1)
-#define FLAG_max_redirect (FORCED_FLAG<<2)
+#define FLAG_p (FORCED_FLAG<<0)
+#define FLAG_O (FORCED_FLAG<<1)
+#define FLAG_d (FORCED_FLAG<<2)
+#define FLAG_max_redirect (FORCED_FLAG<<3)
 #endif
 
 #ifdef FOR_which
