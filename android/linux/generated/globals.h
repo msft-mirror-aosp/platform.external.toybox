@@ -397,6 +397,12 @@ struct oneit_data {
   char *c;
 };
 
+// toys/other/openvt.c
+
+struct openvt_data {
+  long c;
+};
+
 // toys/other/pwgen.c
 
 struct pwgen_data {
@@ -862,12 +868,6 @@ struct more_data {
   int cin_fd;
 };
 
-// toys/pending/openvt.c
-
-struct openvt_data {
-  long c;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -1159,10 +1159,10 @@ struct vi_data {
 // toys/pending/wget.c
 
 struct wget_data {
-  char *filename;
-  long redirects;
+  char *p, *O;
+  long max_redirect;
 
-  int sock;
+  int sock, https;
   char *url;
 #if CFG_WGET_LIBTLS
   struct tls *tls;
@@ -1549,6 +1549,7 @@ struct tar_data {
   struct arg_list *T, *X;
   char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
+  long strip_components;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
@@ -1678,6 +1679,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
 	struct reboot_data reboot;
@@ -1728,7 +1730,6 @@ extern union global_union {
 	struct mke2fs_data mke2fs;
 	struct modprobe_data modprobe;
 	struct more_data more;
-	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
 	struct strace_data strace;

@@ -4,8 +4,6 @@
 
 #define HELP_toybox_uid_sys "When commands like useradd/groupadd allocate system IDs, start here."
 
-#define HELP_toybox_pedantic_args "Check arguments for commands that have no arguments."
-
 #define HELP_toybox_debug "Enable extra checks for debugging purposes. All of them catch\nthings that can only go wrong at development time, not runtime."
 
 #define HELP_toybox_norecurse "When one toybox command calls another, usually it just calls the new\ncommand's main() function rather than searching the $PATH and calling\nexec on another file (which is much slower).\n\nThis disables that optimization, so toybox will run external commands\n       even when it has a built-in version of that command. This requires\n       toybox symlinks to be installed in the $PATH, or re-invoking the\n       \"toybox\" multiplexer command by name."
@@ -126,7 +124,7 @@
 
 #define HELP_microcom "usage: microcom [-s SPEED] [-X] DEVICE\n\nSimple serial console.\n\n-s	Set baud rate to SPEED (default 115200)\n-X	Ignore ^@ (send break) and ^] (exit)"
 
-#define HELP_ifconfig "usage: ifconfig [-aS] [INTERFACE [ACTION...]]\n\nDisplay or configure network interface.\n\nWith no arguments, display active interfaces. First argument is interface\nto operate on, one argument by itself displays that interface.\n\n-a	All interfaces displayed, not just active ones\n-S	Short view, one line per interface\n\nStandard ACTIONs to perform on an INTERFACE:\n\nADDR[/MASK]        - set IPv4 address (1.2.3.4/5) and activate interface\nadd|del ADDR[/LEN] - add/remove IPv6 address (1111::8888/128)\nup|down            - activate or deactivate interface\n\nAdvanced ACTIONs (default values usually suffice):\n\ndefault          - remove IPv4 address\nnetmask ADDR     - set IPv4 netmask via 255.255.255.0 instead of /24\ntxqueuelen LEN   - number of buffered packets before output blocks\nmtu LEN          - size of outgoing packets (Maximum Transmission Unit)\nbroadcast ADDR   - Set broadcast address\npointopoint ADDR - PPP and PPPOE use this instead of \"route add default gw\"\nhw TYPE ADDR     - set hardware (mac) address (type = ether|infiniband)\n\nFlags you can set on an interface (or -remove by prefixing with -):\n\narp       - don't use Address Resolution Protocol to map LAN routes\npromisc   - don't discard packets that aren't to this LAN hardware address\nmulticast - force interface into multicast mode if the driver doesn't\nallmulti  - promisc for multicast packets"
+#define HELP_ifconfig "usage: ifconfig [-aS] [INTERFACE [ACTION...]]\n\nDisplay or configure network interface.\n\nWith no arguments, display active interfaces. First argument is interface\nto operate on, one argument by itself displays that interface.\n\n-a	All interfaces displayed, not just active ones\n-S	Short view, one line per interface\n\nStandard ACTIONs to perform on an INTERFACE:\n\nADDR[/MASK]        - set IPv4 address (1.2.3.4/5) and activate interface\nadd|del ADDR[/LEN] - add/remove IPv6 address (1111::8888/128)\nup|down            - activate or deactivate interface\n\nAdvanced ACTIONs (default values usually suffice):\n\ndefault          - remove IPv4 address\nnetmask ADDR     - set IPv4 netmask via 255.255.255.0 instead of /24\ntxqueuelen LEN   - number of buffered packets before output blocks\nmtu LEN          - size of outgoing packets (Maximum Transmission Unit)\nbroadcast ADDR   - Set broadcast address\npointopoint ADDR - PPP and PPPOE use this instead of \"route add default gw\"\nhw TYPE ADDR     - set hardware (mac) address (type = ether|infiniband)\nrename NEWNAME   - rename interface\n\nFlags you can set on an interface (or -remove by prefixing with -):\n\narp       - don't use Address Resolution Protocol to map LAN routes\npromisc   - don't discard packets that aren't to this LAN hardware address\nmulticast - force interface into multicast mode if the driver doesn't\nallmulti  - promisc for multicast packets"
 
 #define HELP_host "usage: host [-v] [-t TYPE] NAME [SERVER]\n\nLook up DNS records for NAME, either domain name or IPv4/IPv6 address to\nreverse lookup, from SERVER or default DNS server(s).\n\n-a	All records\n-t TYPE	Record TYPE (number or ANY A AAAA CNAME MX NS PTR SOA SRV TXT)\n-v	Verbose"
 
@@ -215,6 +213,12 @@
 #define HELP_pivot_root "usage: pivot_root OLD NEW\n\nSwap OLD and NEW filesystems (as if by simultaneous mount --move), and\nmove all processes with chdir or chroot under OLD into NEW (including\nkernel threads) so OLD may be unmounted.\n\nThe directory NEW must exist under OLD. This doesn't work on initramfs,\nwhich can't be moved (about the same way PID 1 can't be killed; see\nswitch_root instead)."
 
 #define HELP_partprobe "usage: partprobe DEVICE...\n\nTell the kernel about partition table changes\n\nAsk the kernel to re-read the partition table on the specified devices."
+
+#define HELP_deallocvt "usage: deallocvt [NUM]\n\nDeallocate unused virtual terminals, either a specific /dev/ttyNUM, or all."
+
+#define HELP_chvt "usage: chvt NUM\n\nChange to virtual terminal number NUM. (This only works in text mode.)\n\nVirtual terminals are the Linux VGA text mode (or framebuffer) displays,\nswitched between via alt-F1, alt-F2, etc. Use ctrl-alt-F1 to switch\nfrom X11 to a virtual terminal, and alt-F6 (or F7, or F8) to get back."
+
+#define HELP_openvt "usage: openvt [-c NUM] [-sw] COMMAND...\n\nRun COMMAND on a new virtual terminal.\n\n-c NUM  Use VT NUM\n-s    Switch to the new VT\n-w    Wait for command to exit (with -s, deallocates VT on exit)"
 
 #define HELP_oneit "usage: oneit [-prn3] [-c CONSOLE] [COMMAND...]\n\nSimple init program that runs a single supplied command line with a\ncontrolling tty (so CTRL-C can kill it).\n\n-c	Which console device to use (/dev/console doesn't do CTRL-C, etc)\n-p	Power off instead of rebooting when command exits\n-r	Restart child when it exits\n-n	No reboot, just relaunch command line\n-3	Write 32 bit PID of each exiting reparented process to fd 3 of child\n	(Blocking writes, child must read to avoid eventual deadlock.)\n\nSpawns a single child process (because PID 1 has signals blocked)\nin its own session, reaps zombies until the child exits, then\nreboots the system (or powers off with -p, or restarts the child with -r).\n\nResponds to SIGUSR1 by halting the system, SIGUSR2 by powering off,\nand SIGTERM or SIGINT reboot."
 
@@ -312,8 +316,6 @@
 
 #define HELP_clear "Clear the screen."
 
-#define HELP_chvt "usage: chvt N\n\nChange to virtual terminal number N. (This only works in text mode.)\n\nVirtual terminals are the Linux VGA text mode displays, ordinarily\nswitched between via alt-F1, alt-F2, etc. Use ctrl-alt-F1 to switch\nfrom X to a virtual terminal, and alt-F6 (or F7, or F8) to get back."
-
 #define HELP_chrt "usage: chrt [-Rmofrbi] {-p PID [PRIORITY] | [PRIORITY COMMAND...]}\n\nGet/set a process' real-time scheduling policy and priority.\n\n-p	Set/query given pid (instead of running COMMAND)\n-R	Set SCHED_RESET_ON_FORK\n-m	Show min/max priorities available\n\nSet policy (default -r):\n\n  -o  SCHED_OTHER    -f  SCHED_FIFO    -r  SCHED_RR\n  -b  SCHED_BATCH    -i  SCHED_IDLE"
 
 #define HELP_chroot "usage: chroot NEWROOT [COMMAND [ARG...]]\n\nRun command within a new root directory. If no command, run /bin/sh."
@@ -348,7 +350,7 @@
 
 #define HELP_wget_libtls "Enable HTTPS support for wget by linking to LibTLS.\nSupports using libtls, libretls or libtls-bearssl."
 
-#define HELP_wget "usage: wget [OPTIONS]... [URL]\n    --max-redirect          maximum redirections allowed\n-d, --debug                 print lots of debugging information\n-O, --output-document=FILE  specify output filename\n\nexamples:\n  wget http://www.example.com"
+#define HELP_wget "usage: wget [OPTIONS]... [URL]\n    --max-redirect          maximum redirections allowed\n-d, --debug                 print lots of debugging information\n-O, --output-document=FILE  specify output filename\n-p, --post-data=DATA        send data in body of POST request\n\nexamples:\n  wget http://www.example.com"
 
 #define HELP_vi "usage: vi [-s script] FILE\n-s script: run script file\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical."
 
@@ -407,10 +409,6 @@
 #define HELP_sh "usage: sh [-c command] [script]\n\nCommand shell.  Runs a shell script, or reads input interactively\nand responds to it.\n\n-c	command line to execute\n-i	interactive mode (default when STDIN is a tty)"
 
 #define HELP_route "usage: route [-ne] [-A [inet|inet6]] [add|del TARGET [OPTIONS]]\n\nDisplay, add or delete network routes in the \"Forwarding Information Base\",\nwhich send packets out a network interface to an address.\n\n-n	Show numerical addresses (no DNS lookups)\n-e	display netstat fields\n\nAssigning an address to an interface automatically creates an appropriate\nnetwork route (\"ifconfig eth0 10.0.2.15/8\" does \"route add 10.0.0.0/8 eth0\"\nfor you), although some devices (such as loopback) won't show it in the\ntable. For machines more than one hop away, you need to specify a gateway\n(ala \"route add default gw 10.0.2.2\").\n\nThe address \"default\" is a wildcard address (0.0.0.0/0) matching all\npackets without a more specific route.\n\nAvailable OPTIONS include:\nreject   - blocking route (force match failure)\ndev NAME - force matching packets out this interface (ala \"eth0\")\nnetmask  - old way of saying things like ADDR/24\ngw ADDR  - forward packets to gateway ADDR"
-
-#define HELP_deallocvt "usage: deallocvt [NUM]\n\nDeallocate unused virtual terminals, either a specific /dev/ttyNUM, or all."
-
-#define HELP_openvt "usage: openvt [-c NUM] [-sw] [COMMAND...]\n\nStart a program on a new virtual terminal.\n\n-c NUM  Use VT NUM\n-s    Switch to new VT\n-w    Wait for command to exit\n\nTogether -sw switch back to originating VT when command completes."
 
 #define HELP_more "usage: more [FILE...]\n\nView FILE(s) (or stdin) one screenfull at a time."
 
@@ -530,7 +528,7 @@
 
 #define HELP_tee "usage: tee [-ai] [FILE...]\n\nCopy stdin to each listed file, and also to stdout.\nFilename \"-\" is a synonym for stdout.\n\n-a	Append to files\n-i	Ignore SIGINT"
 
-#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [--selinux] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude    --full-time   Show seconds with -tv\n--mode MODE      Adjust modes           --mtime TIME  Override timestamps\n--owner NAME     Set file owner to NAME --group NAME  Set file group to NAME\n--sparse         Record sparse files    --selinux     Record/restore labels\n--restrict       All archive contents must extract under one subdirectory\n--numeric-owner  Save/use/display uid and gid, not user/group name\n--no-recursion   Don't store directory contents\n-I PROG          Filter through PROG to compress or PROG -d to decompress"
+#define HELP_tar "usage: tar [-cxt] [-fvohmjkOS] [-XTCf NAME] [--selinux] [FILE...]\n\nCreate, extract, or list files in a .tar (or compressed t?z) file.\n\nOptions:\nc  Create                x  Extract               t  Test (list)\nf  tar FILE (default -)  C  Change to DIR first   v  Verbose display\no  Ignore owner          h  Follow symlinks       m  Ignore mtime\nJ  xz compression        j  bzip2 compression     z  gzip compression\nO  Extract to stdout     X  exclude names in FILE T  include names in FILE\n\n--exclude        FILENAME to exclude  --full-time         Show seconds with -tv\n--mode MODE      Adjust permissions   --owner NAME[:UID]  Set file ownership\n--mtime TIME     Override timestamps  --group NAME[:GID]  Set file group\n--sparse         Record sparse files  --selinux           Save/restore labels\n--restrict       All under one dir    --no-recursion      Skip dir contents\n--numeric-owner  Use numeric uid/gid, not user/group names\n--strip-components NUM  Ignore first NUM directory components when extracting\n-I PROG          Filter through PROG to compress or PROG -d to decompress"
 
 #define HELP_tail "usage: tail [-n|c NUMBER] [-f|F] [-s SECONDS] [FILE...]\n\nCopy last lines from files to stdout. If no files listed, copy from\nstdin. Filename \"-\" is a synonym for stdin.\n\n-n	Output the last NUMBER lines (default 10), +X counts from start\n-c	Output the last NUMBER bytes, +NUMBER counts from start\n-f	Follow FILE(s) by descriptor, waiting for more data to be appended\n-F	Follow FILE(s) by filename, waiting for more data, and retrying\n-s	Used with -F, sleep SECONDS between retries (default 1)"
 
