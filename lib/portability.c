@@ -623,26 +623,45 @@ int get_block_device_size(int fd, unsigned long long* size)
 }
 #endif
 
-// TODO copy_file_range
+static ssize_t copy_file_range_wrap(int infd, off_t *inoff, int outfd,
+    off_t *outoff, size_t len, unsigned flags)
+{
+  // glibc added this constant in git at the end of 2017, shipped in 2018-02.
+#if defined(__NR_copy_file_range)
+  return syscall(__NR_copy_file_range, infd, inoff, outfd, outoff, len, flags);
+#else
+  errno = EINVAL;
+  return -1;
+#endif
+}
+
 // Return bytes copied from in to out. If bytes <0 copy all of in to out.
-// If consuemd isn't null, amount read saved there (return is written or error)
+// If consumed isn't null, amount read saved there (return is written or error)
 long long sendfile_len(int in, int out, long long bytes, long long *consumed)
 {
   long long total = 0, len, ww;
+  int copy_file_range = CFG_TOYBOX_COPYFILERANGE;
 
   if (consumed) *consumed = 0;
   if (in<0) return 0;
   while (bytes != total) {
     ww = 0;
     len = bytes-total;
-    if (bytes<0 || len>sizeof(libbuf)) len = sizeof(libbuf);
 
     errno = 0;
-#if CFG_TOYBOX_COPYFILERANGE
-    len = copy_file_range(in, 0, out, 0, bytes, 0);
-#else
-    ww = len = read(in, libbuf, len);
-#endif
+    if (copy_file_range) {
+      if (bytes<0 || bytes>(1<<30)) len = (1<<30);
+      len = copy_file_range_wrap(in, 0, out, 0, len, 0);
+      if (len < 0 && errno == EINVAL) {
+        copy_file_range = 0;
+
+        continue;
+      }
+    }
+    if (!copy_file_range) {
+      if (bytes<0 || len>sizeof(libbuf)) len = sizeof(libbuf);
+      ww = len = read(in, libbuf, len);
+    }
     if (len<1 && errno==EAGAIN) continue;
     if (len<1) break;
     if (consumed) *consumed += len;
