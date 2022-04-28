@@ -26,7 +26,7 @@
  * todo: Add support for Transfer Encoding (gzip|deflate)
  * todo: Add support for RFC5987
 
-USE_WGET(NEWTOY(wget, "<1>1(max-redirect)#<0=20d(debug)O(output-document):", TOYFLAG_USR|TOYFLAG_BIN))
+USE_WGET(NEWTOY(wget, "<1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):", TOYFLAG_USR|TOYFLAG_BIN))
 
 config WGET
   bool "wget"
@@ -36,6 +36,7 @@ config WGET
         --max-redirect          maximum redirections allowed
     -d, --debug                 print lots of debugging information
     -O, --output-document=FILE  specify output filename
+    -p, --post-data=DATA        send data in body of POST request
 
     examples:
       wget http://www.example.com
@@ -70,20 +71,14 @@ config WGET_OPENSSL
 #else
 #define WGET_SSL 0
 #endif
+#define HTTPS (WGET_SSL && TT.https)
 
-#define WGET_FILENAME         "Content-Disposition: attachment; filename="
-#define WGET_CHUNKED          "transfer-encoding: chunked"
-#define WGET_LOCATION         "Location: "
-#define WGET_LIBTLS_PROTOCOLS "tlsv1.2"
-
-#define WGET_IS_HTTP  (strncmp(TT.url, "http://", 7) == 0)
-#define WGET_IS_HTTPS (WGET_SSL && (strncmp(TT.url, "https://", 8) == 0))
 
 GLOBALS(
-  char *filename;
-  long redirects;
+  char *p, *O;
+  long max_redirect;
 
-  int sock;
+  int sock, https;
   char *url;
 #if CFG_WGET_LIBTLS
   struct tls *tls;
@@ -93,65 +88,52 @@ GLOBALS(
 #endif
 )
 
-static char *wget_strncaseafter(char *haystack, char *needle)
-{
-  char *result = strcasestr(haystack, needle);
-  if (result) result = result + strlen(needle);
-  return result;
-}
-
 // get http info in URL
 static void wget_info(char *url, char **host, char **port, char **path)
 {
-  *host = strafter(url, "://");
-  *path = strchr(*host, '/');
+  char *ss = url;
 
-  if ((*path = strchr(*host, '/'))) {
-    **path = '\0';
-    *path = *path + 1;
-  } else {
-    *path = "";
+  // Must start with case insensitive http:// or https://
+  if (strncmp(url, "http", 4)) url = 0;
+  else {
+    url += 4;
+    if ((TT.https = WGET_SSL && toupper(*url=='s'))) url++;
+    if (!strstart(&url, "://")) url = 0;
   }
+  if (!url) error_exit("unsupported protocol: %s", ss);
 
-  if ( *host[0] == '[' && strchr(*host, ']') ) { // IPv6
-    *port = strafter(*host, "]:");
-    *host = *host + 1;
-    strchr(*host, ']')[0] = '\0';
-  } else { // IPv4
-    if ((*port = strchr(*host, ':'))) {
-      **port = '\0';
-      *port = *port + 1;
-    }
-  }
+  if ((*path = strchr(*host = url, '/'))) *((*path)++) = 0;
+  else *path = "";
 
-  if (!*port && WGET_IS_HTTP) *port = "80";
-  else if (!*port && WGET_IS_HTTPS) *port = "443";
-  else if (!*port) error_exit("unsupported protocol");
+  // Get port number and trim literal IPv6 addresses
+  if (**host=='[' && (ss = strchr(++*host, ']'))) {
+    *ss++ = 0;
+    *port = (*ss==':') ? ++ss : 0;
+  } else if ((*port = strchr(*host, ':'))) *(*port++) = 0;
+  if (!*port) *port = HTTPS ? "443" : "80";
 }
 
 static void wget_connect(char *host, char *port)
 {
-  if (WGET_IS_HTTP) {
-    struct addrinfo *a =
-        xgetaddrinfo(host, port, AF_UNSPEC, SOCK_STREAM, 0, 0);
-    TT.sock = xconnectany(a);
-  } else if (WGET_IS_HTTPS) {
+  if (!HTTPS)
+    TT.sock = xconnectany(xgetaddrinfo(host, port, AF_UNSPEC, SOCK_STREAM, 0, 0));
+  else {
 #if CFG_WGET_LIBTLS
     struct tls_config *cfg = NULL;
     uint32_t protocols;
-    if ((TT.tls = tls_client()) == NULL)
+    if (!(TT.tls = tls_client()))
       error_exit("tls_client: %s", tls_error(TT.tls));
-    if ((cfg = tls_config_new()) == NULL)
+    if (!(cfg = tls_config_new()))
       error_exit("tls_config_new: %s", tls_config_error(cfg));
-    if (tls_config_parse_protocols(&protocols, WGET_LIBTLS_PROTOCOLS) != 0)
+    if (tls_config_parse_protocols(&protocols, "tlsv1.2"))
       error_exit("tls_config_parse_protocols");
-    if (tls_config_set_protocols(cfg, protocols) != 0)
+    if (tls_config_set_protocols(cfg, protocols))
       error_exit("tls_config_set_protocols: %s", tls_config_error(cfg));
-    if (tls_configure(TT.tls, cfg) != 0)
+    if (tls_configure(TT.tls, cfg))
       error_exit("tls_configure: %s", tls_error(TT.tls));
     tls_config_free(cfg);
 
-    if (tls_connect(TT.tls, host, port) != 0)
+    if (tls_connect(TT.tls, host, port))
       error_exit("tls_connect: %s", tls_error(TT.tls));
 #elif CFG_WGET_OPENSSL
     SSL_library_init();
@@ -162,9 +144,7 @@ static void wget_connect(char *host, char *port)
     TT.ctx = SSL_CTX_new(TLS_client_method());
     if (!TT.ctx) error_exit("SSL_CTX_new");
 
-    struct addrinfo *a =
-        xgetaddrinfo(host, port, AF_UNSPEC, SOCK_STREAM, 0, 0);
-    TT.sock = xconnectany(a);
+    TT.sock = xconnectany(xgetaddrinfo(host, port, AF_UNSPEC, SOCK_STREAM, 0, 0));
 
     TT.ssl = SSL_new(TT.ctx);
     if (!TT.ssl)
@@ -180,39 +160,42 @@ static void wget_connect(char *host, char *port)
 
     if (FLAG(d)) printf("TLS: %s\n", SSL_get_cipher(TT.ssl));
 #endif
-  } else error_exit("unsupported protocol");
+  }
 }
 
 static size_t wget_read(void *buf, size_t len)
 {
-  if (WGET_IS_HTTP) return xread(TT.sock, buf, len);
-  else if (WGET_IS_HTTPS) {
+  if (!HTTPS) return xread(TT.sock, buf, len);
+  else {
+    char *err = 0;
+    int ret;
+
 #if CFG_WGET_LIBTLS
-   ssize_t ret = tls_read(TT.tls, buf, len);
-   if (ret < 0) error_exit("tls_read: %s", tls_error(TT.tls));
-   return ret;
+    if ((ret = tls_read(TT.tls, buf, len))<0) err = tls_error(TT.tls);
 #elif CFG_WGET_OPENSSL
-   int ret = SSL_read(TT.ssl, buf, (int) len);
-   if (ret < 0)
-     error_exit("SSL_read: %s", ERR_error_string(ERR_get_error(), NULL));
-   return ret;
+    if ((ret = SSL_read(TT.ssl, buf, len))<0)
+      err = ERR_error_string(ERR_get_error(), 0);
 #endif
-  } else error_exit("unsupported protocol");
+    if (err) error_exit("https read: %s", err);
+
+    return ret;
+  }
 }
 
 static void wget_write(void *buf, size_t len)
 {
-  if (WGET_IS_HTTP) {
-    xwrite(TT.sock, buf, len);
-  } else if (WGET_IS_HTTPS) {
+  if (!HTTPS) xwrite(TT.sock, buf, len);
+  else {
+    char *err = 0;
+
 #if CFG_WGET_LIBTLS
-    if (len != tls_write(TT.tls, buf, len))
-      error_exit("tls_write: %s", tls_error(TT.tls));
+    if (len != tls_write(TT.tls, buf, len)) err = tls_error(TT.tls);
 #elif CFG_WGET_OPENSSL
-    if (len != SSL_write(TT.ssl, buf, (int) len))
-      error_exit("SSL_write: %s", ERR_error_string(ERR_get_error(), NULL));
+    if (len != SSL_write(TT.ssl, buf, len))
+      err = ERR_error_string(ERR_get_error(), 0);
 #endif
-  } else error_exit("unsupported protocol");
+    if (err) error_exit("https write: %s", err);
+  }
 }
 
 static void wget_close()
@@ -226,120 +209,100 @@ static void wget_close()
   if (TT.tls) {
     tls_close(TT.tls);
     tls_free(TT.tls);
-    TT.tls = NULL;
+    TT.tls = 0;
   }
 #elif CFG_WGET_OPENSSL
   if (TT.ssl) {
     SSL_shutdown(TT.ssl);
     SSL_free(TT.ssl);
-    TT.ssl = NULL;
+    TT.ssl = 0;
   }
 
   if (TT.ctx) {
     SSL_CTX_free(TT.ctx);
-    TT.ctx = NULL;
+    TT.ctx = 0;
   }
 #endif
 }
 
-static char* wget_find_header(char *header, char *val) {
-  char *v= wget_strncaseafter(header, val);
-  return v;
-}
-
-static int wget_has_header(char *header, char *val)
+static char *wget_find_header(char *header, char *val)
 {
-  return wget_find_header(header, val) != NULL;
-}
+  char *result = strcasestr(header, val);
 
-static char *wget_redirect(char *header)
-{
-  char *redir = wget_find_header(header, WGET_LOCATION);
-  if (!redir) error_exit("could not parse redirect URL");
-  return xstrndup(redir, stridx(redir, '\r'));
-}
+  if (result) {
+    result += strlen(val);
+    result[strcspn(result, "\r\n")] = 0;
+  }
 
-static char *wget_filename(char *header, char *path)
-{
-  char *f = wget_find_header(header, WGET_FILENAME);
-  if (f) strchr(f, '\r')[0] = '\0';
-
-  if (!f && strchr(path, '/')) f = getbasename(path);
-  if (!f || !(*f) ) f = "index.html";
-
-  return f;
+  return result;
 }
 
 void wget_main(void)
 {
   long status = 0;
   size_t len, c_len = 0;
-  int fd, chunked;
-  char *body, *index, *host, *port, *path;
+  int fd = 0;
+  char *body, *index, *host, *port, *path, *chunked, *ss;
   char agent[] = "toybox wget/" TOYBOX_VERSION;
 
-  TT.url = xstrdup(toys.optargs[0]);
+  TT.url = xstrdup(*toys.optargs);
 
-  for (;status != 200; TT.redirects--) {
-    if (TT.redirects < 0) error_exit("Too many redirects");
+  // Ask server for URL, following redirects until success
+  while (status != 200) {
+    if (!TT.max_redirect--) error_exit("Too many redirects");
 
+    // Connect and write request
     wget_info(TT.url, &host, &port, &path);
-
-    sprintf(toybuf, "GET /%s HTTP/1.1\r\nHost: %s\r\n"
-                    "User-Agent: %s\r\nConnection: close\r\n\r\n",
-                    path, host, agent);
-    if (FLAG(d)) printf("--- Request\n%s", toybuf);
-
+    if (TT.p) sprintf(toybuf, "Content-Length: %ld\r\n", strlen(TT.p));
+    ss = xmprintf("%s /%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\n"
+                  "Connection: close\r\n%s\r\n%s", FLAG(p) ? "POST" : "GET",
+                  path, host, agent, FLAG(p) ? toybuf : "", FLAG(p)?TT.p:"");
+    if (FLAG(d)) printf("--- Request\n%s", ss);
     wget_connect(host, port);
-    wget_write(toybuf, strlen(toybuf));
+    wget_write(ss, strlen(ss));
+    free(ss);
 
-    // Greedily read the HTTP response until either complete or toybuf is full
-    index = toybuf;
-    while ((len = wget_read(index, sizeof(toybuf) - (index - toybuf))) > 0)
-      index += len;
+    // Read HTTP response into toybuf (probably with some body at end)
+    for (index = toybuf;
+      (len = wget_read(index, sizeof(toybuf)-(index-toybuf)))>0; index += len);
 
-    //Process the response such that
-    //  Valid ranges  toybuf[0...index)      valid length is (index - toybuf)
-    //  Header ranges toybuf[0...body)       header length strlen(toybuf)
-    //  Remnant Body  toybuf[body...index)   valid remnant body length is len
-    //
-    // Per RFC7230 the header cannot contain a NUL octet so we NUL terminate at
-    // the footer of the header. This allows for normal string functions to be
-    // used when processing the header.
-    body = memmem(toybuf, index - toybuf, "\r\n\r\n", 4);
-    if (!body) error_exit("response header too large");
-    body[0] = '\0'; // NUL terminate the headers
-    body += 4; // Skip to the head of body
-    len = index - body; // Adjust len to be body length
+    // Split response into header and body, and null terminate header.
+    // (RFC7230 says header cannot contain NUL.)
+    if (!(body = memmem(ss = toybuf, index-toybuf, "\r\n\r\n", 4)))
+      error_exit("response header too large");
+    *body = 0;
+    body += 4;
+    len = index-body;
     if (FLAG(d)) printf("--- Response\n%s\n\n", toybuf);
 
-    status = strtol(strafter(toybuf, " "), NULL, 10);
+    status = strstart(&ss, "HTTP/1.1 ") ? strtol(ss, 0, 10) : 0;
     if ((status == 301) || (status == 302)) {
+      if (!(ss = wget_find_header(toybuf, "Location: ")))
+        error_exit("bad redirect");
       free(TT.url);
-      TT.url = wget_redirect(toybuf);
+      TT.url = xstrdup(ss);
       wget_close();
     } else if (status != 200) error_exit("response: %ld", status);
   }
 
-  if (!FLAG(O)) {
-    TT.filename = wget_filename(toybuf, path);
-    if (!access(TT.filename, F_OK))
-      error_exit("%s already exists", TT.filename);
+  // Open output file
+  if (TT.O && !strcmp(TT.O, "-")) fd = 1;
+  else if (!TT.O) {
+    ss = wget_find_header(toybuf, "Content-Disposition: attachment; filename=");
+    if (!ss && strchr(path, '/')) ss = getbasename(path);
+    if (!ss || !*ss ) ss = "index.html";
+    if (!access((TT.O = ss), F_OK)) error_exit("%s already exists", TT.O);
   }
-  fd = xcreate(TT.filename, (O_WRONLY|O_CREAT|O_TRUNC), 0644);
-
-  chunked = wget_has_header(toybuf, WGET_CHUNKED);
+  // TODO: don't allow header/basename to write to stdout
+  if (!fd) fd = xcreate(TT.O, (O_WRONLY|O_CREAT|O_TRUNC), 0644);
 
   // If chunked we offset the first buffer by 2 character, meaning it is
   // pointing at half of the header boundary, aka '\r\n'. This simplifies
   // parsing of the first c_len length by allowing the do while loop to fall
   // through on the first iteration and parse the first c_len size.
-  if (chunked) {
-    len = len + 2;
-    memmove(toybuf, body - 2, len);
-  } else {
-    memmove(toybuf, body, len);
-  }
+  chunked = wget_find_header(toybuf, "transfer-encoding: chunked");
+  if (chunked) memmove(toybuf, body-2, len += 2);
+  else memmove(toybuf, body, len);
 
   // len is the size remaining in toybuf
   // c_len is the size of the remaining bytes in the current chunk
@@ -360,7 +323,7 @@ void wget_main(void)
 
       // If len is less than 2 we can't validate the chunk boundary so fall
       // through and go read more into toybuf.
-      if ((c_len == 0) && (len > 2)) {
+      if (!c_len && (len > 2)) {
         char *c;
         if (strncmp(toybuf, "\r\n", 2) != 0) error_exit("chunk boundary");
 
@@ -369,7 +332,7 @@ void wget_main(void)
         c = memmem(toybuf + 2, len - 2, "\r\n",2);
         if (c) {
           c_len = strtol(toybuf + 2, NULL, 16);
-          if (c_len == 0) goto exit; // A c_len of zero means we are complete
+          if (!c_len) break; // A c_len of zero means we are complete
           len = len - (c - toybuf) - 2;
           memmove(toybuf, c + 2, len);
         }
@@ -382,7 +345,6 @@ void wget_main(void)
     }
   } while ((len += wget_read(toybuf + len, sizeof(toybuf) - len)) > 0);
 
-  exit:
   wget_close();
   free(TT.url);
 }
