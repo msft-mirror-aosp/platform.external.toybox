@@ -83,37 +83,6 @@ GLOBALS(
 #endif
 )
 
-char *escape_url(char *str)
-{
-  int i, count;
-  char *s;
-
-  for (i = count = 0; str[i]; i++) if (isspace(str[i])) count++;
-  s = xmalloc(i+1+count*2);
-  for (i = 0;;) {
-    if (isspace(*str)) i += sprintf(s+i, "%%%02x", *str++);
-    else if (!(s[i++] = *str++)) break;
-  }
-
-  return s;
-}
-
-void unescape_url(char *str)
-{
-  char *to;
-  int i;
-
-  for (to = str;;) {
-    if (*str!='%' || !isxdigit(str[1]) || !isxdigit(str[2])) {
-      if (!(*to++ = *str++)) break;
-    } else {
-      sscanf(++str, "%2x", &i);
-      *to++ = i;
-      str += 2;
-    }
-  }
-}
-
 // get http info in URL
 static void wget_info(char *url, char **host, char **port, char **path)
 {
@@ -134,7 +103,7 @@ static void wget_info(char *url, char **host, char **port, char **path)
   if (**host=='[' && (ss = strchr(++*host, ']'))) {
     *ss++ = 0;
     *port = (*ss==':') ? ++ss : 0;
-  } else if ((*port = strchr(*host, ':'))) *(*port++) = 0;
+  } else if ((*port = strchr(*host, ':'))) *((*port)++) = 0;
   if (!*port) *port = HTTPS ? "443" : "80";
 }
 
@@ -266,7 +235,7 @@ void wget_main(void)
   char *body, *index, *host, *port, *path = 0, *chunked, *ss;
   char agent[] = "toybox wget/" TOYBOX_VERSION;
 
-  TT.url = escape_url(*toys.optargs);
+  TT.url = escape_url(*toys.optargs, 0);
 
   // Ask server for URL, following redirects until success
   while (status != 200) {
@@ -303,7 +272,7 @@ void wget_main(void)
       free(TT.url);
       TT.url = ss;
       wget_close();
-    } else if (status != 200) error_exit("response: %ld", status);
+    } else if (status != 200) error_exit("response %ld", status);
   }
 
   // Open output file
