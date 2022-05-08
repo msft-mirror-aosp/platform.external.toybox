@@ -81,9 +81,10 @@ config CD
   default n
   depends on SH
   help
-    usage: cd [-PL] [path]
+    usage: cd [-PL] [-] [path]
 
-    Change current directory.  With no arguments, go $HOME.
+    Change current directory. With no arguments, go $HOME. Sets $OLDPWD to
+    previous directory: cd - to return to $OLDPWD.
 
     -P	Physical path: resolve symlinks in path
     -L	Local path: .. trims directories off $PWD (default)
@@ -255,7 +256,7 @@ GLOBALS(
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
+  int hfd, pid, bangpid, varslen, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -329,6 +330,9 @@ static const char *redirectors[] = {"<<<", "<<-", "<<", "<&", "<>", "<", ">>",
 #define OPT_C	0x200
 #define OPT_x	0x400
 
+// only export $PWD and $OLDPWD on first cd
+#define OPT_cd  0x80000000
+
 // struct sh_process->flags
 #define PFLAG_NOT    1
 
@@ -346,6 +350,7 @@ void debug_show_fds()
   struct dirent *DE;
   char *s, *ss = 0, buf[4096], *sss = buf;
 
+  if (!X) return;
   for (; (DE = readdir(X));) {
     if (atoi(DE->d_name) == fd) continue;
     s = xreadlink(ss = xmprintf("/proc/self/fd/%s", DE->d_name));
@@ -484,7 +489,7 @@ static int recalculate(long long *dd, char **ss, int lvl)
   // Always start handling unary prefixes, parenthetical blocks, and constants
   if (cc=='+' || cc=='-') {
     ++*ss;
-    if (!recalculate(dd, ss, 1) || **ss) return 0;
+    if (!recalculate(dd, ss, 1)) return 0;
     if (cc=='-') *dd = -*dd;
   } else if (cc=='(') {
     ++*ss;
@@ -1543,7 +1548,7 @@ static void wildcard_add_files(struct sh_arg *arg, char *pattern,
   if (!dt) return arg_add(arg, pattern);
   while (dt) {
     while (dt->child) dt = dt->child;
-    arg_add(arg, dirtree_path(dt, 0));
+    arg_add(arg, push_arg(delete, dirtree_path(dt, 0)));
     do {
       pp = (void *)dt;
       if ((dt = dt->parent)) dt->child = dt->child->next;
@@ -2281,9 +2286,7 @@ static struct sh_process *expand_redir(struct sh_arg *arg, int skip, int *urd)
   for (j = skip; j<arg->c; j++) {
     int saveclose = 0, bad = 0;
 
-    s = arg->v[j];
-
-    if (!strcmp(s, "!")) {
+    if (!strcmp(s = arg->v[j], "!")) {
       pp->flags ^= PFLAG_NOT;
 
       continue;
@@ -2885,8 +2888,10 @@ funky:
 
       // Stop at EOL. Discard blank pipeline segment, else end segment
       if (end == start) done++;
-      if (!pl->type && !arg->c) free_pipeline(dlist_lpop(ppl));
-      else pl->count = -1;
+      if (!pl->type && !arg->c) {
+        free_pipeline(dlist_lpop(ppl));
+        pl = *ppl ? (*ppl)->prev : 0;
+      } else pl->count = -1;
 
       continue;
     }
@@ -3305,6 +3310,7 @@ static char *get_next_line(FILE *ff, int prompt)
 // TODO: ctrl-z during script read having already read partial line,
 // SIGSTOP and SIGTSTP need SA_RESTART, but child proc should stop
 // TODO if (!isspace(*new)) add_to_history(line);
+// TODO: embedded nul bytes need signaling for the "tried to run binary" test.
 
   for (new = 0, len = 0;;) {
     errno = 0;
@@ -3759,7 +3765,7 @@ int do_source(char *name, FILE *ff)
     // did we exec an ELF file or something?
     if (!TT.LINENO++ && name && new) {
       // A shell script's first line has no high bytes that aren't valid utf-8.
-      for (ii = 0; new[ii] && 0<(cc = utf8towc(&wc, new+ii, 4)); ii += cc);
+      for (ii = 0; new[ii]>6 && 0<(cc = utf8towc(&wc, new+ii, 4)); ii += cc);
       if (new[ii]) {
 is_binary:
         if (name) error_msg("'%s' is binary", name); // TODO syntax_err() exit?
@@ -3994,68 +4000,58 @@ void sh_main(void)
 #include "generated/flags.h"
 void cd_main(void)
 {
-  char *home = getvar("HOME") ? : "/", *pwd = getvar("PWD"), *from, *to = 0,
-    *dd = xstrdup(*toys.optargs ? *toys.optargs : home);
-  int bad = 0;
+  char *from, *to = 0, *dd = *toys.optargs ? : (getvar("HOME") ? : "/"),
+       *pwd = FLAG(P) ? 0 : getvar("PWD"), *zap = 0;
+  struct stat st1, st2;
 
   // TODO: CDPATH? Really?
 
-  // prepend cwd or $PWD to relative path
-  if (*dd != '/') {
-    from = pwd ? : (to = getcwd(0, 0));
-    if (!from) setvarval("PWD", "(nowhere)");
-    else {
-      from = xmprintf("%s/%s", from, dd);
-      free(dd);
-      free(to);
-      dd = from;
-    }
-  }
+  // For cd - use $OLDPWD as destination directory
+  if (!strcmp(dd, "-") && (!(dd = getvar("OLDPWD")) || !*dd))
+    return perror_msg("No $OLDPWD");
 
-  if (FLAG(P)) {
-    struct stat st;
-    char *pp;
+  if (*dd == '/') pwd = 0;
 
-    // Does this directory exist?
-    if ((pp = xabspath(dd, 1)) && stat(pp, &st) && !S_ISDIR(st.st_mode))
-      bad++, errno = ENOTDIR;
-    else {
-      free(dd);
-      dd = pp;
-    }
-  } else {
+  // Did $PWD move out from under us?
+  if (pwd && !stat(".", &st1))
+    if (stat(pwd, &st2) || st1.st_dev!=st2.st_dev || st1.st_ino!=st2.st_ino)
+      pwd = 0;
+
+  // Handle logical relative path
+  if (pwd) {
+    zap = xmprintf("%s/%s", pwd, dd);
 
     // cancel out . and .. in the string
-    for (from = to = dd; *from;) {
+    for (from = to = zap; *from;) {
       if (*from=='/' && from[1]=='/') from++;
       else if (*from!='/' || from[1]!='.') *to++ = *from++;
       else if (!from[2] || from[2]=='/') from += 2;
       else if (from[2]=='.' && (!from[3] || from[3]=='/')) {
         from += 3;
-        while (to>dd && *--to != '/');
+        while (to>zap && *--to != '/');
       } else *to++ = *from++;
     }
-    if (to == dd) to++;
-    if (to-dd>1 && to[-1]=='/') to--;
+    if (to == zap) to++;
+    if (to-zap>1 && to[-1]=='/') to--;
     *to = 0;
   }
 
-  if (bad || chdir(dd)) perror_msg("chdir '%s'", dd);
-  else {
-    if (pwd) {
-      setvarval("OLDPWD", pwd);
-      if (TT.cdcount == 1) {
-        export("OLDPWD");
-        TT.cdcount++;
-      }
-    }
-    setvarval("PWD", dd);
-    if (!TT.cdcount) {
-      export("PWD");
-      TT.cdcount++;
-    }
-  }
+  // If logical chdir doesn't work, fall back to physical
+  if (!zap || chdir(zap)) {
+    free(zap);
+    if (chdir(dd)) return perror_msg("%s", dd);
+    if (!(dd = getcwd(0, 0))) dd = xstrdup("(nowhere)");
+  } else dd = zap;
+
+  if ((pwd = getvar("PWD"))) setvarval("OLDPWD", pwd);
+  setvarval("PWD", dd);
   free(dd);
+
+  if (!(TT.options&OPT_cd)) {
+    export("OLDPWD");
+    export("PWD");
+    TT.options |= OPT_cd;
+  }
 }
 
 void exit_main(void)

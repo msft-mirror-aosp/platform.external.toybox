@@ -3,11 +3,6 @@
  * Copyright 2006 Rob Landley <rob@landley.net>
  */
 
-struct ptr_len {
-  void *ptr;
-  long len;
-};
-
 // llist.c
 
 // All these list types can be handled by the same code because first element
@@ -16,7 +11,7 @@ struct ptr_len {
 
 struct string_list {
   struct string_list *next;
-  char str[0];
+  char str[];
 };
 
 struct arg_list {
@@ -199,8 +194,8 @@ void perror_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
 void help_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
 void error_msg_raw(char *msg);
 void perror_msg_raw(char *msg);
-void error_exit_raw(char *msg);
-void perror_exit_raw(char *msg);
+void error_exit_raw(char *msg) __attribute__((__noreturn__));
+void perror_exit_raw(char *msg) __attribute__((__noreturn__));
 ssize_t readall(int fd, void *buf, size_t len);
 ssize_t writeall(int fd, void *buf, size_t len);
 off_t lskip(int fd, off_t offset);
@@ -260,7 +255,9 @@ int qstrcmp(const void *a, const void *b);
 void create_uuid(char *uuid);
 char *show_uuid(char *uuid);
 char *next_printf(char *s, char **start);
+struct passwd *bufgetpwnamuid(char *name, uid_t uid);
 struct passwd *bufgetpwuid(uid_t uid);
+struct group *bufgetgrnamgid(char *name, gid_t gid);
 struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
 int readlink0(char *path, char *buf, int len);
@@ -354,6 +351,8 @@ int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_ti
 char *ntop(struct sockaddr *sa);
 void xsendto(int sockfd, void *buf, size_t len, struct sockaddr *dest);
 int xrecvwait(int fd, char *buf, int len, union socksaddr *sa, int timeout);
+char *escape_url(char *str, char *and);
+void unescape_url(char *str);
 
 // password.c
 int get_salt(char *salt, char * algo);
@@ -371,6 +370,8 @@ int comma_remove(char *optlist, char *opt);
 
 long long gzip_fd(int infd, int outfd);
 long long gunzip_fd(int infd, int outfd);
+long long gunzip_fd_preload(int infd, int outfd, char *buf, unsigned len);
+
 
 // getmountlist.c
 struct mtab_list {

@@ -213,6 +213,22 @@ struct tunctl_data {
   char *u;
 };
 
+// toys/net/wget.c
+
+struct wget_data {
+  char *p, *O;
+  long max_redirect;
+
+  int sock, https;
+  char *url;
+#if CFG_WGET_LIBTLS
+  struct tls *tls;
+#elif CFG_TOYBOX_LIBCRYPTO
+  struct ssl_ctx_st *ctx;
+  struct ssl_st *ssl;
+#endif
+};
+
 // toys/other/acpi.c
 
 struct acpi_data {
@@ -395,6 +411,12 @@ struct nsenter_data {
 
 struct oneit_data {
   char *c;
+};
+
+// toys/other/openvt.c
+
+struct openvt_data {
+  long c;
 };
 
 // toys/other/pwgen.c
@@ -862,12 +884,6 @@ struct more_data {
   int cin_fd;
 };
 
-// toys/pending/openvt.c
-
-struct openvt_data {
-  long c;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -890,7 +906,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, cdcount, srclvl, recursion;
+  int hfd, pid, bangpid, varslen, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -1154,22 +1170,6 @@ struct vi_data {
       const char *data;
     } *node;
   } *slices;
-};
-
-// toys/pending/wget.c
-
-struct wget_data {
-  char *filename;
-  long redirects;
-
-  int sock;
-  char *url;
-#if CFG_WGET_LIBTLS
-  struct tls *tls;
-#elif CFG_WGET_OPENSSL
-  struct ssl_ctx_st *ctx;
-  struct ssl_st *ssl;
-#endif
 };
 
 // toys/posix/basename.c
@@ -1465,7 +1465,10 @@ struct ps_data {
     } pgrep;
   };
 
-  struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
+  struct ps_ptr_len {
+    void *ptr;
+    long len;
+  } gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
   unsigned width, height, scroll;
   dev_t tty;
@@ -1549,6 +1552,7 @@ struct tar_data {
   struct arg_list *T, *X;
   char *I, *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
+  long strip_components;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
@@ -1653,6 +1657,7 @@ extern union global_union {
 	struct ping_data ping;
 	struct sntp_data sntp;
 	struct tunctl_data tunctl;
+	struct wget_data wget;
 	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
@@ -1678,6 +1683,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
 	struct reboot_data reboot;
@@ -1728,7 +1734,6 @@ extern union global_union {
 	struct mke2fs_data mke2fs;
 	struct modprobe_data modprobe;
 	struct more_data more;
-	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
 	struct strace_data strace;
@@ -1744,7 +1749,6 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
-	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;
 	struct chgrp_data chgrp;

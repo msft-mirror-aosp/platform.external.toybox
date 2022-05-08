@@ -3,9 +3,9 @@
 # This has to be a separate file from scripts/make.sh so it can be called
 # before menuconfig.  (It's called again from scripts/make.sh just to be sure.)
 
-mkdir -p generated
-
 source scripts/portability.sh
+
+mkdir -p "$GENDIR"
 
 probecc()
 {
@@ -18,8 +18,7 @@ probesymbol()
 {
   probecc "${@:2}" 2>/dev/null && DEFAULT=y || DEFAULT=n
   rm a.out 2>/dev/null
-  echo -e "config $1\n\tbool" || exit 1
-  echo -e "\tdefault $DEFAULT\n" || exit 1
+  echo -e "config $1\n\tbool\n\tdefault $DEFAULT\n" || exit 1
 }
 
 probeconfig()
@@ -101,10 +100,12 @@ EOF
     int main(void) { char buf[100]; getrandom(buf, 100, 0); }
 EOF
 
+  # glibc requires #define GNU to get the wrapper for this Linux system call,
+  # so just use syscall().
   probesymbol TOYBOX_COPYFILERANGE << EOF
     #include <sys/syscall.h>
     #include <unistd.h>
-    int main(void) { copyfilerange(0, 0, 1, 0, 123, 0); }
+    int main(void) { syscall(__NR_copy_file_range, 0, 0, 1, 0, 123, 0); }
 EOF
   probesymbol TOYBOX_HASTIMERS << EOF
     #include <signal.h>
@@ -138,8 +139,8 @@ genconfig()
   done
 }
 
-probeconfig > generated/Config.probed || rm generated/Config.probed
-genconfig > generated/Config.in || rm generated/Config.in
+probeconfig > "$GENDIR"/Config.probed || rm "$GENDIR"/Config.probed
+genconfig > "$GENDIR"/Config.in || rm "$GENDIR"/Config.in
 
 # Find names of commands that can be built standalone in these C files
 toys()
