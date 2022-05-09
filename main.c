@@ -60,6 +60,50 @@ static const int NEED_OPTIONS =
 #include "generated/newtoys.h"
 0;  // Ends the opts || opts || opts...
 
+// Populate help text array
+
+#undef NEWTOY
+#undef OLDTOY
+#define NEWTOY(name,opt,flags) HELP_##name "\0"
+#if CFG_TOYBOX
+#define OLDTOY(name,oldname,flags) "\xff" #oldname "\0"
+#else
+#define OLDTOY(name, oldname, flags) HELP_##oldname "\0"
+#endif
+
+#include "generated/help.h"
+static char *help_data =
+#include "generated/newtoys.h"
+;
+
+void show_help(FILE *out, int full)
+{
+  int i = toys.which-toy_list;
+  char *s, *ss;
+
+  if (!(full&2))
+    fprintf(out, "Toybox %s"USE_TOYBOX(" multicall binary")"%s\n\n",
+      toybox_version, (CFG_TOYBOX && i) ? " (see toybox --help)"
+      : " (see https://landley.net/toybox)");
+
+  if (CFG_TOYBOX_HELP) {
+    for (;;) {
+      s = help_data;
+      while (i--) s += strlen(s) + 1;
+      // If it's an alias, restart search for real name
+      if (*s != 255) break;
+      i = toy_find(++s)-toy_list;
+    }
+
+    if (full) fprintf(out, "%s\n", s);
+    else {
+      strstart(&s, "usage: ");
+      for (ss = s; *ss && *ss!='\n'; ss++);
+      fprintf(out, "%.*s\n", (int)(ss-s), s);
+    }
+  }
+}
+
 static void unknown(char *name)
 {
   toys.exitval = 127;
@@ -70,8 +114,9 @@ static void unknown(char *name)
 // Parse --help and --version for (almost) all commands
 void check_help(char **arg)
 {
-  if (!CFG_TOYBOX_HELP_DASHDASH || !*arg || (toys.which->flags&TOYFLAG_NOHELP))
-    return;
+  if (!CFG_TOYBOX_HELP_DASHDASH || !*arg) return;
+  if (!CFG_TOYBOX || toys.which != toy_list)
+    if (toys.which->flags&TOYFLAG_NOHELP) return;
 
   if (!strcmp(*arg, "--help")) {
     if (CFG_TOYBOX && toys.which == toy_list && arg[1])
@@ -120,7 +165,6 @@ void toy_init(struct toy_list *which, char *argv[])
   void *oldwhich = toys.which;
 
   // Drop permissions for non-suid commands.
-
   if (CFG_TOYBOX_SUID) {
     if (!toys.which) toys.which = toy_list;
 
@@ -136,6 +180,7 @@ void toy_init(struct toy_list *which, char *argv[])
       error_msg("Not installed suid root");
 
     if ((which->flags & TOYFLAG_NEEDROOT) && euid) {
+      toys.which = which;
       check_help(argv+1);
       help_exit("Not root");
     }
@@ -192,12 +237,13 @@ void toybox_main(void)
 
   // fast path: try to exec immediately.
   // (Leave toys.which null to disable suid return logic.)
-  // Try dereferencing one layer of symlink
+  // Try dereferencing symlinks until we hit a recognized name
   while (s) {
-    struct toy_list *tl = toy_find(basename(s));
+    char *ss = basename(s);
+    struct toy_list *tl = toy_find(ss);
 
-    if (tl==toy_list && s!=toys.argv[1]) unknown(basename(s));
-    toy_exec_which(toy_find(basename(s)), toys.argv+1);
+    if (tl==toy_list && s!=toys.argv[1]) unknown(ss);
+    toy_exec_which(tl, toys.argv+1);
     s = (0<readlink(s, libbuf, sizeof(libbuf))) ? libbuf : 0;
   }
 
