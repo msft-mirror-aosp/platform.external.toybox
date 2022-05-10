@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# $1 Path to the new version.
+# $2 Path to the old version.
+
+cd $1
+
 set -e
 
 rm -rf .config generated/ android/
