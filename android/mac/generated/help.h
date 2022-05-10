@@ -130,6 +130,8 @@
 
 #define HELP_ifconfig "usage: ifconfig [-aS] [INTERFACE [ACTION...]]\n\nDisplay or configure network interface.\n\nWith no arguments, display active interfaces. First argument is interface\nto operate on, one argument by itself displays that interface.\n\n-a	All interfaces displayed, not just active ones\n-S	Short view, one line per interface\n\nStandard ACTIONs to perform on an INTERFACE:\n\nADDR[/MASK]        - set IPv4 address (1.2.3.4/5) and activate interface\nadd|del ADDR[/LEN] - add/remove IPv6 address (1111::8888/128)\nup|down            - activate or deactivate interface\n\nAdvanced ACTIONs (default values usually suffice):\n\ndefault          - remove IPv4 address\nnetmask ADDR     - set IPv4 netmask via 255.255.255.0 instead of /24\ntxqueuelen LEN   - number of buffered packets before output blocks\nmtu LEN          - size of outgoing packets (Maximum Transmission Unit)\nbroadcast ADDR   - Set broadcast address\npointopoint ADDR - PPP and PPPOE use this instead of \"route add default gw\"\nhw TYPE ADDR     - set hardware (mac) address (type = ether|infiniband)\nrename NEWNAME   - rename interface\n\nFlags you can set on an interface (or -remove by prefixing with -):\n\narp       - don't use Address Resolution Protocol to map LAN routes\npromisc   - don't discard packets that aren't to this LAN hardware address\nmulticast - force interface into multicast mode if the driver doesn't\nallmulti  - promisc for multicast packets"
 
+#define HELP_httpd "usage: httpd [DIR]\n\nServe contents of directory as static web pages."
+
 #define HELP_host "usage: host [-v] [-t TYPE] NAME [SERVER]\n\nLook up DNS records for NAME, either domain name or IPv4/IPv6 address to\nreverse lookup, from SERVER or default DNS server(s).\n\n-a	All records\n-t TYPE	Record TYPE (number or ANY A AAAA CNAME MX NS PTR SOA SRV TXT)\n-v	Verbose"
 
 #define HELP_ftpput "An ftpget that defaults to -s instead of -g"
@@ -306,7 +308,7 @@
 
 #define HELP_fallocate "usage: fallocate [-l size] [-o offset] file\n\nTell the filesystem to allocate space for a file."
 
-#define HELP_factor "usage: factor NUMBER...\n\nFactor integers."
+#define HELP_factor "usage: factor NUMBER...\n\nFactor integers.\n\n-h	Human readable: show repeated factors as x^n\n-x	Hexadecimal output"
 
 #define HELP_eject "usage: eject [-stT] [DEVICE]\n\nEject DEVICE or default /dev/cdrom\n\n-s	SCSI device\n-t	Close tray\n-T	Open/close tray (toggle)"
 
@@ -466,7 +468,7 @@
 
 #define HELP_dumpleases "usage: dumpleases [-r|-a] [-f LEASEFILE]\n\nDisplay DHCP leases granted by udhcpd\n-f FILE,  Lease file\n-r        Show remaining time\n-a        Show expiration time"
 
-#define HELP_diff "usage: diff [-abBdiNqrTstw] [-L LABEL] [-S FILE] [-U LINES] FILE1 FILE2\n\n-a	Treat all files as text\n-b	Ignore changes in the amount of whitespace\n-B	Ignore changes whose lines are all blank\n-d	Try hard to find a smaller set of changes\n-i	Ignore case differences\n-L	Use LABEL instead of the filename in the unified header\n-N	Treat absent files as empty\n-q	Output only whether files differ\n-r	Recurse\n-S	Start with FILE when comparing directories\n-T	Make tabs line up by prefixing a tab when necessary\n-s	Report when two files are the same\n-t	Expand tabs to spaces in output\n-u	Unified diff\n-U	Output LINES lines of context\n-w	Ignore all whitespace\n\n--color              Colored output\n--strip-trailing-cr  Strip trailing '\\r's from input lines"
+#define HELP_diff "usage: diff [-abBdiNqrTstw] [-L LABEL] [-S FILE] [-U LINES] FILE1 FILE2\n\n-a	Treat all files as text\n-b	Ignore changes in the amount of whitespace\n-B	Ignore changes whose lines are all blank\n-d	Try hard to find a smaller set of changes\n-i	Ignore case differences\n-L	Use LABEL instead of the filename in the unified header\n-N	Treat absent files as empty\n-q	Output only whether files differ\n-r	Recurse\n-S	Start with FILE when comparing directories\n-T	Make tabs line up by prefixing a tab when necessary\n-s	Report when two files are the same\n-t	Expand tabs to spaces in output\n-u	Unified diff\n-U	Output LINES lines of context\n-w	Ignore all whitespace\n\n--color                  Colored output\n--strip-trailing-cr      Strip trailing '\\r's from input lines\n--unchanged-line-format  Format for unchanged lines\n--old-line-format        Format for lines just in the first file\n--new-line-format        Format for lines just in the second file\n\nSupported format specifiers are:\n* %l, the contents of the line, without the trailing newline\n* %L, the contents of the line, including the trailing newline\n* %%, the character '%'"
 
 #define HELP_dhcpd "usage: dhcpd [-46fS] [-i IFACE] [-P N] [CONFFILE]\n\n -f    Run in foreground\n -i Interface to use\n -S    Log to syslog too\n -P N  Use port N (default ipv4 67, ipv6 547)\n -4, -6    Run as a DHCPv4 or DHCPv6 server"
 

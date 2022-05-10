@@ -154,6 +154,7 @@ CONFIG_HEAD=y
 # CONFIG_HOSTID is not set
 # CONFIG_HOST is not set
 CONFIG_HOSTNAME=y
+# CONFIG_HTTPD is not set
 # CONFIG_HWCLOCK is not set
 # CONFIG_I2CDETECT is not set
 # CONFIG_I2CDUMP is not set

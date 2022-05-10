@@ -282,6 +282,8 @@
 #define USE_HOST(...)
 #define CFG_HOSTNAME 1
 #define USE_HOSTNAME(...) __VA_ARGS__
+#define CFG_HTTPD 0
+#define USE_HTTPD(...)
 #define CFG_HWCLOCK 0
 #define USE_HWCLOCK(...)
 #define CFG_I2CDETECT 0
