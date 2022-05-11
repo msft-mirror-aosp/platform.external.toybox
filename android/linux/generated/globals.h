@@ -906,7 +906,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -932,11 +932,11 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
-    long varslen, shift;
+    long varslen, varscap, shift, oldlineno;
 
     struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
-    char *ifs;
+    char *ifs, *omnom;
     struct sh_arg arg;
     struct arg_list *delete;
 

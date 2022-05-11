@@ -889,12 +889,14 @@
 #undef FOR_expr
 #endif
 
-// factor    
+// factor   ?hx
 #undef OPTSTR_factor
-#define OPTSTR_factor 0
+#define OPTSTR_factor "?hx"
 #ifdef CLEANUP_factor
 #undef CLEANUP_factor
 #undef FOR_factor
+#undef FLAG_x
+#undef FLAG_h
 #endif
 
 // fallocate >1l#|o# >1l#|o#
@@ -1372,6 +1374,14 @@
 #undef FLAG_s
 #undef FLAG_d
 #undef FLAG_b
+#endif
+
+// httpd   >1
+#undef OPTSTR_httpd
+#define OPTSTR_httpd ">1"
+#ifdef CLEANUP_httpd
+#undef CLEANUP_httpd
+#undef FOR_httpd
 #endif
 
 // hwclock >0(fast)f(rtc):u(utc)l(localtime)t(systz)s(hctosys)r(show)w(systohc)[-ul][!rtsw] >0(fast)f(rtc):u(utc)l(localtime)t(systz)s(hctosys)r(show)w(systohc)[-ul][!rtsw]
@@ -4539,6 +4549,8 @@
 #ifndef TT
 #define TT this.factor
 #endif
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_h (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_fallocate
@@ -4977,6 +4989,13 @@
 #define FLAG_s (1<<2)
 #define FLAG_d (1<<3)
 #define FLAG_b (1<<4)
+#endif
+
+#ifdef FOR_httpd
+#define CLEANUP_httpd
+#ifndef TT
+#define TT this.httpd
+#endif
 #endif
 
 #ifdef FOR_hwclock
