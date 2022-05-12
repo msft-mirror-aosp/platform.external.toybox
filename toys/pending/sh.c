@@ -256,7 +256,7 @@ GLOBALS(
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -282,11 +282,11 @@ GLOBALS(
       long flags;
       char *str;
     } *vars;
-    long varslen, shift;
+    long varslen, varscap, shift, oldlineno;
 
     struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
-    char *ifs;
+    char *ifs, *omnom;
     struct sh_arg arg;
     struct arg_list *delete;
 
@@ -338,7 +338,10 @@ static const char *redirectors[] = {"<<<", "<<-", "<<", "<&", "<>", "<", ">>",
 
 static void syntax_err(char *s)
 {
-  error_msg("syntax error: %s", s);
+  struct sh_fcall *ff = TT.ff;
+// TODO: script@line only for script not interactive.
+  for (ff = TT.ff; ff != TT.ff->prev; ff = ff->next) if (ff->omnom) break;
+  error_msg("syntax error '%s'@%u: %s", ff->omnom ? : "-c", TT.LINENO, s);
   toys.exitval = 2;
   if (!(TT.options&FLAG_i)) xexit();
 }
@@ -443,8 +446,10 @@ static struct sh_vars *findvar(char *name, struct sh_fcall **pff)
 // Append variable to ff->vars, returning *struct. Does not check duplicates.
 static struct sh_vars *addvar(char *s, struct sh_fcall *ff)
 {
-  if (!(ff->varslen&31))
-    ff->vars = xrealloc(ff->vars, (ff->varslen+32)*sizeof(*ff->vars));
+  if (ff->varslen == ff->varscap && !(ff->varslen&31)) {
+    ff->varscap += 32;
+    ff->vars = xrealloc(ff->vars, (ff->varscap)*sizeof(*ff->vars));
+  }
   if (!s) return ff->vars;
   ff->vars[ff->varslen].flags = 0;
   ff->vars[ff->varslen].str = s;
@@ -704,16 +709,18 @@ static struct sh_vars *setvar_long(char *s, int freeable, struct sh_fcall *ff)
   if (ss[*ss=='+']!='=') {
     error_msg("bad setvar %s\n", s);
     if (freeable) free(s);
+
     return 0;
   }
 
   // Add if necessary, set value, and remove again if we added but set failed
   if (!(was = vv = findvar(s, &ff))) (vv = addvar(s, ff))->flags = VAR_NOFREE;
-  if (!(vv = setvar_found(s, freeable, vv))) {
-    int ii = vv-ff->vars;
+  if (!setvar_found(s, freeable, vv)) {
+    if (!was) memmove(vv, vv+1, sizeof(ff->vars)*(--ff->varslen-(vv-ff->vars)));
 
-    if (!was) memmove(ff->vars+ii, ff->vars+ii+1, (ff->varslen--)-ii);
-  } else cache_ifs(vv->str, ff);
+    return 0;
+  }
+  cache_ifs(vv->str, ff);
 
   return vv;
 }
@@ -731,7 +738,7 @@ static int unsetvar(char *name)
 {
   struct sh_fcall *ff;
   struct sh_vars *var = findvar(name, &ff);
-  int ii = var-ff->vars, len = varend(name)-name;
+  int len = varend(name)-name;
 
   if (!var || (var->flags&VAR_WHITEOUT)) return 0;
   if (var->flags&VAR_READONLY) error_msg("readonly %.*s", len, name);
@@ -744,7 +751,7 @@ static int unsetvar(char *name)
     // free from global context
     } else {
       if (!(var->flags&VAR_NOFREE)) free(var->str);
-      memmove(ff->vars+ii, ff->vars+ii+1, (ff->varslen--)-ii);
+      memmove(var, var+1, sizeof(ff->vars)*(ff->varslen-(var-ff->vars)));
     }
     if (!strcmp(name, "IFS"))
       do ff->ifs = " \t\n"; while ((ff = ff->next) != TT.ff->prev);
@@ -3754,6 +3761,8 @@ int do_source(char *name, FILE *ff)
     goto end;
   }
 
+  if (name) TT.ff->omnom = name;
+
 // TODO fix/catch NONBLOCK on input?
 // TODO when DO we reset lineno? (!LINENO means \0 returns 1)
 // when do we NOT reset lineno? Inherit but preserve perhaps? newline in $()?
@@ -3833,7 +3842,7 @@ static void nommu_reentry(void)
   // Read named variables: type, len, var=value\0
   for (;;) {
     len = ll = 0;
-    fscanf(fp, "%u %lu%*[^\n]", &len, &ll);
+    (void)fscanf(fp, "%u %lu%*[^\n]", &len, &ll);
     fgetc(fp); // Discard the newline fscanf didn't eat.
     if (!len) break;
     (s = xmalloc(len+1))[len] = 0;
@@ -4395,7 +4404,10 @@ void source_main(void)
   call_function();
   TT.ff->arg.v = toys.optargs;
   TT.ff->arg.c = toys.optc;
+  TT.ff->oldlineno = TT.LINENO;
+  TT.LINENO = 0;
   do_source(name, ff);
+  TT.LINENO = TT.ff->oldlineno;
   free(dlist_pop(&TT.ff));
   --TT.srclvl;
 }
