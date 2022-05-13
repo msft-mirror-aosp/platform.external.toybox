@@ -686,6 +686,9 @@ struct diff_data {
   long ct;
   char *start;
   struct arg_list *L_list;
+  char *new_line_format;
+  char *old_line_format;
+  char *unchanged_line_format;
 
   int dir_num, size, is_binary, status, change, len[2];
   int *offset[2];
