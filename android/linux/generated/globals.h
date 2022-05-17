@@ -213,6 +213,22 @@ struct tunctl_data {
   char *u;
 };
 
+// toys/net/wget.c
+
+struct wget_data {
+  char *p, *O;
+  long max_redirect;
+
+  int sock, https;
+  char *url;
+#if CFG_WGET_LIBTLS
+  struct tls *tls;
+#elif CFG_TOYBOX_LIBCRYPTO
+  struct ssl_ctx_st *ctx;
+  struct ssl_st *ssl;
+#endif
+};
+
 // toys/other/acpi.c
 
 struct acpi_data {
@@ -670,6 +686,9 @@ struct diff_data {
   long ct;
   char *start;
   struct arg_list *L_list;
+  char *new_line_format;
+  char *old_line_format;
+  char *unchanged_line_format;
 
   int dir_num, size, is_binary, status, change, len[2];
   int *offset[2];
@@ -890,7 +909,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -916,11 +935,11 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
-    long varslen, shift;
+    long varslen, varscap, shift, oldlineno;
 
     struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
-    char *ifs;
+    char *ifs, *omnom;
     struct sh_arg arg;
     struct arg_list *delete;
 
@@ -1154,22 +1173,6 @@ struct vi_data {
       const char *data;
     } *node;
   } *slices;
-};
-
-// toys/pending/wget.c
-
-struct wget_data {
-  char *p, *O;
-  long max_redirect;
-
-  int sock, https;
-  char *url;
-#if CFG_WGET_LIBTLS
-  struct tls *tls;
-#elif CFG_WGET_OPENSSL
-  struct ssl_ctx_st *ctx;
-  struct ssl_st *ssl;
-#endif
 };
 
 // toys/posix/basename.c
@@ -1465,7 +1468,10 @@ struct ps_data {
     } pgrep;
   };
 
-  struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
+  struct ps_ptr_len {
+    void *ptr;
+    long len;
+  } gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
   unsigned width, height, scroll;
   dev_t tty;
@@ -1654,6 +1660,7 @@ extern union global_union {
 	struct ping_data ping;
 	struct sntp_data sntp;
 	struct tunctl_data tunctl;
+	struct wget_data wget;
 	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
@@ -1745,7 +1752,6 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
-	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;
 	struct chgrp_data chgrp;

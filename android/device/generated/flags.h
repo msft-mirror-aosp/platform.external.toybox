@@ -221,17 +221,6 @@
 #undef FLAG_u
 #endif
 
-// catv   vte
-#undef OPTSTR_catv
-#define OPTSTR_catv "vte"
-#ifdef CLEANUP_catv
-#undef CLEANUP_catv
-#undef FOR_catv
-#undef FLAG_e
-#undef FLAG_t
-#undef FLAG_v
-#endif
-
 // cd   >1LP[-LP]
 #undef OPTSTR_cd
 #define OPTSTR_cd ">1LP[-LP]"
@@ -714,9 +703,9 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3 <2>2(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(unchanged-line-format):(old-line-format):(new-line-format):(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):(old-line-format):(new-line-format):(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(unchanged-line-format):(old-line-format):(new-line-format):(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
@@ -738,6 +727,9 @@
 #undef FLAG_B
 #undef FLAG_strip_trailing_cr
 #undef FLAG_color
+#undef FLAG_new_line_format
+#undef FLAG_old_line_format
+#undef FLAG_unchanged_line_format
 #endif
 
 // dirname <1 <1
@@ -900,12 +892,14 @@
 #undef FOR_expr
 #endif
 
-// factor    
+// factor   ?hx
 #undef OPTSTR_factor
-#define OPTSTR_factor 0
+#define OPTSTR_factor "?hx"
 #ifdef CLEANUP_factor
 #undef CLEANUP_factor
 #undef FOR_factor
+#undef FLAG_x
+#undef FLAG_h
 #endif
 
 // fallocate >1l#|o# >1l#|o#
@@ -1383,6 +1377,14 @@
 #undef FLAG_s
 #undef FLAG_d
 #undef FLAG_b
+#endif
+
+// httpd   >1
+#undef OPTSTR_httpd
+#define OPTSTR_httpd ">1"
+#ifdef CLEANUP_httpd
+#undef CLEANUP_httpd
+#undef FOR_httpd
 #endif
 
 // hwclock >0(fast)f(rtc):u(utc)l(localtime)t(systz)s(hctosys)r(show)w(systohc)[-ul][!rtsw] >0(fast)f(rtc):u(utc)l(localtime)t(systz)s(hctosys)r(show)w(systohc)[-ul][!rtsw]
@@ -3926,16 +3928,6 @@
 #define FLAG_u (1<<3)
 #endif
 
-#ifdef FOR_catv
-#define CLEANUP_catv
-#ifndef TT
-#define TT this.catv
-#endif
-#define FLAG_e (FORCED_FLAG<<0)
-#define FLAG_t (FORCED_FLAG<<1)
-#define FLAG_v (FORCED_FLAG<<2)
-#endif
-
 #ifdef FOR_cd
 #define CLEANUP_cd
 #ifndef TT
@@ -4408,6 +4400,9 @@
 #define FLAG_B (1<<15)
 #define FLAG_strip_trailing_cr (1<<16)
 #define FLAG_color (1<<17)
+#define FLAG_new_line_format (1<<18)
+#define FLAG_old_line_format (1<<19)
+#define FLAG_unchanged_line_format (1<<20)
 #endif
 
 #ifdef FOR_dirname
@@ -4560,6 +4555,8 @@
 #ifndef TT
 #define TT this.factor
 #endif
+#define FLAG_x (FORCED_FLAG<<0)
+#define FLAG_h (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_fallocate
@@ -4998,6 +4995,13 @@
 #define FLAG_s (1<<2)
 #define FLAG_d (1<<3)
 #define FLAG_b (1<<4)
+#endif
+
+#ifdef FOR_httpd
+#define CLEANUP_httpd
+#ifndef TT
+#define TT this.httpd
+#endif
 #endif
 
 #ifdef FOR_hwclock
