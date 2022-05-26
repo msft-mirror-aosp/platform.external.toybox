@@ -71,13 +71,13 @@
 //        I.E. "-j 3" not "-j3". So "kill -stop" != "kill -s top"
 //
 //   At the beginning of the get_opt string (before any options):
-//     ^ stop at first nonoption argument
 //     <0 die if less than # leftover arguments (default 0)
 //     >9 die if > # leftover arguments (default MAX_INT)
-//     ? Allow unknown arguments (pass them through to command).
-//     & first arg has imaginary dash (ala tar/ps/ar) which sets FLAGS_NODASH
 //     0 Include argv[0] in optargs
-//     note: ^ and ? implied when no options
+//     ^ stop at first nonoption argument (implied when no flags)
+//     ? Pass unknown arguments through to command (implied when no flags).
+//     & first arg has imaginary dash (ala tar/ps/ar) which sets FLAGS_NODASH
+//     ~ Collate following bare longopts (as if under short opt, repeatable)
 //
 //   At the end: [groups] of previously seen options
 //     - Only one in group (switch off)    [-abc] means -ab=-b, -ba=-a, -abc=-c
@@ -332,7 +332,7 @@ static int parse_optflaglist(struct getoptflagstate *gof)
   for (new = gof->opts; new; new = new->next) {
     unsigned long long u = 1LL<<idx++;
 
-    if (new->c == 1) new->c = 0;
+    if (new->c == 1 || new->c=='~') new->c = 0;
     new->dex[1] = u;
     if (new->flags & 1) gof->requires |= u;
     if (new->type) {
@@ -386,7 +386,7 @@ void get_optflags(void)
   struct getoptflagstate gof;
   struct opts *catch;
   unsigned long long saveflags;
-  char *letters[]={"s",""};
+  char *letters[]={"s",""}, *ss;
 
   // Option parsing is a two stage process: parse the option string into
   // a struct opts list, then use that list to process argv[];
@@ -419,6 +419,8 @@ void get_optflags(void)
       gof.arg++;
       if (*gof.arg=='-') {
         struct longopts *lo;
+        struct arg_list *al = 0, *al2;
+        int ii;
 
         gof.arg++;
         // Handle --
@@ -427,22 +429,42 @@ void get_optflags(void)
           continue;
         }
 
-        // do we match a known --longopt?
+        // unambiguously match the start of a known --longopt?
         check_help(toys.argv+gof.argc);
         for (lo = gof.longopts; lo; lo = lo->next) {
-          if (!strncmp(gof.arg, lo->str, lo->len)) {
-            if (!gof.arg[lo->len]) gof.arg = 0;
-            else if (gof.arg[lo->len] == '=' && lo->opt->type)
-              gof.arg += lo->len;
-            else continue;
-            // It's a match.
-            catch = lo->opt;
-            break;
+          for (ii = 0; ii<lo->len; ii++) if (gof.arg[ii] != lo->str[ii]) break;
+          if (!gof.arg[ii] || (gof.arg[ii]=='=' && lo->opt->type)) {
+            al2 = xmalloc(sizeof(struct arg_list));
+            al2->next = al;
+            al2->arg = (void *)lo;
+            al = al2;
+
+            // Exact match is unambigous even when longer options available
+            if (ii==lo->len) {
+              llist_traverse(al, free);
+              al = 0;
+
+              break;
+            }
           }
         }
-
+        // How many matches?
+        if (al) {
+          *libbuf = 0;
+          if (al->next) for (ss = libbuf, al2 = al; al2; al2 = al2->next) {
+            lo = (void *)al2->arg;
+            ss += sprintf(ss, " %.*s"+(al2==al), lo->len, lo->str);
+          } else lo = (void *)al->arg;
+          llist_traverse(al, free);
+          if (*libbuf) error_exit("bad --%s (%s)", gof.arg, libbuf);
+        }
+        // One unambiguous match?
+        if (lo) {
+          catch = lo->opt;
+          if (!gof.arg[lo->len]) gof.arg = 0;
+          else gof.arg += lo->len;
         // Should we handle this --longopt as a non-option argument?
-        if (!lo && gof.noerror) {
+        } else if (gof.noerror) {
           gof.arg -= 2;
           goto notflag;
         }
