@@ -16,6 +16,7 @@ fi
 # Tell linker to do dead code elimination at function level
 if [ "$(uname)" == "Darwin" ]
 then
+  CFLAGS+=" -Wno-deprecated-declarations"
   : ${LDOPTIMIZE:=-Wl,-dead_strip} ${STRIP:=strip}
 else
   : ${LDOPTIMIZE:=-Wl,--gc-sections -Wl,--as-needed} ${STRIP:=strip -s -R .note* -R .comment}
@@ -33,6 +34,9 @@ if [ ! -z "$ASAN" ]; then
   export ASAN_OPTIONS="detect_leaks=0"
   unset ASAN
 fi
+
+# Probe number of available processors, and add one.
+: ${CPUS:=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))}
 
 # Centos 7 bug workaround, EOL June 30 2024. TODO
 DASHN=-n; wait -n 2>/dev/null; [ $? -eq 2 ] && unset DASHN

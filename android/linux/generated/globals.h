@@ -1551,15 +1551,15 @@ struct tail_data {
 // toys/posix/tar.c
 
 struct tar_data {
-  char *f, *C;
-  struct arg_list *T, *X;
-  char *I, *to_command, *owner, *group, *mtime, *mode;
+  char *f, *C, *I;
+  struct arg_list *T, *X, *xform;
+  long strip;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
-  long strip_components;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
-  char *cwd;
+  char *cwd, **xfsed;
   int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
   long long *sparse;
   time_t mtt;
