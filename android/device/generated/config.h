@@ -72,8 +72,8 @@
 #define USE_BLOCKDEV(...) __VA_ARGS__
 #define CFG_BOOTCHARTD 0
 #define USE_BOOTCHARTD(...)
-#define CFG_BRCTL 0
-#define USE_BRCTL(...)
+#define CFG_BRCTL 1
+#define USE_BRCTL(...) __VA_ARGS__
 #define CFG_BUNZIP2 0
 #define USE_BUNZIP2(...)
 #define CFG_BZCAT 0
