@@ -45,11 +45,6 @@ GLOBALS(
   uint16_t line_len;
 )
 
-struct str_len {
-  char *str;
-  long len;
-};
-
 #define BC_VM ((BcVm*) TT.vm)
 
 typedef enum BcStatus {

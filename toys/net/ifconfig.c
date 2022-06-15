@@ -42,7 +42,6 @@ config IFCONFIG
     broadcast ADDR   - Set broadcast address
     pointopoint ADDR - PPP and PPPOE use this instead of "route add default gw"
     hw TYPE ADDR     - set hardware (mac) address (type = ether|infiniband)
-    rename NEWNAME   - rename interface
 
     Flags you can set on an interface (or -remove by prefixing with -):
 
@@ -249,7 +248,7 @@ static void display_ifconfig(char *name, int always, unsigned long long val[])
 
     for (s = str; *s; s++) {
       if (flags & mask) xprintf("%s ", *s);
-      mask <<= 1;
+      mask = mask << 1;
     }
   } else xprintf("[NO FLAGS] ");
 
@@ -406,7 +405,6 @@ void ifconfig_main(void)
       {"netmask", 0, SIOCSIFNETMASK},
       {"dstaddr", 0, SIOCSIFDSTADDR},
       {"mtu", IFREQ_OFFSZ(ifr_mtu), SIOCSIFMTU},
-      {"rename", IFREQ_OFFSZ(ifr_newname), SIOCSIFNAME},
       {"keepalive", IFREQ_OFFSZ(ifr_data), SIOCDEVPRIVATE}, // SIOCSKEEPALIVE
       {"outfill", IFREQ_OFFSZ(ifr_data), SIOCDEVPRIVATE+2}, // SIOCSOUTFILL
       {"metric", IFREQ_OFFSZ(ifr_metric), SIOCSIFMETRIC},
@@ -495,7 +493,6 @@ void ifconfig_main(void)
       struct argh *t = try+i;
       int on = t->on, off = t->off;
 
-      // First entry in list assigns address to interface (no command name)
       if (!t->name) {
         if (isdigit(**argv) || !strcmp(*argv, "default")) argv--;
         else continue;
@@ -508,12 +505,11 @@ void ifconfig_main(void)
 
           // Assign value to ifre field and call ioctl? (via IFREQ_OFFSZ.)
           if (on < 0) {
-            void *dest = ((on = -on)>>16)+(char *)&ifre;
+            long l = strtoul(*argv, 0, 0);
 
-            // If we're about to set mem_start/io_addr/irq, get other 2 first
             if (off == SIOCSIFMAP) xioctl(TT.sockfd, SIOCGIFMAP, &ifre);
-            if (off == SIOCSIFNAME) xstrncpy(dest, *argv, on&0xffff);
-            else poke(dest, strtoul(*argv, 0, 0), on&15);
+            on = -on;
+            poke((on>>16) + (char *)&ifre, l, on&15);
             xioctl(TT.sockfd, off, &ifre);
             break;
           } else {

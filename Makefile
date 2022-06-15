@@ -3,7 +3,7 @@
 
 # If people set these on the make command line, use 'em
 # Note that CC defaults to "cc" so the one in configure doesn't get
-# used when scripts/make.sh and such called through "make".
+# used when scripts/make.sh and care called through "make".
 
 HOSTCC?=cc
 
@@ -19,7 +19,6 @@ toybox generated/unstripped/toybox: $(KCONFIG_CONFIG) *.[ch] lib/*.[ch] toys/*/*
 .PHONY: clean distclean baseline bloatcheck install install_flat \
 	uninstall uninstall_flat tests help change \
 	list list_working list_pending root run_root
-.SUFFIXES: # Disable legacy behavior
 
 include kconfig/Makefile
 -include .singlemake
@@ -41,13 +40,13 @@ baseline: generated/unstripped/toybox
 bloatcheck: generated/unstripped/toybox_old generated/unstripped/toybox
 	@scripts/bloatcheck generated/unstripped/toybox_old generated/unstripped/toybox
 
-install_flat: toybox
+install_flat:
 	scripts/install.sh --symlink --force
 
-install_airlock: toybox
+install_airlock:
 	scripts/install.sh --symlink --force --airlock
 
-install: toybox
+install:
 	scripts/install.sh --long --symlink --force
 
 uninstall_flat:
@@ -65,7 +64,7 @@ root_clean:
 
 clean::
 	@chmod -fR 700 generated || true
-	@rm -rf toybox generated change install .singleconfig*
+	@rm -rf toybox generated change .singleconfig*
 	@echo cleaned
 
 # If singlemake was in generated/ "make clean; make test_ls" wouldn't work.
