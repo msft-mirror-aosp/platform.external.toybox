@@ -70,10 +70,62 @@ config SH
     usage: sh [-c command] [script]
 
     Command shell.  Runs a shell script, or reads input interactively
-    and responds to it.
+    and responds to it. Roughly compatible with "bash". Run "help" for
+    list of built-in commands.
 
     -c	command line to execute
     -i	interactive mode (default when STDIN is a tty)
+    -s	don't run script (args set $* parameters but read commands from stdin)
+
+    Command shells parse each line of input (prompting when interactive), perform
+    variable expansion and redirection, execute commands (spawning child processes
+    and background jobs), and perform flow control based on the return code.
+
+    Parsing:
+      syntax errors
+
+    Interactive prompts:
+      line continuation
+
+    Variable expansion:
+      Note: can cause syntax errors at runtime
+
+    Redirection:
+      HERE documents (parsing)
+      Pipelines (flow control and job control)
+
+    Running commands:
+      process state
+      builtins
+        cd [[ ]] (( ))
+        ! : [ # TODO: help for these?
+        true false help echo kill printf pwd test
+      child processes
+
+    Job control:
+      &    Background process
+      Ctrl-C kill process
+      Ctrl-Z suspend process
+      bg fg jobs kill
+
+    Flow control:
+    ;    End statement (same as newline)
+    &    Background process (returns true unless syntax error)
+    &&   If this fails, next command fails without running
+    ||   If this succeeds, next command succeeds without running
+    |    Pipelines! (Can of worms...)
+    for {name [in...]}|((;;)) do; BODY; done
+    if TEST; then BODY; fi
+    while TEST; do BODY; done
+    case a in X);; esac
+    [[ TEST ]]
+    ((MATH))
+
+    Job control:
+    &    Background process
+    Ctrl-C kill process
+    Ctrl-Z suspend process
+    bg fg jobs kill
 
 # These are here for the help text, they're not selectable and control nothing
 config CD
@@ -318,6 +370,8 @@ GLOBALS(
 
 // Prototype because $($($(blah))) nests, leading to run->parse->run loop
 int do_source(char *name, FILE *ff);
+// functions contain pipelines contain functions: prototype because loop
+static void free_pipeline(void *pipeline);
 
 // ordered for greedy matching, so >&; becomes >& ; not > &;
 // making these const means I need to typecast the const away later to
@@ -363,6 +417,13 @@ void debug_show_fds()
   *sss = 0;
   dprintf(2, "%d fd:%s\n", getpid(), buf);
   closedir(X);
+}
+
+static char **nospace(char **ss)
+{
+  while (isspace(**ss)) ++*ss;
+
+  return ss;
 }
 
 // append to array with null terminator and realloc as necessary
@@ -457,13 +518,6 @@ static struct sh_vars *addvar(char *s, struct sh_fcall *ff)
   return ff->vars+ff->varslen++;
 }
 
-static char **nospace(char **ss)
-{
-  while (isspace(**ss)) ++*ss;
-
-  return ss;
-}
-
 /*
 15L ( [ . -> ++ --
 14R (all prefix operators)
@@ -542,6 +596,59 @@ static int recalculate(long long *dd, char **ss, int lvl)
   return 1;
 }
 
+// Return length of utf8 char @s fitting in len, writing value into *cc
+static int getutf8(char *s, int len, int *cc)
+{
+  unsigned wc;
+
+  if (len<0) wc = len = 0;
+  else if (1>(len = utf8towc(&wc, s, len))) wc = *s, len = 1;
+  if (cc) *cc = wc;
+
+  return len;
+}
+
+// utf8 strchr: return wide char matched at wc from chrs, or 0 if not matched
+// if len, save length of next wc (whether or not it's in list)
+static int utf8chr(char *wc, char *chrs, int *len)
+{
+  unsigned wc1, wc2;
+  int ll;
+
+  if (len) *len = 1;
+  if (!*wc) return 0;
+  if (0<(ll = utf8towc(&wc1, wc, 99))) {
+    if (len) *len = ll;
+    while (*chrs) {
+      if(1>(ll = utf8towc(&wc2, chrs, 99))) chrs++;
+      else {
+        if (wc1 == wc2) return wc1;
+        chrs += ll;
+      }
+    }
+  }
+
+  return 0;
+}
+
+// return length of match found at this point (try is null terminated array)
+static int anystart(char *s, char **try)
+{
+  char *ss = s;
+
+  while (*try) if (strstart(&s, *try++)) return s-ss;
+
+  return 0;
+}
+
+// does this entire string match one of the strings in try[]
+static int anystr(char *s, char **try)
+{
+  while (*try) if (!strcmp(s, *try++)) return 1;
+
+  return 0;
+}
+
 static int calculate(long long *ll, char *equation)
 {
   char *ss = equation;
@@ -554,18 +661,6 @@ static int calculate(long long *ll, char *equation)
   }
 
   return 1;
-}
-
-// Return length of utf8 char @s fitting in len, writing value into *cc
-int getutf8(char *s, int len, int *cc)
-{
-  unsigned wc;
-
-  if (len<0) wc = len = 0;
-  else if (1>(len = utf8towc(&wc, s, len))) wc = *s, len = 1;
-  if (cc) *cc = wc;
-
-  return len;
 }
 
 // get value of variable starting at s.
@@ -824,26 +919,8 @@ static char *declarep(struct sh_vars *var)
   return ss; 
 }
 
-// return length of match found at this point (try is null terminated array)
-static int anystart(char *s, char **try)
-{
-  char *ss = s;
-
-  while (*try) if (strstart(&s, *try++)) return s-ss;
-
-  return 0;
-}
-
-// does this entire string match one of the strings in try[]
-static int anystr(char *s, char **try)
-{
-  while (*try) if (!strcmp(s, *try++)) return 1;
-
-  return 0;
-}
-
-// return length of valid prefix that could go before redirect
-static int redir_prefix(char *word)
+// Skip past valid prefix that could go before redirect
+static char *skip_redir_prefix(char *word)
 {
   char *s = word;
 
@@ -852,7 +929,7 @@ static int redir_prefix(char *word)
     else s = word;
   } else while (isdigit(*s)) s++;
 
-  return s-word;
+  return s;
 }
 
 // parse next word from command line. Returns end, or 0 if need continuation
@@ -864,7 +941,7 @@ static char *parse_word(char *start, int early, int quote)
   char *end = start, *ss;
 
   // Handle redirections, <(), (( )) that only count at the start of word
-  ss = end + redir_prefix(end); // 123<<file- parses as 2 args: "123<<" "file-"
+  ss = skip_redir_prefix(end); // 123<<file- parses as 2 args: "123<<" "file-"
   if (strstart(&ss, "<(") || strstart(&ss, ">(")) {
     toybuf[quote++]=')';
     end = ss;
@@ -982,6 +1059,21 @@ static int save_redirect(int **rd, int from, int to)
   return 0;
 }
 
+// restore displaced filehandles, closing high filehandles they were copied to
+static void unredirect(int *urd)
+{
+  int *rr = urd+1, i;
+
+  if (!urd) return;
+
+  for (i = 0; i<*urd; i++, rr += 2) if (rr[0] != -1) {
+    // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
+    dup2(rr[0], rr[1]);
+    close(rr[0]);
+  }
+  free(urd);
+}
+
 // TODO: waitpid(WNOHANG) to clean up zombies and catch background& ending
 static void subshell_callback(char **argv)
 {
@@ -1019,21 +1111,6 @@ static char *pl2str(struct sh_pipeline *pl, int one)
 // TODO test output with case and function
 // TODO add HERE documents back in
 // TODO handle functions
-}
-
-// restore displaced filehandles, closing high filehandles they were copied to
-static void unredirect(int *urd)
-{
-  int *rr = urd+1, i;
-
-  if (!urd) return;
-
-  for (i = 0; i<*urd; i++, rr += 2) if (rr[0] != -1) {
-    // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
-    dup2(rr[0], rr[1]);
-    close(rr[0]);
-  }
-  free(urd);
 }
 
 static struct sh_blockstack *clear_block(struct sh_blockstack *blk)
@@ -1088,9 +1165,6 @@ static void call_function(void)
   TT.ff->arg.c = TT.ff->next->arg.c;
   TT.ff->ifs = TT.ff->next->ifs;
 }
-
-// functions contain pipelines contain functions: prototype because loop
-static void free_pipeline(void *pipeline);
 
 static void free_function(struct sh_function *funky)
 {
@@ -1211,29 +1285,6 @@ static int pipe_subshell(char *s, int len, int out)
   unredirect(uu);
 
   return pipes[out];
-}
-
-// utf8 strchr: return wide char matched at wc from chrs, or 0 if not matched
-// if len, save length of next wc (whether or not it's in list)
-static int utf8chr(char *wc, char *chrs, int *len)
-{
-  unsigned wc1, wc2;
-  int ll;
-
-  if (len) *len = 1;
-  if (!*wc) return 0;
-  if (0<(ll = utf8towc(&wc1, wc, 99))) {
-    if (len) *len = ll;
-    while (*chrs) {
-      if(1>(ll = utf8towc(&wc2, chrs, 99))) chrs++;
-      else {
-        if (wc1 == wc2) return wc1;
-        chrs += ll;
-      }
-    }
-  }
-
-  return 0;
 }
 
 // grab variable or special param (ala $$) up to len bytes. Return value.
@@ -1712,7 +1763,7 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
 
 // TODO what does \ in `` mean? What is echo `printf %s \$x` supposed to do?
         // This has to be async so pipe buffer doesn't fill up
-        if (!ss) jj = pipe_subshell(s, kk, 0);
+        if (!ss) jj = pipe_subshell(s, kk, 0); // TODO $(true &&) syntax_err()
         if ((ifs = readfd(jj, 0, &pp)))
           for (kk = strlen(ifs); kk && ifs[kk-1]=='\n'; ifs[--kk] = 0);
         close(jj);
@@ -2265,6 +2316,7 @@ static char *expand_one_arg(char *new, unsigned flags, struct arg_list **del)
   struct sh_arg arg = {0};
   char *s = 0;
 
+  // TODO: ${var:?error} here?
   if (!expand_arg(&arg, new, flags|NO_PATH|NO_SPLIT, del))
     if (!(s = *arg.v) && (flags&(SEMI_IFS|NO_NULL))) s = "";
   free(arg.v);
@@ -2287,7 +2339,7 @@ static struct sh_process *expand_redir(struct sh_arg *arg, int skip, int *urd)
   pp->urd = urd;
   pp->raw = arg;
 
-  // When we redirect, we copy each displaced filehandle to restore it later.
+  // When redirecting, copy each displaced filehandle to restore it later.
 
   // Expand arguments and perform redirections
   for (j = skip; j<arg->c; j++) {
@@ -2319,7 +2371,7 @@ static struct sh_process *expand_redir(struct sh_arg *arg, int skip, int *urd)
     }
 
     // Is this a redirect? s = prefix, ss = operator
-    ss = s + redir_prefix(arg->v[j]);
+    ss = skip_redir_prefix(s);
     sss = ss + anystart(ss, (void *)redirectors);
     if (ss == sss) {
       // Nope: save/expand argument and loop
@@ -2400,14 +2452,14 @@ static struct sh_process *expand_redir(struct sh_arg *arg, int skip, int *urd)
             sss = 0;
 // TODO audit this ala man page
             // expand_parameter, commands, and arithmetic
-            if (x && !(ss = sss = expand_one_arg(ss, ~SEMI_IFS, 0))) {
+            if (x && !(sss = expand_one_arg(ss, ~SEMI_IFS, 0))) {
               s = 0;
               break;
             }
 
             while (zap && *ss == '\t') ss++;
             x = writeall(from, ss, len = strlen(ss));
-            free(sss);
+            if (ss != sss) free(sss);
             if (len != x) break;
           }
           if (i != hh->c) bad++;
@@ -2756,7 +2808,7 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
 
       // find arguments of the form [{n}]<<[-] with another one after it
       for (i = 0; i<arg->c; i++) {
-        s = arg->v[i] + redir_prefix(arg->v[i]);
+        s = skip_redir_prefix(arg->v[i]);
 // TODO <<< is funky
 // argc[] entries removed from main list? Can have more than one?
         if (strcmp(s, "<<") && strcmp(s, "<<-") && strcmp(s, "<<<")) continue;
@@ -2861,7 +2913,7 @@ funky:
       }
 
       // type 0 means just got ;; so start new type 2
-      if (!pl->type) {
+      if (!pl->type || pl->type==3) {
         // catch "echo | ;;" errors
         if (arg->v && arg->v[arg->c] && strcmp(arg->v[arg->c], "&")) goto flush;
         if (!arg->c) {
@@ -3465,8 +3517,7 @@ static void run_lines(void)
           break;
         }
       // Parse and run next command, saving resulting process
-      } else if ((pp = run_command()))
-        dlist_add_nomalloc((void *)&pplist, (void *)pp);
+      } else dlist_add_nomalloc((void *)&pplist, (void *)run_command());
 
     // Start of flow control block?
     } else if (TT.ff->pl->type == 1) {
@@ -3520,7 +3571,7 @@ static void run_lines(void)
           if (TT.ff->blk->loop);
           else if (!strncmp(TT.ff->blk->fvar = ss, "((", 2)) {
             TT.ff->blk->loop = 1;
-dprintf(2, "TODO skipped init for((;;)), need math parser\n");
+dprintf(2, "TODO skipped init for((;;)), math parser needs var assignment\n");
 
           // in LIST
           } else if (TT.ff->pl->next->type == 's') {
@@ -3614,7 +3665,7 @@ dprintf(2, "TODO skipped init for((;;)), need math parser\n");
           }
         } else if (blk->loop >= blk->farg.c) TT.ff->pl = pop_block();
         else if (!strncmp(blk->fvar, "((", 2)) {
-dprintf(2, "TODO skipped running for((;;)), need math parser\n");
+dprintf(2, "TODO skipped running for((;;)), math parser needs var assignment\n");
         } else setvarval(blk->fvar, blk->farg.v[blk->loop++]);
       }
 
@@ -3790,9 +3841,8 @@ is_binary:
     more = parse_line(new ? : " ", &pl, &expect);
     free(new);
     if (more==1) {
-      if (!new) {
-        if (!ff) syntax_err("unexpected end of file");
-      } else continue;
+      if (!new) syntax_err("unexpected end of file");
+      else continue;
     } else if (!more && pl) {
       TT.ff->pl = pl;
       run_lines();
@@ -3911,7 +3961,7 @@ static void subshell_setup(void)
       shv->flags |= VAR_EXPORT;
       shv->str = s;
     }
-    cache_ifs(s, TT.ff);
+    cache_ifs(s, TT.ff); // TODO: replace with set(get("IFS")) after loop
   }
 
   // set/update PWD
