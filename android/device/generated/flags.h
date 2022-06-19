@@ -171,7 +171,7 @@
 #undef FOR_bootchartd
 #endif
 
-// brctl   <1
+// brctl <1 <1
 #undef OPTSTR_brctl
 #define OPTSTR_brctl "<1"
 #ifdef CLEANUP_brctl
