@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This has to be a separate file from scripts/make.sh so it can be called
-# before menuconfig.  (It's called again from scripts/make.sh just to be sure.)
+# before menuconfig. (It's called again from scripts/make.sh just to be sure.)
 
 source scripts/portability.sh
 
@@ -23,42 +23,6 @@ probesymbol()
 
 probeconfig()
 {
-  # Probe for container support on target
-  probesymbol TOYBOX_CONTAINER << EOF
-    #include <stdio.h>
-    #include <sys/syscall.h>
-    #include <linux/sched.h>
-    int x=CLONE_NEWNS|CLONE_NEWUTS|CLONE_NEWIPC|CLONE_NEWNET;
-
-    int main(int argc, char *argv[]){printf("%d", x+SYS_unshare+ SYS_setns);}
-EOF
-
-  # Work around some uClibc limitations
-  probesymbol TOYBOX_ICONV -c << EOF
-    #include "iconv.h"
-EOF
-  
-  # Android and some other platforms miss utmpx
-  probesymbol TOYBOX_UTMPX -c << EOF
-    #include <utmpx.h>
-    #ifndef BOOT_TIME
-    #error nope
-    #endif
-    int main(int argc, char *argv[]) {
-      struct utmpx *a; 
-      if (0 != (a = getutxent())) return 0;
-      return 1;
-    }
-EOF
-
-  # Android is missing shadow.h
-  probesymbol TOYBOX_SHADOW -c << EOF
-    #include <shadow.h>
-    int main(int argc, char *argv[]) {
-      struct spwd *a = getspnam("root"); return 0;
-    }
-EOF
-
   # Some commands are android-specific
   probesymbol TOYBOX_ON_ANDROID -c << EOF
     #ifndef __ANDROID__
@@ -72,26 +36,6 @@ EOF
     int main(int argc, char *argv[]) { return fork(); }
 EOF
   echo -e '\tdepends on !TOYBOX_FORCE_NOMMU'
-
-  probesymbol TOYBOX_PRLIMIT << EOF
-    #include <sys/types.h>
-    #include <sys/time.h>
-    #include <sys/resource.h>
-    int prlimit(pid_t pid, int resource, const struct rlimit *new_limit,
-      struct rlimit *old_limit);
-    int main(int argc, char *argv[]) { prlimit(0, 0, 0, 0); }
-EOF
-
-  probesymbol TOYBOX_GETRANDOM << EOF
-    #include <sys/random.h>
-    int main(void) { char buf[100]; getrandom(buf, 100, 0); }
-EOF
-
-  probesymbol TOYBOX_HASTIMERS << EOF
-    #include <signal.h>
-    #include <time.h>
-    int main(void) {void *x=0;timer_create(CLOCK_MONOTONIC,x,x);}
-EOF
 }
 
 genconfig()
