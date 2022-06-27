@@ -29,3 +29,5 @@ function generate() {
 generate "device"
 generate "linux"
 generate "mac"
+
+rm -rf .config
