@@ -632,8 +632,7 @@ struct crontab_data {
 
 struct dd_data {
   int show_xfer, show_records;
-  unsigned long long bytes, c_count, in_full, in_part, out_full, out_part;
-  struct timeval start;
+  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
   struct {
     char *name;
     int fd;
@@ -686,6 +685,9 @@ struct diff_data {
   long ct;
   char *start;
   struct arg_list *L_list;
+  char *new_line_format;
+  char *old_line_format;
+  char *unchanged_line_format;
 
   int dir_num, size, is_binary, status, change, len[2];
   int *offset[2];
@@ -906,7 +908,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -932,11 +934,11 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
-    long varslen, shift;
+    long varslen, varscap, shift, oldlineno;
 
     struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
-    char *ifs;
+    char *ifs, *omnom;
     struct sh_arg arg;
     struct arg_list *delete;
 
@@ -1548,15 +1550,15 @@ struct tail_data {
 // toys/posix/tar.c
 
 struct tar_data {
-  char *f, *C;
-  struct arg_list *T, *X;
-  char *I, *to_command, *owner, *group, *mtime, *mode;
+  char *f, *C, *I;
+  struct arg_list *T, *X, *xform;
+  long strip;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
-  long strip_components;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
-  char *cwd;
+  char *cwd, **xfsed;
   int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
   long long *sparse;
   time_t mtt;

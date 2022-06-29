@@ -1,59 +1,33 @@
-#define CFG_TOYBOX_ANDROID_SCHEDPOLICY 0
-#define USE_TOYBOX_ANDROID_SCHEDPOLICY(...)
-#define CFG_TOYBOX_CONTAINER 0
-#define USE_TOYBOX_CONTAINER(...)
-#define CFG_TOYBOX_COPYFILERANGE 0
-#define USE_TOYBOX_COPYFILERANGE(...)
 #define CFG_TOYBOX_DEBUG 0
 #define USE_TOYBOX_DEBUG(...)
-#define CFG_TOYBOX_FALLOCATE 0
-#define USE_TOYBOX_FALLOCATE(...)
-#define CFG_TOYBOX_FIFREEZE 0
-#define USE_TOYBOX_FIFREEZE(...)
 #define CFG_TOYBOX_FLOAT 1
 #define USE_TOYBOX_FLOAT(...) __VA_ARGS__
 #define CFG_TOYBOX_FORK 1
 #define USE_TOYBOX_FORK(...) __VA_ARGS__
 #define CFG_TOYBOX_FREE 0
 #define USE_TOYBOX_FREE(...)
-#define CFG_TOYBOX_GETRANDOM 0
-#define USE_TOYBOX_GETRANDOM(...)
 #define CFG_TOYBOX_HELP_DASHDASH 1
 #define USE_TOYBOX_HELP_DASHDASH(...) __VA_ARGS__
 #define CFG_TOYBOX_HELP 1
 #define USE_TOYBOX_HELP(...) __VA_ARGS__
-#define CFG_TOYBOX_I18N 1
-#define USE_TOYBOX_I18N(...) __VA_ARGS__
-#define CFG_TOYBOX_ICONV 1
-#define USE_TOYBOX_ICONV(...) __VA_ARGS__
 #define CFG_TOYBOX_LIBCRYPTO 1
 #define USE_TOYBOX_LIBCRYPTO(...) __VA_ARGS__
 #define CFG_TOYBOX_LIBZ 1
 #define USE_TOYBOX_LIBZ(...) __VA_ARGS__
 #define CFG_TOYBOX_LSM_NONE 1
 #define USE_TOYBOX_LSM_NONE(...) __VA_ARGS__
-#define CFG_TOYBOX_MUSL_NOMMU_IS_BROKEN 0
-#define USE_TOYBOX_MUSL_NOMMU_IS_BROKEN(...)
 #define CFG_TOYBOX_NORECURSE 0
 #define USE_TOYBOX_NORECURSE(...)
 #define CFG_TOYBOX_ON_ANDROID 0
 #define USE_TOYBOX_ON_ANDROID(...)
-#define CFG_TOYBOX_PEDANTIC_ARGS 0
-#define USE_TOYBOX_PEDANTIC_ARGS(...)
-#define CFG_TOYBOX_PRLIMIT 0
-#define USE_TOYBOX_PRLIMIT(...)
 #define CFG_TOYBOX_SELINUX 0
 #define USE_TOYBOX_SELINUX(...)
-#define CFG_TOYBOX_SHADOW 0
-#define USE_TOYBOX_SHADOW(...)
 #define CFG_TOYBOX_SMACK 0
 #define USE_TOYBOX_SMACK(...)
 #define CFG_TOYBOX_SUID 1
 #define USE_TOYBOX_SUID(...) __VA_ARGS__
 #define CFG_TOYBOX_UID_SYS 100
 #define CFG_TOYBOX_UID_USR 500
-#define CFG_TOYBOX_UTMPX 0
-#define USE_TOYBOX_UTMPX(...)
 #define CFG_TOYBOX 1
 #define USE_TOYBOX(...) __VA_ARGS__
 #define CFG_ACPI 0
@@ -90,10 +64,6 @@
 #define USE_BZCAT(...)
 #define CFG_CAL 0
 #define USE_CAL(...)
-#define CFG_CATV 0
-#define USE_CATV(...)
-#define CFG_CAT_V 1
-#define USE_CAT_V(...) __VA_ARGS__
 #define CFG_CAT 1
 #define USE_CAT(...) __VA_ARGS__
 #define CFG_CD 0
@@ -128,8 +98,6 @@
 #define USE_COUNT(...)
 #define CFG_CPIO 1
 #define USE_CPIO(...) __VA_ARGS__
-#define CFG_CP_PRESERVE 1
-#define USE_CP_PRESERVE(...) __VA_ARGS__
 #define CFG_CP 1
 #define USE_CP(...) __VA_ARGS__
 #define CFG_CRC32 0
@@ -266,8 +234,6 @@
 #define USE_HEAD(...) __VA_ARGS__
 #define CFG_HELLO 0
 #define USE_HELLO(...)
-#define CFG_HELP_EXTRAS 0
-#define USE_HELP_EXTRAS(...)
 #define CFG_HELP 0
 #define USE_HELP(...)
 #define CFG_HEXDUMP 0
@@ -282,6 +248,8 @@
 #define USE_HOST(...)
 #define CFG_HOSTNAME 1
 #define USE_HOSTNAME(...) __VA_ARGS__
+#define CFG_HTTPD 0
+#define USE_HTTPD(...)
 #define CFG_HWCLOCK 0
 #define USE_HWCLOCK(...)
 #define CFG_I2CDETECT 0
@@ -350,8 +318,6 @@
 #define USE_LOGNAME(...)
 #define CFG_LOGPATH 0
 #define USE_LOGPATH(...)
-#define CFG_LOGWRAPPER 0
-#define USE_LOGWRAPPER(...)
 #define CFG_LOSETUP 0
 #define USE_LOSETUP(...)
 #define CFG_LSATTR 0
@@ -362,8 +328,6 @@
 #define USE_LSOF(...)
 #define CFG_LSPCI 0
 #define USE_LSPCI(...)
-#define CFG_LSPCI_TEXT 0
-#define USE_LSPCI_TEXT(...)
 #define CFG_LSUSB 0
 #define USE_LSUSB(...)
 #define CFG_LS 1
@@ -428,8 +392,6 @@
 #define USE_NBD_CLIENT(...)
 #define CFG_NETCAT 0
 #define USE_NETCAT(...)
-#define CFG_NETCAT_LISTEN 0
-#define USE_NETCAT_LISTEN(...)
 #define CFG_NETSTAT 0
 #define USE_NETSTAT(...)
 #define CFG_NICE 0
@@ -678,8 +640,6 @@
 #define USE_WHO(...)
 #define CFG_W 0
 #define USE_W(...)
-#define CFG_XARGS_PEDANTIC 0
-#define USE_XARGS_PEDANTIC(...)
 #define CFG_XARGS 1
 #define USE_XARGS(...) __VA_ARGS__
 #define CFG_XXD 1
