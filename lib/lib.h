@@ -16,7 +16,7 @@ struct ptr_len {
 
 struct string_list {
   struct string_list *next;
-  char str[0];
+  char str[];
 };
 
 struct arg_list {
@@ -114,8 +114,8 @@ struct dirtree *dirtree_read(char *path, int (*callback)(struct dirtree *node));
 // xwrap.c
 void xstrncpy(char *dest, char *src, size_t size);
 void xstrncat(char *dest, char *src, size_t size);
-void _xexit(void) __attribute__((__noreturn__));
-void xexit(void) __attribute__((__noreturn__));
+_Noreturn void _xexit(void);
+_Noreturn void xexit(void);
 void *xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t off);
 void *xmalloc(size_t size);
 void *xzalloc(size_t size);
@@ -194,13 +194,13 @@ time_t xmktime(struct tm *tm, int utc);
 void verror_msg(char *msg, int err, va_list va);
 void error_msg(char *msg, ...) printf_format;
 void perror_msg(char *msg, ...) printf_format;
-void error_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
-void perror_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
-void help_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
+_Noreturn void error_exit(char *msg, ...) printf_format;
+_Noreturn void perror_exit(char *msg, ...) printf_format;
+_Noreturn void help_exit(char *msg, ...) printf_format;
 void error_msg_raw(char *msg);
 void perror_msg_raw(char *msg);
-void error_exit_raw(char *msg);
-void perror_exit_raw(char *msg);
+_Noreturn void error_exit_raw(char *msg);
+_Noreturn void perror_exit_raw(char *msg);
 ssize_t readall(int fd, void *buf, size_t len);
 ssize_t writeall(int fd, void *buf, size_t len);
 off_t lskip(int fd, off_t offset);
@@ -260,7 +260,9 @@ int qstrcmp(const void *a, const void *b);
 void create_uuid(char *uuid);
 char *show_uuid(char *uuid);
 char *next_printf(char *s, char **start);
+struct passwd *bufgetpwnamuid(char *name, uid_t uid);
 struct passwd *bufgetpwuid(uid_t uid);
+struct group *bufgetgrnamgid(char *name, gid_t gid);
 struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
 int readlink0(char *path, char *buf, int len);
