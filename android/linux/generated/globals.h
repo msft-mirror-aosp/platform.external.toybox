@@ -632,8 +632,7 @@ struct crontab_data {
 
 struct dd_data {
   int show_xfer, show_records;
-  unsigned long long bytes, c_count, in_full, in_part, out_full, out_part;
-  struct timeval start;
+  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
   struct {
     char *name;
     int fd;
