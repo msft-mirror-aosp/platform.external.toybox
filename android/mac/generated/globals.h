@@ -403,7 +403,7 @@ struct modinfo_data {
 // toys/other/nsenter.c
 
 struct nsenter_data {
-  char *Uupnmi[6];
+  char *UupnmiC[6];
   long t;
 };
 
@@ -505,11 +505,8 @@ struct tac_data {
 struct timeout_data {
   char *s, *k;
 
-  int nextsig;
-  pid_t pid;
-  struct timespec kts;
-  struct itimerspec its;
-  timer_t timer;
+  struct pollfd pfd;
+  sigjmp_buf sj;
 };
 
 // toys/other/truncate.c
@@ -682,16 +679,20 @@ struct dhcpd_data {
 // toys/pending/diff.c
 
 struct diff_data {
-  long ct;
-  char *start;
-  struct arg_list *L_list;
-  char *new_line_format;
-  char *old_line_format;
-  char *unchanged_line_format;
+  long U;
+  struct arg_list *L;
+  char *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
-  int dir_num, size, is_binary, status, change, len[2];
-  int *offset[2];
+  int dir_num, size, is_binary, differ, change, len[2], *offset[2];
   struct stat st[2];
+  struct {
+    char **list;
+    int nr_elm;
+  } dir[2];
+  struct {
+    FILE *fp;
+    int len;
+  } file[2];
 };
 
 // toys/pending/dumpleases.c
@@ -1542,8 +1543,7 @@ struct tail_data {
   struct {
     char *path;
     int fd;
-    dev_t dev;
-    ino_t ino;
+    struct dev_ino di;
   } *F;
 };
 
@@ -1559,15 +1559,15 @@ struct tar_data {
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd, **xfsed;
-  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
 
   // hardlinks seen so far (hlc many)
   struct {
     char *arg;
-    ino_t ino;
-    dev_t dev;
+    struct dev_ino di;
   } *hlx;
 
   // Parsed information about a tar header.
