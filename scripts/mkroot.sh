@@ -15,16 +15,14 @@ done
 : ${LOG:=${BUILD:=${TOP:=$PWD/root}/build}/log} ${AIRLOCK:=$BUILD/airlock}
 : ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/scripts/root}
 
-# define functions
-announce() { printf "\033]2;$CROSS $*\007" >/dev/tty; printf "\n=== $*\n";}
+# useful functions
+announce() { echo -e "\033]2;$CROSS $*\007\n=== $*"; }
 die() { echo "$@" >&2; exit 1; }
 
 # ----- Are we cross compiling (via CROSS_COMPILE= or CROSS=)
 
 if [ -n "$CROSS_COMPILE" ]; then
-  # airlock needs absolute path
-  [ -z "${X:=$(command -v "$CROSS_COMPILE"cc)}" ] && die "no ${CROSS_COMPILE}cc"
-  CROSS_COMPILE="$(realpath -s "${X%cc}")"
+  CROSS_COMPILE="$(realpath -s "$CROSS_COMPILE")" # airlock needs absolute path
   [ -z "$CROSS" ] && CROSS=${CROSS_COMPILE/*\//} CROSS=${CROSS/-*/}
 
 elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
@@ -43,12 +41,12 @@ elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
   fi
 fi
 
-# Set per-target output directory (using "host" if not cross-compiling)
-: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS}
-
 # Verify selected compiler works
 ${CROSS_COMPILE}cc --static -xc - -o /dev/null <<< "int main(void){return 0;}"||
   die "${CROSS_COMPILE}cc can't create static binaries"
+
+# When not cross compiling set CROSS=host. Create per-target output directory
+: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS}
 
 # ----- Create hermetic build environment
 
@@ -66,8 +64,8 @@ if [ -z "$NOAIRLOCK"] && [ -n "$CROSS_COMPILE" ]; then
 fi
 
 # Create per-target work directories
-TEMP="$BUILD/${CROSS}-tmp" && rm -rf "$TEMP" &&
-mkdir -p "$TEMP" "$OUTPUT" "$LOG" || exit 1
+MYBUILD="$BUILD/${CROSS}-tmp" && rm -rf "$MYBUILD" &&
+mkdir -p "$MYBUILD" "$OUTPUT" "$LOG" || exit 1
 [ -z "$ROOT" ] && ROOT="$OUTPUT/fs" && rm -rf "$ROOT"
 
 # ----- log build output
@@ -242,24 +240,23 @@ else
 
   # Write the qemu launch script
   if [ -n "$QEMU" ]; then
-    [ -z "$BUILTIN" ] && INITRD="-initrd initramfs.cpio.gz"
+    [ -z "$BUILTIN" ] && INITRD="-initrd ${CROSS}root.cpio.gz"
     { echo qemu-system-"$QEMU" '"$@"' $QEMU_MORE -nographic -no-reboot -m 256 \
-        -kernel linux-kernel $INITRD ${DTB:+-dtb linux.dtb} \
+        -kernel $(basename $VMLINUX) $INITRD ${DTB:+-dtb "$(basename "$DTB")"} \
         "-append \"panic=1 HOST=$TARGET console=$KARGS \$KARGS\"" &&
       echo "echo -e '\\e[?7h'"
-    } > "$OUTPUT"/run-qemu.sh &&
-    chmod +x "$OUTPUT"/run-qemu.sh || exit 1
+    } > "$OUTPUT/qemu-$TARGET.sh" &&
+    chmod +x "$OUTPUT/qemu-$TARGET.sh" || exit 1
   fi
 
   announce "linux-$KARCH"
   pushd "$LINUX" && make distclean && popd &&
-  cp -sfR "$LINUX" "$TEMP/linux" && pushd "$TEMP/linux" &&
-  # Fix x86-64 and sh2eb
-  sed -Eis '/select HAVE_(STACK_VALIDATION|OBJTOOL)/d' arch/x86/Kconfig &&
-  sed -is 's/depends on !SMP/& || !MMU/' mm/Kconfig &&
+  cp -sfR "$LINUX" "$MYBUILD/linux" && pushd "$MYBUILD/linux" &&
+  sed -is '/select HAVE_STACK_VALIDATION/d' arch/x86/Kconfig && # Fix x86-64
+  sed -is 's/depends on !SMP/& || !MMU/' mm/Kconfig &&          # Fix sh2eb
 
-  # Write linux-miniconfig
-  { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
+  # Write miniconfig
+  { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=$TARGET.miniconf"
     echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
     echo "# CONFIG_EMBEDDED is not set"
 
@@ -271,29 +268,29 @@ else
     done
     [ -n "$BUILTIN" ] && echo -e CONFIG_INITRAMFS_SOURCE="\"$OUTPUT/fs\""
     echo "$KERNEL_CONFIG"
-  } > "$OUTPUT/linux-miniconfig" &&
-  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/linux-miniconfig" &&
+  } > "$OUTPUT/miniconfig-$TARGET" &&
+  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/miniconfig-$TARGET" &&
 
   # Second config pass to remove stupid kernel defaults
   # See http://lkml.iu.edu/hypermail/linux/kernel/1912.3/03493.html
   sed -e 's/# CONFIG_EXPERT .*/CONFIG_EXPERT=y/' -e "$(sed -E -e '/^$/d' \
-    -e 's@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set\n@g' \
+    -e 's@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set/\n@g' \
        <<< VT,SCHED_DEBUG,DEBUG_MISC,X86_DEBUG_FPU)" -i .config &&
   yes "" | make ARCH=$KARCH oldconfig > /dev/null &&
-  cp .config "$OUTPUT/linux-fullconfig" &&
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
-  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) || exit 1
-  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT/linux.dtb" || exit 1 ;}
-  cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
+  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) &&
+  cp .config "$OUTPUT/linux-fullconfig" || exit 1
+  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT" || exit 1 ;}
+  cp "$VMLINUX" "$OUTPUT" && cd .. && rm -rf linux && popd || exit 1
 fi
 
 # clean up and package root filesystem for initramfs.
 if [ -z "$BUILTIN" ]; then
-  announce initramfs
+  announce "${CROSS}root.cpio.gz"
   (cd "$ROOT" && find . | cpio -o -H newc ${CROSS_COMPILE:+--no-preserve-owner}\
-    | gzip) > "$OUTPUT"/initramfs.cpio.gz || exit 1
+    | gzip) > "$OUTPUT/$CROSS"root.cpio.gz || exit 1
 fi
 
 mv "$LOG/$CROSS".{n,y}
-rmdir "$TEMP" "$BUILD" 2>/dev/null || exit 0 # remove if empty, not an error
+rmdir "$MYBUILD" "$BUILD" 2>/dev/null || exit 0 # remove if empty, not an error

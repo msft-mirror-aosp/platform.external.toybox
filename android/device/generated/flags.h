@@ -703,17 +703,17 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)L(label)*S(starting-file):N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
 #undef FLAG_U
 #undef FLAG_r
 #undef FLAG_N
-#undef FLAG_L
 #undef FLAG_S
+#undef FLAG_L
 #undef FLAG_a
 #undef FLAG_q
 #undef FLAG_s
@@ -2202,9 +2202,9 @@
 #undef FLAG_all
 #endif
 
-// nsenter <1a(all)F(no-fork)t#<1(target)C(cgroup):;i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1a(all)F(no-fork)t#<1(target)C(cgroup):;i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
+// nsenter <1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
 #undef OPTSTR_nsenter
-#define OPTSTR_nsenter "<1a(all)F(no-fork)t#<1(target)C(cgroup):;i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);"
+#define OPTSTR_nsenter "<1F(no-fork)t#<1(target)i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);"
 #ifdef CLEANUP_nsenter
 #undef CLEANUP_nsenter
 #undef FOR_nsenter
@@ -2214,10 +2214,8 @@
 #undef FLAG_n
 #undef FLAG_m
 #undef FLAG_i
-#undef FLAG_C
 #undef FLAG_t
 #undef FLAG_F
-#undef FLAG_a
 #endif
 
 // od j#vw#<1=16N#xsodcbA:t* j#vw#<1=16N#xsodcbA:t*
@@ -3061,9 +3059,9 @@
 #undef FLAG_f
 #endif
 
-// tar &(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa] &(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]
+// tar &(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa] &(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]
 #undef OPTSTR_tar
-#define OPTSTR_tar "&(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]"
+#define OPTSTR_tar "&(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]"
 #ifdef CLEANUP_tar
 #undef CLEANUP_tar
 #undef FOR_tar
@@ -3099,7 +3097,6 @@
 #undef FLAG_overwrite
 #undef FLAG_no_same_permissions
 #undef FLAG_numeric_owner
-#undef FLAG_null
 #undef FLAG_no_recursion
 #undef FLAG_full_time
 #undef FLAG_restrict
@@ -3211,13 +3208,12 @@
 #undef FLAG_p
 #endif
 
-// timeout <2^(foreground)(preserve-status)vk:s(signal):i <2^(foreground)(preserve-status)vk:s(signal):i
+// timeout <2^(foreground)(preserve-status)vk:s(signal): <2^(foreground)(preserve-status)vk:s(signal):
 #undef OPTSTR_timeout
-#define OPTSTR_timeout "<2^(foreground)(preserve-status)vk:s(signal):i"
+#define OPTSTR_timeout "<2^(foreground)(preserve-status)vk:s(signal):"
 #ifdef CLEANUP_timeout
 #undef CLEANUP_timeout
 #undef FOR_timeout
-#undef FLAG_i
 #undef FLAG_s
 #undef FLAG_k
 #undef FLAG_v
@@ -3474,9 +3470,9 @@
 #undef FLAG_f
 #endif
 
-// unshare <1^a(all)f(fork)r(map-root-user)C(cgroup):;i(ipc):;m(mount):;n(net):;p(pid):;u(uts):;U(user):; <1^a(all)f(fork)r(map-root-user)C(cgroup):;i(ipc):;m(mount):;n(net):;p(pid):;u(uts):;U(user):;
+// unshare <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user); <1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);
 #undef OPTSTR_unshare
-#define OPTSTR_unshare "<1^a(all)f(fork)r(map-root-user)C(cgroup):;i(ipc):;m(mount):;n(net):;p(pid):;u(uts):;U(user):;"
+#define OPTSTR_unshare "<1^f(fork);r(map-root-user);i:(ipc);m:(mount);n:(net);p:(pid);u:(uts);U:(user);"
 #ifdef CLEANUP_unshare
 #undef CLEANUP_unshare
 #undef FOR_unshare
@@ -3486,10 +3482,8 @@
 #undef FLAG_n
 #undef FLAG_m
 #undef FLAG_i
-#undef FLAG_C
 #undef FLAG_r
 #undef FLAG_f
-#undef FLAG_a
 #endif
 
 // uptime >0ps >0ps
@@ -4393,8 +4387,8 @@
 #define FLAG_U (1<<0)
 #define FLAG_r (1<<1)
 #define FLAG_N (1<<2)
-#define FLAG_L (1<<3)
-#define FLAG_S (1<<4)
+#define FLAG_S (1<<3)
+#define FLAG_L (1<<4)
 #define FLAG_a (1<<5)
 #define FLAG_q (1<<6)
 #define FLAG_s (1<<7)
@@ -5771,10 +5765,8 @@
 #define FLAG_n (1<<3)
 #define FLAG_m (1<<4)
 #define FLAG_i (1<<5)
-#define FLAG_C (1<<6)
-#define FLAG_t (1<<7)
-#define FLAG_F (1<<8)
-#define FLAG_a (1<<9)
+#define FLAG_t (1<<6)
+#define FLAG_F (1<<7)
 #endif
 
 #ifdef FOR_od
@@ -6589,12 +6581,11 @@
 #define FLAG_overwrite (1<<29)
 #define FLAG_no_same_permissions (1<<30)
 #define FLAG_numeric_owner (1LL<<31)
-#define FLAG_null (1LL<<32)
-#define FLAG_no_recursion (1LL<<33)
-#define FLAG_full_time (1LL<<34)
-#define FLAG_restrict (1LL<<35)
-#define FLAG_selinux (1LL<<36)
-#define FLAG_show_transformed_names (1LL<<37)
+#define FLAG_no_recursion (1LL<<32)
+#define FLAG_full_time (1LL<<33)
+#define FLAG_restrict (1LL<<34)
+#define FLAG_selinux (1LL<<35)
+#define FLAG_show_transformed_names (1LL<<36)
 #endif
 
 #ifdef FOR_taskset
@@ -6697,12 +6688,11 @@
 #ifndef TT
 #define TT this.timeout
 #endif
-#define FLAG_i (1<<0)
-#define FLAG_s (1<<1)
-#define FLAG_k (1<<2)
-#define FLAG_v (1<<3)
-#define FLAG_preserve_status (1<<4)
-#define FLAG_foreground (1<<5)
+#define FLAG_s (1<<0)
+#define FLAG_k (1<<1)
+#define FLAG_v (1<<2)
+#define FLAG_preserve_status (1<<3)
+#define FLAG_foreground (1<<4)
 #endif
 
 #ifdef FOR_top
@@ -6947,10 +6937,8 @@
 #define FLAG_n (1<<3)
 #define FLAG_m (1<<4)
 #define FLAG_i (1<<5)
-#define FLAG_C (1<<6)
-#define FLAG_r (1<<7)
-#define FLAG_f (1<<8)
-#define FLAG_a (1<<9)
+#define FLAG_r (1<<6)
+#define FLAG_f (1<<7)
 #endif
 
 #ifdef FOR_uptime

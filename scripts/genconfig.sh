@@ -73,7 +73,8 @@ toys()
     $SED -En 's/([^:]*):.*(OLD|NEW)TOY\( *([a-zA-Z][^,]*) *,.*/\1:\3/p'
 }
 
-WORKING= PENDING= EXAMPLE=
+WORKING=
+PENDING=
 toys toys/*/*.c | (
 while IFS=":" read FILE NAME
 do
@@ -82,13 +83,12 @@ do
   [ "$NAME" == sh ] && FILE="toys/*/*.c"
   echo -e "$NAME: $FILE *.[ch] lib/*.[ch]\n\tscripts/single.sh $NAME\n"
   echo -e "test_$NAME:\n\tscripts/test.sh $NAME\n"
-  [ "${FILE/example//}" != "$FILE" ] && EXAMPLE="$EXAMPLE $NAME" ||
-  [ "${FILE/pending//}" != "$FILE" ] && PENDING="$PENDING $NAME" ||
+  [ "${FILE/pending//}" != "$FILE" ] &&
+    PENDING="$PENDING $NAME" ||
     WORKING="$WORKING $NAME"
 done &&
 echo -e "clean::\n\t@rm -f $WORKING $PENDING" &&
 echo -e "list:\n\t@echo $(echo $WORKING | tr ' ' '\n' | sort | xargs)" &&
-echo -e "list_example:\n\t@echo $(echo $EXAMPLE | tr ' ' '\n' | sort | xargs)"&&
-echo -e "list_pending:\n\t@echo $(echo $PENDING | tr ' ' '\n' | sort | xargs)"&&
+echo -e "list_pending:\n\t@echo $(echo $PENDING | tr ' ' '\n' | sort | xargs)" &&
 echo -e ".PHONY: $WORKING $PENDING" | $SED 's/ \([^ ]\)/ test_\1/g'
 ) > .singlemake

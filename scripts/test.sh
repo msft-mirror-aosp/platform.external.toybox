@@ -45,9 +45,9 @@ do_test()
     [ -z "$C" ] && printf '%s\n' "$SHOWSKIP: no $CMDNAME" && return
   fi
 
-  (. "$1"; cd "$TESTDIR"; echo "$FAILCOUNT" > continue)
+  (. "$1"; cd "$TESTDIR"; touch continue)
   cd "$TESTDIR"
-  [ -e continue ] && FAILCOUNT=$(($(cat continue)+$FAILCOUNT)) || exit 1
+  [ -e continue ] || exit 1
 }
 
 if [ $# -ne 0 ]

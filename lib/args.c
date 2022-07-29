@@ -65,7 +65,7 @@
 //     % time offset in milliseconds with optional s/m/h/d suffix
 //     (longopt)
 //     | this is required. If more than one marked, only one required.
-//     ; Option's argument is optional, and must be collated: -aARG or --a=ARG
+//     ; long option's argument is optional (can only be supplied with --opt=)
 //     ^ Stop parsing after encountering this argument
 //    " " (space char) the "plus an argument" must be separate
 //        I.E. "-j 3" not "-j3". So "kill -stop" != "kill -s top"
