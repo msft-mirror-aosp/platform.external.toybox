@@ -16,8 +16,10 @@
  *
  * Why --exclude pattern but no --include? tar cvzf a.tgz dir --include '*.txt'
  *
+ * No --no-null because the args infrastructure isn't ready.
+ *
 
-USE_TAR(NEWTOY(tar, "&(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
@@ -40,6 +42,7 @@ config TAR
     --sparse         Record sparse files  --selinux           Save/restore labels
     --restrict       All under one dir    --no-recursion      Skip dir contents
     --numeric-owner  Use numeric uid/gid, not user/group names
+    --null           Filenames in -T FILE are null-separated, not newline
     --strip-components NUM  Ignore first NUM directory components when extracting
     --xform=SED      Modify filenames via SED expression (ala s/find/replace/g)
     -I PROG          Filter through PROG to compress or PROG -d to decompress
@@ -58,15 +61,15 @@ GLOBALS(
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd, **xfsed;
-  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
 
   // hardlinks seen so far (hlc many)
   struct {
     char *arg;
-    ino_t ino;
-    dev_t dev;
+    struct dev_ino di;
   } *hlx;
 
   // Parsed information about a tar header.
@@ -200,7 +203,7 @@ static int add_to_tar(struct dirtree *node)
   char *name, *lnk, *hname, *xfname = 0;
 
   if (!dirtree_notdotdot(node)) return 0;
-  if (TT.adev == st->st_dev && TT.aino == st->st_ino) {
+  if (same_dev_ino(st, &TT.archive_di)) {
     error_msg("'%s' file is the archive; not dumped", node->name);
     return 0;
   }
@@ -262,10 +265,7 @@ static int add_to_tar(struct dirtree *node)
   // Are there hardlinks to a non-directory entry?
   if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
-    for (i = 0; i<TT.hlc; i++) {
-      if (st->st_ino == TT.hlx[i].ino && st->st_dev == TT.hlx[i].dev)
-        break;
-    }
+    for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
     if (i != TT.hlc) {
       lnk = TT.hlx[i].arg;
       i = 1;
@@ -274,8 +274,8 @@ static int add_to_tar(struct dirtree *node)
       if (!(TT.hlc&255))
         TT.hlx = xrealloc(TT.hlx, sizeof(*TT.hlx)*(TT.hlc+256));
       TT.hlx[TT.hlc].arg = xstrdup(hname);
-      TT.hlx[TT.hlc].ino = st->st_ino;
-      TT.hlx[TT.hlc].dev = st->st_dev;
+      TT.hlx[TT.hlc].di.ino = st->st_ino;
+      TT.hlx[TT.hlc].di.dev = st->st_dev;
       TT.hlc++;
       i = 0;
     }
@@ -910,7 +910,8 @@ void tar_main(void)
     trim2list(&TT.excl, TT.exclude->arg);
   for (;TT.X; TT.X = TT.X->next) do_lines(xopenro(TT.X->arg), '\n', do_XT);
   for (args = toys.optargs; *args; args++) trim2list(&TT.incl, *args);
-  for (;TT.T; TT.T = TT.T->next) do_lines(xopenro(TT.T->arg), '\n', do_XT);
+  for (;TT.T; TT.T = TT.T->next)
+    do_lines(xopenro(TT.T->arg), FLAG(null) ? '\0' : '\n', do_XT);
 
   // If include file list empty, don't create empty archive
   if (FLAG(c)) {
@@ -948,8 +949,8 @@ void tar_main(void)
     struct stat st;
 
     if (!fstat(TT.fd, &st)) {
-      TT.aino = st.st_ino;
-      TT.adev = st.st_dev;
+      TT.archive_di.ino = st.st_ino;
+      TT.archive_di.dev = st.st_dev;
     }
   }
 
