@@ -2,6 +2,9 @@
   "presubmit": [
     {
       "name": "toybox-tests"
+    },
+    {
+      "name": "aidl_integration_test"
     }
   ],
   "hwasan-postsubmit": [
