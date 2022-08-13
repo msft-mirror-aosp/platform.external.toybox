@@ -99,9 +99,8 @@ struct mktemp_data {
 // toys/lsb/mount.c
 
 struct mount_data {
-  struct arg_list *optlist;
-  char *type;
-  char *bigO;
+  struct arg_list *o;
+  char *t, *O;
 
   unsigned long flags;
   char *opts;
