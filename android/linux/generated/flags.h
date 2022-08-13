@@ -2068,9 +2068,9 @@
 #undef FOR_more
 #endif
 
-// mount   ?O:afnrvwt:o*[-rw]
+// mount   ?RO:afnrvwt:o*[-rw]
 #undef OPTSTR_mount
-#define OPTSTR_mount "?O:afnrvwt:o*[-rw]"
+#define OPTSTR_mount "?RO:afnrvwt:o*[-rw]"
 #ifdef CLEANUP_mount
 #undef CLEANUP_mount
 #undef FOR_mount
@@ -2083,6 +2083,7 @@
 #undef FLAG_f
 #undef FLAG_a
 #undef FLAG_O
+#undef FLAG_R
 #endif
 
 // mountpoint   <1qdx[-dx]
@@ -5654,6 +5655,7 @@
 #define FLAG_f (FORCED_FLAG<<6)
 #define FLAG_a (FORCED_FLAG<<7)
 #define FLAG_O (FORCED_FLAG<<8)
+#define FLAG_R (FORCED_FLAG<<9)
 #endif
 
 #ifdef FOR_mountpoint
