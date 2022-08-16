@@ -111,7 +111,20 @@ wrong_args()
 # Announce success
 do_pass()
 {
-  ! verbose_has nopass && printf "%s\n" "$SHOWPASS: $NAME"
+  verbose_has nopass || printf "%s\n" "$SHOWPASS: $NAME"
+}
+
+# Announce failure and handle fallout for txpect
+do_fail()
+{
+  FAILCOUNT=$(($FAILCOUNT+1))
+  printf "%s\n" "$SHOWFAIL: $NAME"
+  if [ ! -z "$CASE" ]
+  then
+    echo "Expected '$CASE'"
+    echo "Got '$A'"
+  fi
+  ! verbose_has all && exit 1
 }
 
 # The testing function
@@ -138,16 +151,10 @@ testing()
   RETVAL=$?
 
   # Catch segfaults
-  [ $RETVAL -gt 128 ] && [ $RETVAL -lt 255 ] &&
+  [ $RETVAL -gt 128 ] &&
     echo "exited with signal (or returned $RETVAL)" >> actual
   DIFF="$(diff -au${NOSPACE:+w} expected actual)"
-  if [ -n "$DIFF" ]
-  then
-    FAILCOUNT=$(($FAILCOUNT+1))
-    printf "%s\n" "$SHOWFAIL: $NAME"
-  else
-    ! verbose_has nopass && printf "%s\n" "$SHOWPASS: $NAME"
-  fi
+  [ -z "$DIFF" ] && do_pass || VERBOSE=all do_fail
   if ! verbose_has quiet && { [ -n "$DIFF" ] || verbose_has spam; }
   then
     [ ! -z "$4" ] && printf "%s\n" "echo -ne \"$4\" > input"
@@ -170,19 +177,6 @@ testcmd()
   X="$1"
   [ -z "$X" ] && X="$CMDNAME $2"
   testing "$X" "\"$C\" $2" "$3" "$4" "$5"
-}
-
-# Announce failure and handle fallout for txpect
-do_fail()
-{
-  FAILCOUNT=$(($FAILCOUNT+1))
-  printf "%s\n" "$SHOWFAIL: $NAME"
-  if [ ! -z "$CASE" ]
-  then
-    echo "Expected '$CASE'"
-    echo "Got '$A'"
-  fi
-  ! verbose_has all && exit 1
 }
 
 # txpect NAME COMMAND [I/O/E/Xstring]...
