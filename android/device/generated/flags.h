@@ -2852,9 +2852,9 @@
 #undef FLAG_M
 #endif
 
-// sort gS:T:mo:k*t:xVbMcszdfirun gS:T:mo:k*t:xVbMcszdfirun
+// sort gS:T:mo:k*t:xVbMCcszdfirun gS:T:mo:k*t:xVbMCcszdfirun
 #undef OPTSTR_sort
-#define OPTSTR_sort "gS:T:mo:k*t:xVbMcszdfirun"
+#define OPTSTR_sort "gS:T:mo:k*t:xVbMCcszdfirun"
 #ifdef CLEANUP_sort
 #undef CLEANUP_sort
 #undef FOR_sort
@@ -2867,6 +2867,7 @@
 #undef FLAG_z
 #undef FLAG_s
 #undef FLAG_c
+#undef FLAG_C
 #undef FLAG_M
 #undef FLAG_b
 #undef FLAG_V
@@ -6379,17 +6380,18 @@
 #define FLAG_z (1<<6)
 #define FLAG_s (1<<7)
 #define FLAG_c (1<<8)
-#define FLAG_M (1<<9)
-#define FLAG_b (1<<10)
-#define FLAG_V (1<<11)
-#define FLAG_x (1<<12)
-#define FLAG_t (1<<13)
-#define FLAG_k (1<<14)
-#define FLAG_o (1<<15)
-#define FLAG_m (1<<16)
-#define FLAG_T (1<<17)
-#define FLAG_S (1<<18)
-#define FLAG_g (1<<19)
+#define FLAG_C (1<<9)
+#define FLAG_M (1<<10)
+#define FLAG_b (1<<11)
+#define FLAG_V (1<<12)
+#define FLAG_x (1<<13)
+#define FLAG_t (1<<14)
+#define FLAG_k (1<<15)
+#define FLAG_o (1<<16)
+#define FLAG_m (1<<17)
+#define FLAG_T (1<<18)
+#define FLAG_S (1<<19)
+#define FLAG_g (1<<20)
 #endif
 
 #ifdef FOR_source
