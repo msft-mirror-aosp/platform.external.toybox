@@ -258,7 +258,7 @@ USE_SKELETON(NEWTOY(skeleton, "(walrus)(blubber):;(also):h(hlong):; g(glong): f(
 USE_SKELETON_ALIAS(NEWTOY(skeleton_alias, "b#dq", TOYFLAG_USR|TOYFLAG_BIN))
 USE_SLEEP(NEWTOY(sleep, "<1", TOYFLAG_BIN))
 USE_SNTP(NEWTOY(sntp, ">1M :m :Sp:t#<0=1>16asdDqr#<4>17=10[!as]", TOYFLAG_USR|TOYFLAG_BIN))
-USE_SORT(NEWTOY(sort, USE_SORT_FLOAT("g")"S:T:m" "o:k*t:" "xVbMcszdfirun", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
+USE_SORT(NEWTOY(sort, USE_SORT_FLOAT("g")"S:T:m" "o:k*t:" "xVbMCcszdfirun", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)))
 USE_SH(NEWTOY(source, "<1", TOYFLAG_NOFORK))
 USE_SPLIT(NEWTOY(split, ">2a#<1=2>9b#<1l#<1n#<1[!bl][!bn][!ln]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_STAT(NEWTOY(stat, "<1c:(format)fLt", TOYFLAG_BIN))
