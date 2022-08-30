@@ -507,6 +507,7 @@ struct timeout_data {
 
   struct pollfd pfd;
   sigjmp_buf sj;
+  int fds[2], pid;
 };
 
 // toys/other/truncate.c
