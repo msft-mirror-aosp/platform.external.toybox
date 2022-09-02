@@ -5,19 +5,20 @@
  * See ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.24/libblkid-docs/api-index-full.html
  * TODO: -U and -L should require arguments
 
-USE_BLKID(NEWTOY(blkid, "ULs*[!LU]", TOYFLAG_BIN))
+USE_BLKID(NEWTOY(blkid, "ULo:s*[!LU]", TOYFLAG_BIN))
 USE_FSTYPE(NEWTOY(fstype, "<1", TOYFLAG_BIN))
 
 config BLKID
   bool "blkid"
   default y
   help
-    usage: blkid [-s TAG] [-UL] DEV...
+    usage: blkid [-o TYPE] [-s TAG] [-UL] DEV...
 
     Print type, label and UUID of filesystem on a block device or image.
 
     -U	Show UUID only (or device with that UUID)
     -L	Show LABEL only (or device with that LABEL)
+    -o TYPE	Output format (full, value, export)
     -s TAG	Only show matching tags (default all)
 
 config FSTYPE
@@ -34,6 +35,7 @@ config FSTYPE
 
 GLOBALS(
   struct arg_list *s;
+  char *o;
 )
 
 struct fstype {
@@ -64,6 +66,19 @@ struct fstype {
   {"vfat", 0x31544146, 4, 54, 39, 11, 43}     // fat1
 };
 
+static void escape(char *str, int force)
+{
+  if (!force && str[strcspn(str, "\" \\\n\t$<>|&;`'~()!#?")]) force++;
+  if (!force) return xputsn(str);
+
+  putchar('"');
+  while (*str) {
+    if (strchr("\" \\", *str)) putchar('\\');
+    putchar(*str++);
+  }
+  putchar('"');
+}
+
 static void show_tag(char *key, char *value)
 {
   int show = 0;
@@ -73,7 +88,13 @@ static void show_tag(char *key, char *value)
     for (al = TT.s; al; al = al->next) if (!strcmp(key, al->arg)) show = 1;
   } else show = 1;
 
-  if (show && *value) printf(" %s=\"%s\"", key, value);
+  if (!show || !*value) return;
+  if (!strcasecmp(TT.o, "full") || !strcasecmp(TT.o, "export")) {
+    printf(" %s="+!(*TT.o=='f'), key);
+    escape(value, *TT.o=='f');
+    if (*TT.o=='e') xputc('\n');
+  } else if (!strcasecmp(TT.o, "value")) xputs(value);
+  else error_exit("bad -o %s", TT.o);
 }
 
 static void flagshow(char *s, char *name)
@@ -137,7 +158,10 @@ static void do_blkid(int fd, char *name)
   }
 
   // output for blkid
-  if (!FLAG(L) && !FLAG(U)) printf("%s:",name);
+  if (!FLAG(L) && !FLAG(U)) {
+    if (!TT.o || !strcasecmp(TT.o, "full")) printf("%s:", name);
+    else if (!strcasecmp(TT.o, "export")) show_tag("DEVNAME", name);
+  }
 
   len = fstypes[i].label_len;
   if (!FLAG(U) && len) {
@@ -189,11 +213,13 @@ static void do_blkid(int fd, char *name)
   if (FLAG(U) || FLAG(L)) return;
 
   show_tag("TYPE", type);
-  xputc('\n');
+  if (!strcasecmp(TT.o, "full")) xputc('\n');
 }
 
 void blkid_main(void)
 {
+  if (!TT.o) TT.o = "full";
+
   if (*toys.optargs && !FLAG(L) && !FLAG(U)) loopfiles(toys.optargs, do_blkid);
   else {
     unsigned int ma, mi, sz, fd;

@@ -17,7 +17,7 @@ void verror_msg(char *msg, int err, va_list va)
   if (err<0 && CFG_TOYBOX_HELP)
     fprintf(stderr, " (see \"%s --help\")", toys.which->name);
   if (msg || err) putc('\n', stderr);
-  if (!toys.exitval) toys.exitval++;
+  if (!toys.exitval) toys.exitval = (toys.which->flags>>24) ? : 1;
 }
 
 // These functions don't collapse together because of the va_stuff.
@@ -449,9 +449,10 @@ char *strafter(char *haystack, char *needle)
 // Remove trailing \n
 char *chomp(char *s)
 {
-  char *p = strrchr(s, '\n');
+  char *p;
 
-  if (p && !p[1]) *p = 0;
+  if (s) for (p = s+strlen(s); p>s && (p[-1]=='\r' || p[-1]=='\n'); *--p = 0);
+
   return s;
 }
 
@@ -517,6 +518,18 @@ int strcasestart(char **a, char *b)
 
   return i;
 }
+
+int same_file(struct stat *st1, struct stat *st2)
+{
+  return st1->st_ino==st2->st_ino && st1->st_dev==st2->st_dev;
+}
+
+int same_dev_ino(struct stat *st, struct dev_ino *di)
+{
+  return st->st_ino==di->ino && st->st_dev==di->dev;
+}
+
+
 
 // Return how long the file at fd is, if there's any way to determine it.
 off_t fdlength(int fd)
@@ -887,9 +900,14 @@ void generic_signal(int sig)
   toys.signal = sig;
 }
 
+// More or less SIG_DFL that runs our atexit list and can siglongjmp.
 void exit_signal(int sig)
 {
+  sigset_t sigset;
+
   if (sig) toys.exitval = sig|128;
+  sigfillset(&sigset);
+  sigprocmask(SIG_BLOCK, &sigset, 0);
   xexit();
 }
 
@@ -1128,8 +1146,7 @@ void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
         char buf[32];
 
         sprintf(buf, "/proc/%u/exe", u);
-        if (stat(buf, &st2)) continue;
-        if (st1.st_dev != st2.st_dev || st1.st_ino != st2.st_ino) continue;
+        if (stat(buf, &st2) || !same_file(&st1, &st2)) continue;
         goto match;
       }
 
@@ -1251,7 +1268,7 @@ char *next_printf(char *s, char **start)
 }
 
 // Return cached passwd entries.
-struct passwd *bufgetpwuid(uid_t uid)
+struct passwd *bufgetpwnamuid(char *name, uid_t uid)
 {
   struct pwuidbuf_list {
     struct pwuidbuf_list *next;
@@ -1263,11 +1280,14 @@ struct passwd *bufgetpwuid(uid_t uid)
 
   // If we already have this one, return it.
   for (list = pwuidbuf; list; list = list->next)
-    if (list->pw.pw_uid == uid) return &(list->pw);
+    if (name ? !strcmp(name, list->pw.pw_name) : list->pw.pw_uid==uid)
+      return &(list->pw);
 
   for (;;) {
     list = xrealloc(list, size *= 2);
-    errno = getpwuid_r(uid, &list->pw, sizeof(*list)+(char *)list,
+    if (name) errno = getpwnam_r(name, &list->pw, sizeof(*list)+(char *)list,
+      size-sizeof(*list), &temp);
+    else errno = getpwuid_r(uid, &list->pw, sizeof(*list)+(char *)list,
       size-sizeof(*list), &temp);
     if (errno != ERANGE) break;
   }
@@ -1283,8 +1303,13 @@ struct passwd *bufgetpwuid(uid_t uid)
   return &list->pw;
 }
 
+struct passwd *bufgetpwuid(uid_t uid)
+{
+  return bufgetpwnamuid(0, uid);
+}
+
 // Return cached group entries.
-struct group *bufgetgrgid(gid_t gid)
+struct group *bufgetgrnamgid(char *name, gid_t gid)
 {
   struct grgidbuf_list {
     struct grgidbuf_list *next;
@@ -1295,11 +1320,14 @@ struct group *bufgetgrgid(gid_t gid)
   unsigned size = 256;
 
   for (list = grgidbuf; list; list = list->next)
-    if (list->gr.gr_gid == gid) return &(list->gr);
+    if (name ? !strcmp(name, list->gr.gr_name) : list->gr.gr_gid==gid)
+      return &(list->gr);
 
   for (;;) {
     list = xrealloc(list, size *= 2);
-    errno = getgrgid_r(gid, &list->gr, sizeof(*list)+(char *)list,
+    if (name) errno = getgrnam_r(name, &list->gr, sizeof(*list)+(char *)list,
+      size-sizeof(*list), &temp);
+    else errno = getgrgid_r(gid, &list->gr, sizeof(*list)+(char *)list,
       size-sizeof(*list), &temp);
     if (errno != ERANGE) break;
   }
@@ -1313,6 +1341,12 @@ struct group *bufgetgrgid(gid_t gid)
 
   return &list->gr;
 }
+
+struct group *bufgetgrgid(gid_t gid)
+{
+  return bufgetgrnamgid(0, gid);
+}
+
 
 // Always null terminates, returns 0 for failure, len for success
 int readlinkat0(int dirfd, char *path, char *buf, int len)
@@ -1457,14 +1491,15 @@ char *elf_arch_name(int type)
     {195, "arcv2"}, {40, "arm"}, {183, "arm64"}, {0x18ad, "avr32"},
     {247, "bpf"}, {106, "blackfin"}, {140, "c6x"}, {23, "cell"}, {76, "cris"},
     {252, "csky"}, {0x5441, "frv"}, {46, "h8300"}, {164, "hexagon"},
-    {50, "ia64"}, {88, "m32r"}, {0x9041, "m32r"}, {4, "m68k"}, {174, "metag"},
-    {189, "microblaze"}, {0xbaab, "microblaze-old"}, {8, "mips"},
-    {10, "mips-old"}, {89, "mn10300"}, {0xbeef, "mn10300-old"}, {113, "nios2"},
-    {92, "openrisc"}, {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"},
-    {21, "ppc64"}, {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"},
-    {135, "score"}, {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"},
-    {188, "tile"}, {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"},
-    {94, "xtensa"}, {0xabc7, "xtensa-old"}
+    {50, "ia64"}, {258, "loongarch"}, {88, "m32r"}, {0x9041, "m32r"},
+    {4, "m68k"}, {174, "metag"}, {189, "microblaze"},
+    {0xbaab, "microblaze-old"}, {8, "mips"}, {10, "mips-old"}, {89, "mn10300"},
+    {0xbeef, "mn10300-old"}, {113, "nios2"}, {92, "openrisc"},
+    {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"}, {21, "ppc64"},
+    {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"}, {135, "score"},
+    {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"}, {188, "tile"},
+    {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"}, {94, "xtensa"},
+    {0xabc7, "xtensa-old"}
   };
 
   for (i = 0; i<ARRAY_LEN(types); i++) {

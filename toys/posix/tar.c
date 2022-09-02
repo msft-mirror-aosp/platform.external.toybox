@@ -16,8 +16,10 @@
  *
  * Why --exclude pattern but no --include? tar cvzf a.tgz dir --include '*.txt'
  *
+ * No --no-null because the args infrastructure isn't ready.
+ *
 
-USE_TAR(NEWTOY(tar, "&(selinux)(restrict)(full-time)(no-recursion)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)I(use-compress-program):J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):a[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
@@ -34,13 +36,15 @@ config TAR
     J  xz compression        j  bzip2 compression     z  gzip compression
     O  Extract to stdout     X  exclude names in FILE T  include names in FILE
 
-    --exclude        FILENAME to exclude    --full-time   Show seconds with -tv
-    --mode MODE      Adjust modes           --mtime TIME  Override timestamps
-    --owner NAME     Set file owner to NAME --group NAME  Set file group to NAME
-    --sparse         Record sparse files    --selinux     Record/restore labels
-    --restrict       All archive contents must extract under one subdirectory
-    --numeric-owner  Save/use/display uid and gid, not user/group name
-    --no-recursion   Don't store directory contents
+    --exclude        FILENAME to exclude  --full-time         Show seconds with -tv
+    --mode MODE      Adjust permissions   --owner NAME[:UID]  Set file ownership
+    --mtime TIME     Override timestamps  --group NAME[:GID]  Set file group
+    --sparse         Record sparse files  --selinux           Save/restore labels
+    --restrict       All under one dir    --no-recursion      Skip dir contents
+    --numeric-owner  Use numeric uid/gid, not user/group names
+    --null           Filenames in -T FILE are null-separated, not newline
+    --strip-components NUM  Ignore first NUM directory components when extracting
+    --xform=SED      Modify filenames via SED expression (ala s/find/replace/g)
     -I PROG          Filter through PROG to compress or PROG -d to decompress
 */
 
@@ -48,23 +52,24 @@ config TAR
 #include "toys.h"
 
 GLOBALS(
-  char *f, *C;
-  struct arg_list *T, *X;
-  char *I, *to_command, *owner, *group, *mtime, *mode;
+  char *f, *C, *I;
+  struct arg_list *T, *X, *xform;
+  long strip;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
-  char *cwd;
-  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
+  char *cwd, **xfsed;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
 
   // hardlinks seen so far (hlc many)
   struct {
     char *arg;
-    ino_t ino;
-    dev_t dev;
+    struct dev_ino di;
   } *hlx;
 
   // Parsed information about a tar header.
@@ -79,8 +84,9 @@ GLOBALS(
   } hdr;
 )
 
+// The on-disk 512 byte record structure.
 struct tar_hdr {
-  char name[100], mode[8], uid[8], gid[8],size[12], mtime[12], chksum[8],
+  char name[100], mode[8], uid[8], gid[8], size[12], mtime[12], chksum[8],
        type, link[100], magic[8], uname[32], gname[32], major[8], minor[8],
        prefix[155], padd[12];
 };
@@ -193,11 +199,11 @@ static int add_to_tar(struct dirtree *node)
   struct tar_hdr hdr;
   struct passwd *pw = pw;
   struct group *gr = gr;
-  int i, fd = -1, norecurse = FLAG(no_recursion);
-  char *name, *lnk, *hname;
+  int i, fd = -1, recurse = 0;
+  char *name, *lnk, *hname, *xfname = 0;
 
   if (!dirtree_notdotdot(node)) return 0;
-  if (TT.adev == st->st_dev && TT.aino == st->st_ino) {
+  if (same_dev_ino(st, &TT.archive_di)) {
     error_msg("'%s' file is the archive; not dumped", node->name);
     return 0;
   }
@@ -207,11 +213,7 @@ static int add_to_tar(struct dirtree *node)
 
   // exclusion defaults to --no-anchored and --wildcards-match-slash
   for (lnk = name; *lnk;) {
-    if (filter(TT.excl, lnk)) {
-      norecurse++;
-
-      goto done;
-    }
+    if (filter(TT.excl, lnk)) goto done;
     while (*lnk && *lnk!='/') lnk++;
     while (*lnk=='/') lnk++;
   }
@@ -225,8 +227,12 @@ static int add_to_tar(struct dirtree *node)
     if (!(lnk = strstr(lnk, ".."))) break;
     if (lnk == hname || lnk[-1] == '/') {
       if (!lnk[2]) goto done;
-      if (lnk[2]=='/') lnk = hname = lnk+3;
-    } else lnk+= 2;
+      if (lnk[2]=='/') {
+        lnk = hname = lnk+3;
+        continue;
+      }
+    }
+    lnk += 2;
   }
   if (!*hname) goto done;
 
@@ -235,6 +241,10 @@ static int add_to_tar(struct dirtree *node)
            (int)(hname-name), name);
     TT.warn = 0;
   }
+
+  // Note: linux sed doesn't add newline, so no need to remove it or use -z.
+  if (TT.xfsed)
+    if (!(hname = xfname = xrunread(TT.xfsed, hname))) error_exit("bad xform");
 
   if (TT.owner) st->st_uid = TT.ouid;
   if (TT.group) st->st_gid = TT.ggid;
@@ -255,10 +265,7 @@ static int add_to_tar(struct dirtree *node)
   // Are there hardlinks to a non-directory entry?
   if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
-    for (i = 0; i<TT.hlc; i++) {
-      if (st->st_ino == TT.hlx[i].ino && st->st_dev == TT.hlx[i].dev)
-        break;
-    }
+    for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
     if (i != TT.hlc) {
       lnk = TT.hlx[i].arg;
       i = 1;
@@ -267,8 +274,8 @@ static int add_to_tar(struct dirtree *node)
       if (!(TT.hlc&255))
         TT.hlx = xrealloc(TT.hlx, sizeof(*TT.hlx)*(TT.hlc+256));
       TT.hlx[TT.hlc].arg = xstrdup(hname);
-      TT.hlx[TT.hlc].ino = st->st_ino;
-      TT.hlx[TT.hlc].dev = st->st_dev;
+      TT.hlx[TT.hlc].di.ino = st->st_ino;
+      TT.hlx[TT.hlc].di.dev = st->st_dev;
       TT.hlc++;
       i = 0;
     }
@@ -332,10 +339,10 @@ static int add_to_tar(struct dirtree *node)
   if (!FLAG(numeric_owner)) {
     if ((TT.owner || (pw = bufgetpwuid(st->st_uid))) &&
         ascii_fits(st->st_uid, sizeof(hdr.uid)))
-      strncpy(hdr.uname, TT.owner ? TT.owner : pw->pw_name, sizeof(hdr.uname));
+      strncpy(hdr.uname, TT.owner ? : pw->pw_name, sizeof(hdr.uname));
     if ((TT.group || (gr = bufgetgrgid(st->st_gid))) &&
         ascii_fits(st->st_gid, sizeof(hdr.gid)))
-      strncpy(hdr.gname, TT.group ? TT.group : gr->gr_name, sizeof(hdr.gname));
+      strncpy(hdr.gname, TT.group ? : gr->gr_name, sizeof(hdr.gname));
   }
 
   TT.sparselen = 0;
@@ -343,6 +350,7 @@ static int add_to_tar(struct dirtree *node)
     // Before we write the header, make sure we can read the file
     if ((fd = open(name, O_RDONLY)) < 0) {
       perror_msg("can't open '%s'", name);
+      free(name);
 
       return 0;
     }
@@ -415,10 +423,13 @@ static int add_to_tar(struct dirtree *node)
     if (st->st_size%512) writeall(TT.fd, toybuf, (512-(st->st_size%512)));
     close(fd);
   }
+  recurse = !FLAG(no_recursion);
+
 done:
+  free(xfname);
   free(name);
 
-  return (DIRTREE_RECURSE|(FLAG(h)?DIRTREE_SYMFOLLOW:0))*!norecurse;
+  return recurse*(DIRTREE_RECURSE|(FLAG(h)?DIRTREE_SYMFOLLOW:0));
 }
 
 static void wsettime(char *s, long long sec)
@@ -513,9 +524,8 @@ error:
   close(fd);
 }
 
-static void extract_to_disk(void)
+static void extract_to_disk(char *name)
 {
-  char *name = TT.hdr.name;
   int ala = TT.hdr.mode;
 
   if (dirflush(name, S_ISDIR(ala))) {
@@ -539,17 +549,16 @@ static void extract_to_disk(void)
         return perror_msg("can't link '%s' -> '%s'", name, TT.hdr.link_target);
     // write contents
     } else {
-      int fd = xcreate(name,
-        WARN_ONLY|O_WRONLY|O_CREAT|(FLAG(overwrite)?O_TRUNC:O_EXCL),
-        ala & 07777);
-      if (fd != -1) sendfile_sparse(fd);
+      int fd = WARN_ONLY|O_WRONLY|O_CREAT|(FLAG(overwrite) ? O_TRUNC : O_EXCL);
+
+      if ((fd = xcreate(name, fd, ala&07777)) != -1) sendfile_sparse(fd);
       else return skippy(TT.hdr.size);
     }
   } else if (S_ISDIR(ala)) {
     if ((mkdir(name, 0700) == -1) && errno != EEXIST)
-      return perror_msg("%s: can't create", TT.hdr.name);
+      return perror_msg("%s: can't create", name);
   } else if (S_ISLNK(ala)) {
-    if (symlink(TT.hdr.link_target, TT.hdr.name))
+    if (symlink(TT.hdr.link_target, name))
       return perror_msg("can't link '%s' -> '%s'", name, TT.hdr.link_target);
   } else if (mknod(name, ala, TT.hdr.device))
     return perror_msg("can't create '%s'", name);
@@ -560,20 +569,20 @@ static void extract_to_disk(void)
 
     if (TT.owner) TT.hdr.uid = TT.ouid;
     else if (!FLAG(numeric_owner) && *TT.hdr.uname) {
-      struct passwd *pw = getpwnam(TT.hdr.uname);
-      if (pw && (TT.owner || !FLAG(numeric_owner))) TT.hdr.uid = pw->pw_uid;
+      struct passwd *pw = bufgetpwnamuid(TT.hdr.uname, 0);
+      if (pw) TT.hdr.uid = pw->pw_uid;
     }
 
     if (TT.group) TT.hdr.gid = TT.ggid;
     else if (!FLAG(numeric_owner) && *TT.hdr.uname) {
-      struct group *gr = getgrnam(TT.hdr.gname);
+      struct group *gr = bufgetgrnamgid(TT.hdr.gname, 0);
       if (gr) TT.hdr.gid = gr->gr_gid;
     }
 
     if (lchown(name, u, g)) perror_msg("chown %d:%d '%s'", u, g, name);;
   }
 
-  if (!S_ISLNK(ala)) chmod(TT.hdr.name, FLAG(p) ? ala : ala&0777);
+  if (!S_ISLNK(ala)) chmod(name, FLAG(p) ? ala : ala&0777);
 
   // Apply mtime.
   if (!FLAG(m)) {
@@ -588,7 +597,7 @@ static void extract_to_disk(void)
       strcpy(sl->str+sizeof(long long), name);
       sl->next = TT.dirs;
       TT.dirs = sl;
-    } else wsettime(TT.hdr.name, TT.hdr.mtime);
+    } else wsettime(name, TT.hdr.mtime);
   }
 }
 
@@ -598,7 +607,7 @@ static void unpack_tar(char *first)
   struct tar_hdr tar;
   int i, sefd = -1, and = 0;
   unsigned maj, min;
-  char *s;
+  char *s, *name;
 
   for (;;) {
     if (first) {
@@ -712,18 +721,18 @@ static void unpack_tar(char *first)
     maj = OTOI(tar.major);
     min = OTOI(tar.minor);
     TT.hdr.device = dev_makedev(maj, min);
-    TT.hdr.uname = xstrndup(TT.owner ? TT.owner : tar.uname, sizeof(tar.uname));
-    TT.hdr.gname = xstrndup(TT.group ? TT.group : tar.gname, sizeof(tar.gname));
+    TT.hdr.uname = xstrndup(TT.owner ? : tar.uname, sizeof(tar.uname));
+    TT.hdr.gname = xstrndup(TT.group ? : tar.gname, sizeof(tar.gname));
 
     if (TT.owner) TT.hdr.uid = TT.ouid;
     else if (!FLAG(numeric_owner)) {
-      struct passwd *pw = getpwnam(TT.hdr.uname);
+      struct passwd *pw = bufgetpwnamuid(TT.hdr.uname, 0);
       if (pw && (TT.owner || !FLAG(numeric_owner))) TT.hdr.uid = pw->pw_uid;
     }
 
     if (TT.group) TT.hdr.gid = TT.ggid;
     else if (!FLAG(numeric_owner)) {
-      struct group *gr = getgrnam(TT.hdr.gname);
+      struct group *gr = bufgetgrnamgid(TT.hdr.gname, 0);
       if (gr) TT.hdr.gid = gr->gr_gid;
     }
 
@@ -764,9 +773,31 @@ static void unpack_tar(char *first)
       }
     }
 
-    // Skip excluded files
-    if (filter(TT.excl, TT.hdr.name) || (TT.incl && !delete))
+    // Skip excluded files, filtering on the untransformed name.
+    if (filter(TT.excl, name = TT.hdr.name) || (TT.incl && !delete)) {
       skippy(TT.hdr.size);
+      goto done;
+    }
+
+    // We accept --show-transformed but always do, so it's a NOP.
+    name = TT.hdr.name;
+    if (TT.xfsed) {
+      if (!(name = xrunread(TT.xfsed, name))) error_exit("bad xform");
+      free(TT.hdr.name);
+      TT.hdr.name = name;
+    }
+
+    for (i = 0; i<TT.strip; i++) {
+      char *s = strchr(name, '/');
+
+      if (s && s[1]) name = s+1;
+      else {
+        if (S_ISDIR(TT.hdr.mode)) *name = 0;
+        break;
+      }
+    }
+
+    if (!*name) skippy(TT.hdr.size);
     else if (FLAG(t)) {
       if (FLAG(v)) {
         struct tm *lc = localtime(TT.mtime ? &TT.mtt : &TT.hdr.mtime);
@@ -784,12 +815,12 @@ static void unpack_tar(char *first)
         printf("  %d-%02d-%02d %02d:%02d%s ", 1900+lc->tm_year, 1+lc->tm_mon,
           lc->tm_mday, lc->tm_hour, lc->tm_min, FLAG(full_time) ? perm : "");
       }
-      printf("%s", TT.hdr.name);
+      printf("%s", name);
       if (TT.hdr.link_target) printf(" -> %s", TT.hdr.link_target);
       xputc('\n');
       skippy(TT.hdr.size);
     } else {
-      if (FLAG(v)) printf("%s\n", TT.hdr.name);
+      if (FLAG(v)) printf("%s\n", name);
       if (FLAG(O)) sendfile_sparse(1);
       else if (FLAG(to_command)) {
         if (S_ISREG(TT.hdr.mode)) {
@@ -798,7 +829,7 @@ static void unpack_tar(char *first)
           xsetenv("TAR_FILETYPE", "f");
           xsetenv(xmprintf("TAR_MODE=%o", TT.hdr.mode), 0);
           xsetenv(xmprintf("TAR_SIZE=%lld", TT.hdr.ssize), 0);
-          xsetenv("TAR_FILENAME", TT.hdr.name);
+          xsetenv("TAR_FILENAME", name);
           xsetenv("TAR_UNAME", TT.hdr.uname);
           xsetenv("TAR_GNAME", TT.hdr.gname);
           xsetenv(xmprintf("TAR_MTIME=%llo", (long long)TT.hdr.mtime), 0);
@@ -811,9 +842,10 @@ static void unpack_tar(char *first)
           fd = xpclose_both(pid, 0);
           if (fd) error_msg("%d: Child returned %d", pid, fd);
         }
-      } else extract_to_disk();
+      } else extract_to_disk(name);
     }
 
+done:
     if (sefd != -1) {
       // zero length write resets fscreate context to default
       (void)write(sefd, 0, 0);
@@ -846,19 +878,35 @@ static void do_XT(char **pline, long len)
   if (pline) trim2list(TT.X ? &TT.excl : &TT.incl, *pline);
 }
 
+static  char *get_archiver()
+{
+  return FLAG(I) ? TT.I : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
+}
+
 void tar_main(void)
 {
-  char *s, **args = toys.optargs,
-    *archiver = FLAG(I) ? TT.I : (FLAG(z) ? "gzip" : (FLAG(J) ? "xz":"bzip2"));
-  int len = 0;
+  char *s, **args = toys.optargs;
+  int len = 0, ii;
 
   // Needed when extracting to command
   signal(SIGPIPE, SIG_IGN);
 
   // Get possible early errors out of the way
   if (!geteuid()) toys.optflags |= FLAG_p;
-  if (TT.owner) TT.ouid = xgetuid(TT.owner);
-  if (TT.group) TT.ggid = xgetgid(TT.group);
+  if (TT.owner) {
+    if (!(s = strchr(TT.owner, ':'))) TT.ouid = xgetuid(TT.owner);
+    else {
+      TT.owner = xstrndup(TT.owner, s++-TT.owner);
+      TT.ouid = atolx_range(s, 0, INT_MAX);
+    }
+  }
+  if (TT.group) {
+    if (!(s = strchr(TT.group, ':'))) TT.ggid = xgetgid(TT.group);
+    else {
+      TT.group = xstrndup(TT.group, s++-TT.group);
+      TT.ggid = atolx_range(s, 0, INT_MAX);
+    }
+  }
   if (TT.mtime) xparsedate(TT.mtime, &TT.mtt, (void *)&s, 1);
 
   // Collect file list.
@@ -866,12 +914,26 @@ void tar_main(void)
     trim2list(&TT.excl, TT.exclude->arg);
   for (;TT.X; TT.X = TT.X->next) do_lines(xopenro(TT.X->arg), '\n', do_XT);
   for (args = toys.optargs; *args; args++) trim2list(&TT.incl, *args);
-  for (;TT.T; TT.T = TT.T->next) do_lines(xopenro(TT.T->arg), '\n', do_XT);
+  for (;TT.T; TT.T = TT.T->next)
+    do_lines(xopenro(TT.T->arg), FLAG(null) ? '\0' : '\n', do_XT);
 
   // If include file list empty, don't create empty archive
   if (FLAG(c)) {
     if (!TT.incl) error_exit("empty archive");
     TT.fd = 1;
+  }
+
+  if (TT.xform) {
+    struct arg_list *al;
+
+    for (ii = 0, al = TT.xform; al; al = al->next) ii++;
+    TT.xfsed = xmalloc((ii+1)*2*sizeof(char *));
+    TT.xfsed[0] = "sed";
+    for (ii = 1, al = TT.xform; al; al = al->next) {
+      TT.xfsed[ii++] = "-e";
+      TT.xfsed[ii++] = al->arg;
+    }
+    TT.xfsed[ii] = 0;
   }
 
   // nommu reentry for nonseekable input skips this, parent did it for us
@@ -891,8 +953,8 @@ void tar_main(void)
     struct stat st;
 
     if (!fstat(TT.fd, &st)) {
-      TT.aino = st.st_ino;
-      TT.adev = st.st_dev;
+      TT.archive_di.ino = st.st_ino;
+      TT.archive_di.dev = st.st_dev;
     }
   }
 
@@ -918,11 +980,11 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {hdr ? -1 : TT.fd, -1}, i, pid;
       struct string_list *zcat = FLAG(I) ? 0 : find_in_path(getenv("PATH"),
-        FLAG(j) ? "bzcat" : FLAG(J) ? "xzcat" : "zcat");
+        FLAG(z) ? "zcat" : FLAG(j) ? "bzcat" : "xzcat");
 
       // Toybox provides more decompressors than compressors, so try them first
       TT.pid = xpopen_both(zcat ? (char *[]){zcat->str, 0} :
-        (char *[]){archiver, "-d", 0}, pipefd);
+        (char *[]){get_archiver(), "-d", 0}, pipefd);
       if (CFG_TOYBOX_FREE) llist_traverse(zcat, free);
 
       if (!hdr) {
@@ -994,7 +1056,7 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){archiver, 0}, pipefd);
+      xpopen_both((char *[]){get_archiver(), 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }

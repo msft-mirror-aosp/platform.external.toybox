@@ -229,7 +229,7 @@ int posix_fallocate(int, off_t, off_t);
 #include <xlocale.h>
 #endif
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 static inline long statfs_bsize(struct statfs *sf) { return sf->f_iosize; }
 static inline long statfs_frsize(struct statfs *sf) { return sf->f_bsize; }
 #else
@@ -240,10 +240,10 @@ static inline long statfs_frsize(struct statfs *sf) { return sf->f_frsize; }
 
 // Android is missing some headers and functions
 // "generated/config.h" is included first
-#if CFG_TOYBOX_SHADOW
+#if __has_include(<shadow.h>)
 #include <shadow.h>
 #endif
-#if CFG_TOYBOX_UTMPX
+#if __has_include(<utmpx.h>)
 #include <utmpx.h>
 #else
 struct utmpx {int ut_type;};
@@ -292,8 +292,12 @@ typedef float FLOAT;
 pid_t xfork(void);
 #endif
 
-//#define strncpy(...) @@strncpyisbadmmkay@@
-//#define strncat(...) @@strncatisbadmmkay@@
+// gratuitously memsets ALL the extra space with zeroes (not just a terminator)
+// but to make up for it truncating doesn't null terminate the output at all.
+// There are occasions to use it, but it is NOT A GENERAL PURPOSE FUNCTION.
+// #define strncpy(...) @@strncpyisbadmmkay@@
+// strncat writes a null terminator one byte PAST the buffer size it's given.
+#define strncat(...) strncatisbadmmkay(__VA_ARGS__)
 
 // Support building the Android tools on glibc, so hermetic AOSP builds can
 // use toybox before they're ready to switch to host bionic.
@@ -343,7 +347,7 @@ typedef struct {char *c_name; int c_val;} CODE;
 extern CODE prioritynames[], facilitynames[];
 #endif
 
-#if CFG_TOYBOX_GETRANDOM
+#if __has_include (<sys/random.h>)
 #include <sys/random.h>
 #endif
 int xgetrandom(void *buf, unsigned len, unsigned flags);
@@ -393,7 +397,8 @@ struct itimerspec {
 };
 int timer_create(clock_t c, struct sigevent *se, timer_t *t);
 int timer_settime(timer_t t, int flags, struct itimerspec *new, void *old);
-#elif !CFG_TOYBOX_HASTIMERS
+#elif defined(__GLIBC__)
+// Work around a glibc bug that interacts badly with a gcc bug.
 #include <syscall.h>
 #include <signal.h>
 #include <time.h>

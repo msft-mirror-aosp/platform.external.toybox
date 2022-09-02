@@ -69,15 +69,9 @@ static void do_elf_file(int fd)
 
   // "x86".
   printf("%s", elf_arch_name(elf_int(toybuf+18, 2)));
-  if (bail) goto bad;
 
   // If what we've seen so far doesn't seem consistent, bail.
-
-  // Parsing ELF means following tables that may point to data earlier in
-  // the file, so sequential reading involves buffering unknown amounts of
-  // data. Just skip it if we can't mmap.
-  if (MAP_FAILED == (map = mmap(0, TT.len, PROT_READ, MAP_SHARED, fd, 0)))
-    goto bad;
+  if (bail) goto bad;
 
   // Stash what we need from the header; it's okay to reuse toybuf after this.
   phentsize = elf_int(toybuf+42+12*bits, 2);
@@ -93,15 +87,24 @@ static void do_elf_file(int fd)
     printf(", bad phentsize %d?", phentsize);
     goto bad;
   }
+  if (phoff>TT.len || phnum*phentsize>TT.len-phoff) {
+    printf(", bad phoff %lu?", phoff);
+    goto bad;
+  }
+  if (shoff>TT.len || shnum*shsize>TT.len-shoff) {
+    printf(", bad shoff %lu?", phoff);
+    goto bad;
+  }
 
   // Parsing ELF means following tables that may point to data earlier in
   // the file, so sequential reading involves buffering unknown amounts of
   // data. Just skip it if we can't mmap.
-  if (MAP_FAILED == (map = mmap(0, TT.len, PROT_READ, MAP_SHARED, fd, 0)))
+  if (MAP_FAILED == (map = mmap(0, TT.len, PROT_READ, MAP_SHARED, fd, 0))) {
+    perror_msg("mmap");
     goto bad;
+  }
 
   // Read the phdrs for dynamic vs static. (Note: fields reordered on 64 bit)
-  if (phoff>TT.len || phnum*phentsize>TT.len-phoff) goto bad;
   for (i = 0; i<phnum; i++) {
     char *phdr = map+phoff+i*phentsize;
     unsigned p_type = elf_int(phdr, 4);
@@ -113,7 +116,10 @@ static void do_elf_file(int fd)
     p_offset = elf_int(phdr+(4<<bits), 4<<bits);
     p_filesz = elf_int(phdr+(16<<bits), 4<<bits);
     if (p_type==3) {
-      if (p_filesz>TT.len || p_offset>TT.len-p_filesz) goto bad;
+      if (p_filesz>TT.len || p_offset>TT.len-p_filesz) {
+        printf(", bad phdr %d?", i);
+        goto bad;
+      }
       // TODO: if (int)<0 prints endlessly, could go off end of map?
       printf(", dynamic (%.*s)", (int)p_filesz, map+p_offset);
     }
@@ -123,18 +129,23 @@ static void do_elf_file(int fd)
   // We need to read the shdrs for stripped/unstripped and any notes.
   // Notes are in program headers *and* section headers, but some files don't
   // contain program headers, so check here. (Note: fields reordered on 64 bit)
-  if (shoff<0 || shoff>TT.len || shnum*shsize>TT.len-shoff) goto bad;
   for (i = 0; i<shnum; i++) {
     char *shdr = map+shoff+i*shsize;
     unsigned long sh_offset;
     int sh_type, sh_size;
 
-    if (shdr>map+TT.len-(8+(4<<bits))) goto bad;
+    if (shdr>map+TT.len-(8+(4<<bits))) {
+      printf(", bad shdr %d?", i);
+      goto bad;
+    }
     sh_type = elf_int(shdr+4, 4);
     sh_offset = elf_int(shdr+8+(8<<bits), 4<<bits);
     sh_size = elf_int(shdr+8+(12<<bits), 4);
     if (sh_type == 8 /*SHT_NOBITS*/) sh_size = 0;
-    if (sh_offset>TT.len || sh_size>TT.len-sh_offset) goto bad;
+    if (sh_offset>TT.len || sh_size>TT.len-sh_offset) {
+      printf(", bad shdr %d?", i);
+      goto bad;
+    }
 
     if (sh_type == 2 /*SHT_SYMTAB*/) {
       stripped = 0;
@@ -149,16 +160,22 @@ static void do_elf_file(int fd)
       while (sh_size >= 3*4) { // Don't try to read a truncated entry.
         unsigned n_namesz, n_descsz, n_type, notesz;
 
-        if (note>map+TT.len-3*4) goto bad;
+        if (note>map+TT.len-3*4) {
+          printf(", bad note %d?", i);
+          goto bad;
+        }
 
         n_namesz = elf_int(note, 4);
         n_descsz = elf_int(note+4, 4);
         n_type = elf_int(note+8, 4);
         notesz = 3*4 + ((n_namesz+3)&~3) + ((n_descsz+3)&~3);
-        if (notesz<n_namesz || notesz<n_descsz) goto bad;
 
-        // Does the claimed size of this note actually fit in the section?
-        if (notesz > sh_size) goto bad;
+        // Are the name/desc sizes consistent, and does the claimed size of
+        // the note actually fit in the section?
+        if (notesz<n_namesz || notesz<n_descsz || notesz>sh_size) {
+          printf(", bad note %d size?", i);
+          goto bad;
+        }
 
         if (n_namesz==4 && !memcmp(note+12, "GNU", 4) && n_type==3) {
           printf(", BuildID=");
@@ -189,6 +206,7 @@ static void do_regular_file(int fd, char *name)
 {
   char *s = toybuf;
   unsigned len, magic;
+  int ii;
 
   // zero through elf shnum, just in case
   memset(s, 0, 80);
@@ -198,6 +216,8 @@ static void do_regular_file(int fd, char *name)
   // 45 bytes: https://www.muppetlabs.com/~breadbox/software/tiny/teensy.html
   else if (len>=45 && strstart(&s, "\177ELF")) do_elf_file(fd);
   else if (strstart(&s, "!<arch>\n")) xputs("ar archive");
+  else if (*s=='%' && 2==sscanf(s, "%%PDF%d.%u", &ii, &magic))
+    xprintf("PDF document, version %d.%u\n", -ii, magic);
   else if (len>28 && strstart(&s, "\x89PNG\x0d\x0a\x1a\x0a")) {
     // PNG is big-endian: https://www.w3.org/TR/PNG/#7Integers-and-byte-order
     int chunk_length = peek_be(s, 4);
@@ -238,9 +258,9 @@ static void do_regular_file(int fd, char *name)
         count, count == 1 ? "" : "s");
       for (i = 0, s += 4; i < count; i++, s += 20) {
         arch = peek_be(s, 4);
-	if (arch == 0x00000007) name = "i386";
+        if (arch == 0x00000007) name = "i386";
         else if (arch == 0x01000007) name = "x86_64";
-	else if (arch == 0x0000000c) name = "arm";
+        else if (arch == 0x0000000c) name = "arm";
         else if (arch == 0x0100000c) name = "arm64";
         else name = "unknown";
         xprintf(" [%s]", name);
@@ -364,6 +384,31 @@ static void do_regular_file(int fd, char *name)
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms680547(v=vs.85).aspx
   else if (len>0x70 && !memcmp(s, "MZ", 2) &&
       (magic=peek_le(s+0x3c,4))<len-4 && !memcmp(s+magic, "\x50\x45\0", 4)) {
+
+    // Linux kernel images look like PE files.
+    if (!memcmp(s+0x38, "ARM\x64", 4)) {
+      // https://www.kernel.org/doc/Documentation/arm64/booting.txt
+      // I've only ever seen LE, 4KiB pages, so ignore flags for now.
+      xputs("Linux arm64 kernel image");
+      return;
+    } else if (!memcmp(s+0x202, "HdrS", 4)) {
+      // https://www.kernel.org/doc/Documentation/x86/boot.txt
+      unsigned ver_off = peek_le(s+0x20e, 2);
+
+      xprintf("Linux x86-64 kernel image");
+      if ((0x200 + ver_off) < len) {
+        s += 0x200 + ver_off;
+      } else {
+        if (lseek(fd, ver_off - len + 0x200, SEEK_CUR)<0 ||
+            (len = readall(fd, s, sizeof(toybuf)))<0) {
+          perror_msg("%s", name);
+          return;
+        }
+      }
+      xprintf(", version %s\n", s);
+      return;
+    }
+
     xprintf("MS PE32%s executable %s", (peek_le(s+magic+24, 2)==0x20b)?"+":"",
         (peek_le(s+magic+22, 2)&0x2000)?"(DLL) ":"");
     if (peek_le(s+magic+20, 2)>70) {

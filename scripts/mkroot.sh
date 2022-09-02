@@ -11,18 +11,20 @@ for i in "$@"; do
   [ "${i/=/}" != "$i" ] && export "$i" || { [ "$i" != -- ] && PKG="$PKG $i"; }
 done
 
-# Set default values for directories (overrideable from command line)
-: ${LOG:=${BUILD:=${TOP:=$PWD/root}/build}/log} ${AIRLOCK:=$BUILD/airlock}
-: ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/scripts/root}
+# Set default directory locations (overrideable from command line)
+: ${TOP:=$PWD/root} ${BUILD:=$TOP/build} ${LOG:=$BUILD/log}
+: ${AIRLOCK:=$BUILD/airlock} ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/scripts/root}
 
-# useful functions
-announce() { echo -e "\033]2;$CROSS $*\007\n=== $*"; }
+# define functions
+announce() { printf "\033]2;$CROSS $*\007" >/dev/tty; printf "\n=== $*\n";}
 die() { echo "$@" >&2; exit 1; }
 
 # ----- Are we cross compiling (via CROSS_COMPILE= or CROSS=)
 
 if [ -n "$CROSS_COMPILE" ]; then
-  CROSS_COMPILE="$(realpath -s "$CROSS_COMPILE")" # airlock needs absolute path
+  # airlock needs absolute path
+  [ -z "${X:=$(command -v "$CROSS_COMPILE"cc)}" ] && die "no ${CROSS_COMPILE}cc"
+  CROSS_COMPILE="$(realpath -s "${X%cc}")"
   [ -z "$CROSS" ] && CROSS=${CROSS_COMPILE/*\//} CROSS=${CROSS/-*/}
 
 elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
@@ -41,12 +43,12 @@ elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
   fi
 fi
 
+# Set per-target output directory (using "host" if not cross-compiling)
+: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS}
+
 # Verify selected compiler works
 ${CROSS_COMPILE}cc --static -xc - -o /dev/null <<< "int main(void){return 0;}"||
   die "${CROSS_COMPILE}cc can't create static binaries"
-
-# When not cross compiling set CROSS=host. Create per-target output directory
-: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS}
 
 # ----- Create hermetic build environment
 
@@ -64,8 +66,8 @@ if [ -z "$NOAIRLOCK"] && [ -n "$CROSS_COMPILE" ]; then
 fi
 
 # Create per-target work directories
-MYBUILD="$BUILD/${CROSS}-tmp" && rm -rf "$MYBUILD" &&
-mkdir -p "$MYBUILD" "$OUTPUT" "$LOG" || exit 1
+TEMP="$BUILD/${CROSS}-tmp" && rm -rf "$TEMP" &&
+mkdir -p "$TEMP" "$OUTPUT" "$LOG" || exit 1
 [ -z "$ROOT" ] && ROOT="$OUTPUT/fs" && rm -rf "$ROOT"
 
 # ----- log build output
@@ -105,10 +107,10 @@ if ! mountpoint -q dev; then
   [ $$ -eq 1 ] && exec 0<>/dev/console 1>&0 2>&1
   for i in ,fd /0,stdin /1,stdout /2,stderr
   do ln -sf /proc/self/fd${i/,*/} dev/${i/*,/}; done
-  mkdir dev/shm
+  mkdir -p dev/shm
   chmod +t /dev/shm
 fi
-mountpoint -q dev/pts || { mkdir dev/pts && mount -t devpts dev/pts dev/pts; }
+mountpoint -q dev/pts || { mkdir -p dev/pts && mount -t devpts dev/pts dev/pts;}
 mountpoint -q proc || mount -t proc proc proc
 mountpoint -q sys || mount -t sysfs sys sys
 echo 0 99999 > /proc/sys/net/ipv4/ping_group_range
@@ -143,17 +145,22 @@ nobody:x:65534:65534:nobody:/proc/self:/dev/null
 EOF
 echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group || exit 1
 
-# Build static toybox with existing .config if there is one, else defconfig+sh
-announce toybox
-[ -e .config ] && [ -z "$PENDING" ] && CONF=silentoldconfig || unset CONF
-for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
-LDFLAGS=--static PREFIX="$ROOT" make clean \
-  ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
-
 # Build any packages listed on command line
 for i in ${PKG:+plumbing $PKG}; do
+  pushd .
   announce "$i"; PATH="$PKGDIR:$PATH" source $i || die $i
+  popd
 done
+
+# Build static toybox with existing .config if there is one, else defconfig+sh
+announce toybox
+[ ! -z "$PENDING" ] && rm -f .config
+[ -e .config ] && CONF=silentoldconfig || unset CONF
+for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
+[ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
+PREFIX="$ROOT" make clean \
+  ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
+unset LDFLAGS
 
 # ------------------ Part 3: Build + package bootable system ------------------
 
@@ -186,7 +193,7 @@ else
       QEMU="arm -M virt" KARCH=arm VMLINUX=arch/arm/boot/zImage
     fi
     KARGS=ttyAMA0
-    KCONF=MMU,ARCH_MULTI_V7,ARCH_VIRT,SOC_DRA7XX,ARCH_OMAP2PLUS_TYPICAL,ARCH_ALPINE,ARM_THUMB,VDSO,CPU_IDLE,ARM_CPUIDLE,KERNEL_MODE_NEON,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_HCTOSYS,RTC_DRV_PL031,NET_CORE,VIRTIO_MENU,VIRTIO_NET,PCI,PCI_HOST_GENERIC,VIRTIO_BLK,VIRTIO_PCI,VIRTIO_MMIO,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,PATA_PLATFORM,PATA_OF_PLATFORM,ATA_GENERIC,CONFIG_ARM_LPAE
+    KCONF=MMU,ARCH_MULTI_V7,ARCH_VIRT,SOC_DRA7XX,ARCH_OMAP2PLUS_TYPICAL,ARCH_ALPINE,ARM_THUMB,VDSO,CPU_IDLE,ARM_CPUIDLE,KERNEL_MODE_NEON,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_HCTOSYS,RTC_DRV_PL031,NET_CORE,VIRTIO_MENU,VIRTIO_NET,PCI,PCI_HOST_GENERIC,VIRTIO_BLK,VIRTIO_PCI,VIRTIO_MMIO,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,PATA_PLATFORM,PATA_OF_PLATFORM,ATA_GENERIC,ARM_LPAE
   elif [ "$TARGET" == hexagon ]; then
     QEMU="hexagon -M comet" KARGS=ttyS0 VMLINUX=vmlinux
     KARCH="hexagon LLVM_IAS=1" KCONF=SPI,SPI_BITBANG,IOMMU_SUPPORT
@@ -204,7 +211,7 @@ else
     KCONF=$KCONF,UNWINDER_FRAME_POINTER,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_INTEL,E1000,SERIAL_8250,SERIAL_8250_CONSOLE,RTC_CLASS
   elif [ "$TARGET" == m68k ]; then
     QEMU="m68k -M q800" KARCH=m68k KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI_MAC_ESP,MACINTOSH_DRIVERS,ADB,ADB_MACII,NET_CORE,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
+    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI,SCSI_LOWLEVEL,BLK_DEV_SD,SCSI_MAC_ESP,MACINTOSH_DRIVERS,ADB,ADB_MACII,NET_CORE,NET_VENDOR_NATSEMI,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
   elif [ "$TARGET" == mips ] || [ "$TARGET" == mipsel ]; then
     QEMU="mips -M malta" KARCH=mips KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
@@ -212,11 +219,12 @@ else
       QEMU="mipsel -M malta"
   elif [ "$TARGET" == powerpc ]; then
     KARCH=powerpc QEMU="ppc -M g3beige" KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,IDE,IDE_GD,IDE_GD_ATA,BLK_DEV_IDE_PMAC,BLK_DEV_IDE_PMAC_ATA100FIRST,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
-  elif [ "$TARGET" == powerpc64le ]; then
+    KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,ATA,ATA_SFF,ATA_BMDMA,PATA_MACIO,BLK_DEV_SD,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
+  elif [ "$TARGET" == powerpc64 ] || [ "$TARGET" == powerpc64le ]; then
     KARCH=powerpc QEMU="ppc64 -M pseries -vga none" KARGS=hvc0
     VMLINUX=vmlinux
-    KCONF=PPC64,PPC_PSERIES,CPU_LITTLE_ENDIAN,PPC_OF_BOOT_TRAMPOLINE,BLK_DEV_SD,SCSI_LOWLEVEL,SCSI_IBMVSCSI,ATA,NET_VENDOR_IBM,IBMVETH,HVC_CONSOLE,PPC_TRANSACTIONAL_MEM,PPC_DISABLE_WERROR,SECTION_MISMATCH_WARN_ONLY
+    KCONF=PPC64,PPC_PSERIES,PPC_OF_BOOT_TRAMPOLINE,BLK_DEV_SD,SCSI_LOWLEVEL,SCSI_IBMVSCSI,ATA,NET_VENDOR_IBM,IBMVETH,HVC_CONSOLE,PPC_TRANSACTIONAL_MEM,PPC_DISABLE_WERROR,SECTION_MISMATCH_WARN_ONLY
+    [ "$TARGET" == powerpc64le ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN
   elif [ "$TARGET" = s390x ]; then
     QEMU="s390x" KARCH=s390 VMLINUX=arch/s390/boot/bzImage
     KCONF=MARCH_Z900,PACK_STACK,NET_CORE,VIRTIO_NET,VIRTIO_BLK,SCLP_TTY,SCLP_CONSOLE,SCLP_VT220_TTY,SCLP_VT220_CONSOLE,S390_GUEST
@@ -235,22 +243,24 @@ else
 
   # Write the qemu launch script
   if [ -n "$QEMU" ]; then
-    [ -z "$BUILTIN" ] && INITRD="-initrd ${CROSS}root.cpio.gz"
-    echo qemu-system-"$QEMU" '"$@"' $QEMU_MORE -nographic -no-reboot -m 256 \
-         -kernel $(basename $VMLINUX) $INITRD \
-         "-append \"panic=1 HOST=$TARGET console=$KARGS \$KARGS\"" \
-         ${DTB:+-dtb "$(basename "$DTB")"} > "$OUTPUT/qemu-$TARGET.sh" &&
-    chmod +x "$OUTPUT/qemu-$TARGET.sh" || exit 1
+    [ -z "$BUILTIN" ] && INITRD="-initrd initramfs.cpio.gz"
+    { echo qemu-system-"$QEMU" '"$@"' $QEMU_MORE -nographic -no-reboot -m 256 \
+        -kernel linux-kernel $INITRD ${DTB:+-dtb linux.dtb} \
+        "-append \"panic=1 HOST=$TARGET console=$KARGS \$KARGS\"" &&
+      echo "echo -e '\\e[?7h'"
+    } > "$OUTPUT"/run-qemu.sh &&
+    chmod +x "$OUTPUT"/run-qemu.sh || exit 1
   fi
 
   announce "linux-$KARCH"
   pushd "$LINUX" && make distclean && popd &&
-  cp -sfR "$LINUX" "$MYBUILD/linux" && pushd "$MYBUILD/linux" &&
-  sed -is '/select HAVE_STACK_VALIDATION/d' arch/x86/Kconfig && # Fix x86-64
-  sed -is 's/depends on !SMP/& || !MMU/' mm/Kconfig &&          # Fix sh2eb
+  cp -sfR "$LINUX" "$TEMP/linux" && pushd "$TEMP/linux" &&
+  # Fix x86-64 and sh2eb
+  sed -Eis '/select HAVE_(STACK_VALIDATION|OBJTOOL)/d' arch/x86/Kconfig &&
+  sed -is 's/depends on !SMP/& || !MMU/' mm/Kconfig &&
 
-  # Write miniconfig
-  { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=$TARGET.miniconf"
+  # Write linux-miniconfig
+  { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
     echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
     echo "# CONFIG_EMBEDDED is not set"
 
@@ -262,29 +272,29 @@ else
     done
     [ -n "$BUILTIN" ] && echo -e CONFIG_INITRAMFS_SOURCE="\"$OUTPUT/fs\""
     echo "$KERNEL_CONFIG"
-  } > "$OUTPUT/miniconfig-$TARGET" &&
-  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/miniconfig-$TARGET" &&
+  } > "$OUTPUT/linux-miniconfig" &&
+  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/linux-miniconfig" &&
 
   # Second config pass to remove stupid kernel defaults
   # See http://lkml.iu.edu/hypermail/linux/kernel/1912.3/03493.html
   sed -e 's/# CONFIG_EXPERT .*/CONFIG_EXPERT=y/' -e "$(sed -E -e '/^$/d' \
-    -e 's@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set/\n@g' \
+    -e 's@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set\n@g' \
        <<< VT,SCHED_DEBUG,DEBUG_MISC,X86_DEBUG_FPU)" -i .config &&
   yes "" | make ARCH=$KARCH oldconfig > /dev/null &&
+  cp .config "$OUTPUT/linux-fullconfig" &&
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
-  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) &&
-  cp .config "$OUTPUT/linux-fullconfig" || exit 1
-  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT" || exit 1 ;}
-  cp "$VMLINUX" "$OUTPUT" && cd .. && rm -rf linux && popd || exit 1
+  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) || exit 1
+  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT/linux.dtb" || exit 1 ;}
+  cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
 fi
 
 # clean up and package root filesystem for initramfs.
 if [ -z "$BUILTIN" ]; then
-  announce "${CROSS}root.cpio.gz"
+  announce initramfs
   (cd "$ROOT" && find . | cpio -o -H newc ${CROSS_COMPILE:+--no-preserve-owner}\
-    | gzip) > "$OUTPUT/$CROSS"root.cpio.gz || exit 1
+    | gzip) > "$OUTPUT"/initramfs.cpio.gz || exit 1
 fi
 
 mv "$LOG/$CROSS".{n,y}
-rmdir "$MYBUILD" "$BUILD" 2>/dev/null || exit 0 # remove if empty, not an error
+rmdir "$TEMP" "$BUILD" 2>/dev/null || exit 0 # remove if empty, not an error

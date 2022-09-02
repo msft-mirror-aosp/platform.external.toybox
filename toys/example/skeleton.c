@@ -6,12 +6,13 @@
  * See http://pubs.opengroup.org/onlinepubs/9699919799/utilities/
  * See http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/cmdbehav.html
  * See https://www.ietf.org/rfc/rfc3.txt
- * See http://man7.org/linux/man-pages/dir_section_1.html
+ * See https://man7.org/linux/man-pages/man1/intro.1.html
+ * No standard.
 
 // Accept many different kinds of command line argument (see top of lib/args.c)
 // Demonstrate two commands in the same file (see www/documentation.html)
 
-USE_SKELETON(NEWTOY(skeleton, "(walrus)(blubber):;(also):e@d*c#b:a", TOYFLAG_USR|TOYFLAG_BIN))
+USE_SKELETON(NEWTOY(skeleton, "(walrus)(blubber):;(also):h(hlong):; g(glong): f(longf):;e@d*c#b:a", TOYFLAG_USR|TOYFLAG_BIN))
 USE_SKELETON_ALIAS(NEWTOY(skeleton_alias, "b#dq", TOYFLAG_USR|TOYFLAG_BIN))
 
 config SKELETON
@@ -50,7 +51,7 @@ GLOBALS(
       long c;
       struct arg_list *d;
       long e;
-      char *also, *blubber;
+      char *f, *g, *h, *also, *blubber;
     } s;
     struct {
       long b;
@@ -59,9 +60,6 @@ GLOBALS(
 
   int more_globals;
 )
-
-// Don't blindly build allyesconfig. The maximum _sane_ config is defconfig.
-#warning skeleton.c is just an example, not something to deploy.
 
 // Parse many different kinds of command line argument:
 void skeleton_main(void)
@@ -81,6 +79,9 @@ void skeleton_main(void)
     TT.s.d = TT.s.d->next;
   }
   if (TT.s.e) printf("e was seen %ld times\n", TT.s.e);
+  if (TT.s.f) printf("f=%s\n", TT.s.f);
+  if (TT.s.g) printf("g=%s\n", TT.s.g);
+  if (TT.s.h) printf("h=%s\n", TT.s.h);
   for (optargs = toys.optargs; *optargs; optargs++)
     printf("optarg=%s\n", *optargs);
   if (FLAG(walrus)) printf("Saw --walrus\n");

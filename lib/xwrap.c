@@ -104,7 +104,12 @@ char *xstrndup(char *s, size_t n)
 // Die unless we can allocate a copy of this string.
 char *xstrdup(char *s)
 {
-  return xstrndup(s, strlen(s));
+  long len = strlen(s);
+  char *c = xmalloc(++len);
+
+  memcpy(c, s, len);
+
+  return c;
 }
 
 void *xmemdup(void *s, long len)
@@ -246,10 +251,8 @@ pid_t xpopen_setup(char **argv, int *pipes, void (*callback)(char **argv))
 
   // Make the pipes?
   memset(cestnepasun, 0, sizeof(cestnepasun));
-  if (pipes) for (pid = 0; pid < 2; pid++) {
-    if (pipes[pid] != -1) continue;
-    if (pipe(cestnepasun+(2*pid))) perror_exit("pipe");
-  }
+  if (pipes) for (pid = 0; pid < 2; pid++)
+    if (pipes[pid]==-1 && pipe(cestnepasun+(2*pid))) perror_exit("pipe");
 
   if (!(pid = CFG_TOYBOX_FORK ? xfork() : XVFORK())) {
     // Child process: Dance of the stdin/stdout redirection.
@@ -346,8 +349,8 @@ int xwaitpid(pid_t pid)
 int xpclose_both(pid_t pid, int *pipes)
 {
   if (pipes) {
-    close(pipes[0]);
-    close(pipes[1]);
+    if (pipes[0]) close(pipes[0]);
+    if (pipes[1]>1) close(pipes[1]);
   }
 
   return xwaitpid(pid);
@@ -377,6 +380,34 @@ int xpclose(pid_t pid, int pipe)
 int xrun(char **argv)
 {
   return xpclose_both(xpopen_both(argv, 0), 0);
+}
+
+// Run child, writing to_stdin, returning stdout or NULL, pass through stderr
+char *xrunread(char *argv[], char *to_stdin)
+{
+  char *result = 0;
+  int pipe[] = {-1, -1}, total = 0, len;
+  pid_t pid;
+
+  pid = xpopen_both(argv, pipe);
+  if (to_stdin && *to_stdin) writeall(*pipe, to_stdin, strlen(to_stdin));
+  close(*pipe);
+  for (;;) {
+    if (0>=(len = readall(pipe[1], libbuf, sizeof(libbuf)))) break;
+    memcpy((result = xrealloc(result, 1+total+len))+total, libbuf, len);
+    total += len;
+    if (len != sizeof(libbuf)) break;
+  }
+  if (result) result[total] = 0;
+  close(pipe[1]);
+
+  if (xwaitpid(pid)) {
+    free(result);
+
+    return 0;
+  }
+
+  return result;
 }
 
 void xaccess(char *path, int flags)

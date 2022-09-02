@@ -1,81 +1,79 @@
 #!/bin/bash
 
 # Grab default values for $CFLAGS and such.
-
 set -o pipefail
 source scripts/portability.sh
 
-# Default to running one more parallel cc instance than we have processors
-: ${CPUS:=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))}
+# Shell functions called by the build
 
 # Respond to V= by echoing command lines as well as running them
-DOTPROG=
 do_loudly()
 {
-  [ ! -z "$V" ] && echo "$@" || echo -n "$DOTPROG"
+  { [ -n "$V" ] && echo "$@" || echo -n "$DOTPROG" ; } >&2
   "$@"
 }
 
-# Is anything under directory $2 newer than file $1
+# Is anything under directory $2 newer than generated/$1 (or does it not exist)?
 isnewer()
 {
-  CHECK="$1"
-  shift
-  [ ! -z "$(find "$@" -newer "$CHECK" 2>/dev/null || echo yes)" ]
+  [ -e "$GENDIR/$1" ] && [ -z "$(find "${@:2}" -newer "$GENDIR/$1")" ] &&
+    return 1
+  echo -n "${DIDNEWER:-$GENDIR/{}$1"
+  DIDNEWER=,
 }
 
-echo "Generate headers from toys/*/*.c..."
+# Build a tool that runs on the host
+hostcomp()
+{
+  if [ ! -f "$UNSTRIPPED"/$1 ] || [ "$UNSTRIPPED"/$1 -ot scripts/$1.c ]
+  then
+    do_loudly $HOSTCC scripts/$1.c -o "$UNSTRIPPED"/$1 || exit 1
+  fi
+}
 
-mkdir -p generated/unstripped
+# Set/record build environment information
+compflags()
+{
+  [ -z "$VERSION" ] && [ -d ".git" ] && [ -n "$(which git 2>/dev/null)" ] &&
+   VERSION="-DTOYBOX_VERSION=\"$(git describe --tags --abbrev=12 2>/dev/null)\""
 
-if isnewer generated/Config.in toys || isnewer generated/Config.in Config.in
-then
-  echo "Extract configuration information from toys/*.c files..."
-  scripts/genconfig.sh
-fi
+  # VERSION and LIBRARIES volatile, changing either does not require a rebuild
+  echo '#!/bin/sh'
+  echo
+  echo "VERSION='$VERSION'"
+  echo "LIBRARIES='$(xargs 2>/dev/null < "$GENDIR/optlibs.dat")'"
+  echo "BUILD='${CROSS_COMPILE}${CC} $CFLAGS -I . $OPTIMIZE '\"\$VERSION\""
+  echo "LINK='$LDOPTIMIZE $LDFLAGS '\"\$LIBRARIES\""
+  echo "PATH='$PATH'"
+  echo "# Built from $KCONFIG_CONFIG"
+  echo
+}
 
-# Create a list of all the commands toybox can provide. Note that the first
-# entry is out of order on purpose (the toybox multiplexer command must be the
-# first element of the array). The rest must be sorted in alphabetical order
-# for fast binary search.
+# Make sure rm -rf isn't gonna go funny
+B="$(readlink -f "$PWD")/" A="$(readlink -f "$GENDIR")" A="${A%/}"/
+[ "$A" == "${B::${#A}}" ] &&
+  { echo "\$GENDIR=$GENDIR cannot include \$PWD=$PWD"; exit 1; }
+unset A B DOTPROG DIDNEWER
 
-if isnewer generated/newtoys.h toys
-then
-  echo -n "generated/newtoys.h "
-
-  echo "USE_TOYBOX(NEWTOY(toybox, NULL, TOYFLAG_STAYROOT))" > generated/newtoys.h
-  $SED -n -e 's/^USE_[A-Z0-9_]*(/&/p' toys/*/*.c \
-	| $SED 's/\(.*TOY(\)\([^,]*\),\(.*\)/\2 \1\2,\3/' | sort -s -k 1,1 \
-	| $SED 's/[^ ]* //'  >> generated/newtoys.h
-  [ $? -ne 0 ] && exit 1
-fi
-
-[ ! -z "$V" ] && echo "Which C files to build..."
+# Force full rebuild if our compiler/linker options changed
+cmp -s <(compflags|sed '5,8!d') <($SED '5,8!d' "$GENDIR"/build.sh 2>/dev/null)||
+  rm -rf "$GENDIR"/* # Keep symlink, delete contents
+mkdir -p "$UNSTRIPPED"  "$(dirname $OUTNAME)" || exit 1
 
 # Extract a list of toys/*/*.c files to compile from the data in $KCONFIG_CONFIG
 # (First command names, then filenames with relevant {NEW,OLD}TOY() macro.)
 
-[ -d ".git" ] && GITHASH="-DTOYBOX_VERSION=\"$(git describe --tags --abbrev=12 2>/dev/null)\""
+[ -n "$V" ] && echo -e "\nWhich C files to build..."
 TOYFILES="$($SED -n 's/^CONFIG_\([^=]*\)=.*/\1/p' "$KCONFIG_CONFIG" | xargs | tr ' [A-Z]' '|[a-z]')"
 TOYFILES="main.c $(egrep -l "TOY[(]($TOYFILES)[ ,]" toys/*/*.c | xargs)"
-BUILD="$(echo ${CROSS_COMPILE}${CC} $CFLAGS -I . $OPTIMIZE $GITHASH)"
-LIBFILES="$(ls lib/*.c)"
 
 if [ "${TOYFILES/pending//}" != "$TOYFILES" ]
 then
   echo -e "\n\033[1;31mwarning: using unfinished code from toys/pending\033[0m"
 fi
 
-genbuildsh()
-{
-  # Write a canned build line for use on crippled build machines.
-
-  echo -e "#!/bin/sh\n\nPATH='$PATH'\nBUILD='$BUILD'\nLINK='$LINK'\n"
-  echo -e "\$BUILD lib/*.c $TOYFILES \$LINK"
-}
-
-if ! cmp -s <(genbuildsh 2>/dev/null | head -n 4 ; echo LINK="'"$LDOPTIMIZE $LDFLAGS) \
-          <(head -n 5 generated/build.sh 2>/dev/null | $SED '5s/ -o .*//')
+# Probe library list if our compiler/linker options changed
+if [ ! -e "$GENDIR"/optlibs.dat ]
 then
   echo -n "Library probe"
 
@@ -83,28 +81,53 @@ then
   # compiler has no way to ignore a library that doesn't exist, so detect
   # and skip nonexistent libraries for it.
 
-  > generated/optlibs.dat
+  > "$GENDIR"/optlibs.new
+  [ -z "$V" ] && X=/dev/null || X=/dev/stderr
   for i in util crypt m resolv selinux smack attr crypto z log iconv tls ssl
   do
-    echo "int main(int argc, char *argv[]) {return 0;}" | \
-    ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -o generated/libprobe -l$i > /dev/null 2>/dev/null &&
-    echo -l$i >> generated/optlibs.dat
-    echo -n .
+    do_loudly ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -l$i &>$X \
+      -o "$UNSTRIPPED"/libprobe <<<"int main(int argc,char*argv[]){return 0;}"&&
+      do_loudly echo -n ' '-l$i >> "$GENDIR"/optlibs.new
   done
-  rm -f generated/libprobe
+  unset X
+  rm -f "$UNSTRIPPED"/libprobe
+  mv "$GENDIR"/optlibs.{new,dat} || exit 1
   echo
 fi
 
-# LINK needs optlibs.dat, above
+# Write build variables (and set them locally), then append build invocation.
+compflags > "$GENDIR"/build.sh && source "$GENDIR/build.sh" &&
+  echo -e "\$BUILD lib/*.c $TOYFILES \$LINK -o $OUTNAME" >> "$GENDIR"/build.sh&&
+  chmod +x "$GENDIR"/build.sh || exit 1
 
-LINK="$(echo $LDOPTIMIZE $LDFLAGS -o "$UNSTRIPPED" $(cat generated/optlibs.dat))"
-genbuildsh > generated/build.sh && chmod +x generated/build.sh || exit 1
+if isnewer Config.in toys || isnewer Config.in Config.in
+then
+  scripts/genconfig.sh
+fi
+
+# Does .config need dependency recalculation because toolchain changed?
+A="$($SED -n '/^config .*$/h;s/default \(.\)/\1/;T;H;g;s/config \([^\n]*\)[^yn]*\(.\)/\1=\2/p' "$GENDIR"/Config.probed | sort)"
+B="$(egrep "^CONFIG_($(echo "$A" | sed 's/=[yn]//' | xargs | tr ' ' '|'))=" "$KCONFIG_CONFIG" | $SED 's/^CONFIG_//' | sort)"
+A="$(echo "$A" | grep -v =n)"
+[ "$A" != "$B" ] &&
+  { echo -e "\nWarning: Config.probed changed, run 'make oldconfig'" >&2; }
+unset A B
+
+# Create a list of all the commands toybox can provide.
+if isnewer newtoys.h toys
+then
+  # The multiplexer is the first element in the array
+  echo "USE_TOYBOX(NEWTOY(toybox, 0, TOYFLAG_STAYROOT|TOYFLAG_NOHELP))" \
+    > "$GENDIR"/newtoys.h
+  # Sort rest by name for binary search (copy name to front, sort, remove copy)
+  $SED -n 's/^\(USE_[^(]*(.*TOY(\)\([^,]*\)\(,.*\)/\2 \1\2\3/p' toys/*/*.c \
+    | sort -s -k 1,1 | $SED 's/[^ ]* //'  >> "$GENDIR"/newtoys.h
+  [ $? -ne 0 ] && exit 1
+fi
 
 #TODO: "make $SED && make" doesn't regenerate config.h because diff .config
-if true #isnewer generated/config.h "$KCONFIG_CONFIG"
+if true #isnewer config.h "$KCONFIG_CONFIG"
 then
-  echo "Make generated/config.h from $KCONFIG_CONFIG."
-
   # This long and roundabout sed invocation is to make old versions of sed
   # happy. New ones have '\n' so can replace one line with two without all
   # the branches and tedious mucking about with hyperspace.
@@ -128,12 +151,7 @@ then
     -e 's/.*/#define CFG_& 1/p' \
     -e 'g' \
     -e 's/.*/#define USE_&(...) __VA_ARGS__/p' \
-    $KCONFIG_CONFIG > generated/config.h || exit 1
-fi
-
-if [ ! -f generated/mkflags ] || [ generated/mkflags -ot scripts/mkflags.c ]
-then
-  do_loudly $HOSTCC scripts/mkflags.c -o generated/mkflags || exit 1
+    $KCONFIG_CONFIG > "$GENDIR"/config.h || exit 1
 fi
 
 # Process config.h and newtoys.h to generate FLAG_x macros. Note we must
@@ -141,10 +159,9 @@ fi
 # allow multiple NEWTOY() in the same C file. (When disabled the FLAG is 0,
 # so flags&0 becomes a constant 0 allowing dead code elimination.)
 
-if isnewer generated/flags.h toys "$KCONFIG_CONFIG"
+hostcomp mkflags
+if isnewer flags.h toys "$KCONFIG_CONFIG"
 then
-  echo -n "generated/flags.h "
-
   # Parse files through C preprocessor twice, once to get flags for current
   # .config and once to get flags for allyesconfig
   for I in A B
@@ -156,12 +173,12 @@ then
     echo '#define OLDTOY(...)'
     if [ "$I" == A ]
     then
-      cat generated/config.h
+      cat "$GENDIR"/config.h
     else
-      $SED '/USE_.*([^)]*)$/s/$/ __VA_ARGS__/' generated/config.h
+      $SED '/USE_.*([^)]*)$/s/$/ __VA_ARGS__/' "$GENDIR"/config.h
     fi
     echo '#include "lib/toyflags.h"'
-    cat generated/newtoys.h
+    cat "$GENDIR"/newtoys.h
 
     # Run result through preprocessor, glue together " " gaps leftover from USE
     # macros, delete comment lines, print any line with a quoted optstring,
@@ -179,7 +196,7 @@ then
 
   done | sort -s | $SED -n -e 's/ A / /;t pair;h;s/\([^ ]*\).*/\1 " "/;x' \
     -e 'b single;:pair;h;n;:single;s/[^ ]* B //;H;g;s/\n/ /;p' | \
-    tee generated/flags.raw | generated/mkflags > generated/flags.h || exit 1
+    tee "$GENDIR"/flags.raw | "$UNSTRIPPED"/mkflags > "$GENDIR"/flags.h || exit 1
 fi
 
 # Extract global structure definitions and flag definitions from toys/*/*.c
@@ -193,13 +210,12 @@ function getglobals()
     DATA="$($SED -n -e '/^GLOBALS(/,/^)/b got;b;:got' \
             -e 's/^GLOBALS(/_data {/' \
             -e 's/^)/};/' -e 'p' $i)"
-    [ ! -z "$DATA" ] && echo -e "// $i\n\nstruct $NAME$DATA\n"
+    [ -n "$DATA" ] && echo -e "// $i\n\nstruct $NAME$DATA\n"
   done
 }
 
-if isnewer generated/globals.h toys
+if isnewer globals.h toys
 then
-  echo -n "generated/globals.h "
   GLOBSTRUCT="$(getglobals)"
   (
     echo "$GLOBSTRUCT"
@@ -208,68 +224,54 @@ then
     echo "$GLOBSTRUCT" | \
       $SED -n 's/struct \(.*\)_data {/	struct \1_data \1;/p'
     echo "} this;"
-  ) > generated/globals.h
+  ) > "$GENDIR"/globals.h
 fi
 
-if [ ! -f generated/mktags ] || [ generated/mktags -ot scripts/mktags.c ]
+hostcomp mktags
+if isnewer tags.h toys
 then
-  do_loudly $HOSTCC scripts/mktags.c -o generated/mktags || exit 1
-fi
-
-if isnewer generated/tags.h toys
-then
-  echo -n "generated/tags.h "
-
   $SED -n '/TAGGED_ARRAY(/,/^)/{s/.*TAGGED_ARRAY[(]\([^,]*\),/\1/;p}' \
-    toys/*/*.c lib/*.c | generated/mktags > generated/tags.h
+    toys/*/*.c lib/*.c | "$UNSTRIPPED"/mktags > "$GENDIR"/tags.h
 fi
 
-if [ ! -f generated/config2help ] || [ generated/config2help -ot scripts/config2help.c ]
+hostcomp config2help
+if isnewer help.h "$GENDIR"/Config.in
 then
-  do_loudly $HOSTCC scripts/config2help.c -o generated/config2help || exit 1
+  "$UNSTRIPPED"/config2help Config.in $KCONFIG_CONFIG > "$GENDIR"/help.h || exit 1
 fi
-if isnewer generated/help.h generated/Config.in
-then
-  echo "generated/help.h"
-  generated/config2help Config.in $KCONFIG_CONFIG > generated/help.h || exit 1
-fi
+[ -z "$DIDNEWER" ] || echo }
 
-[ ! -z "$NOBUILD" ] && exit 0
+[ -n "$NOBUILD" ] && exit 0
 
 echo -n "Compile $OUTNAME"
-[ ! -z "$V" ] && echo
+[ -n "$V" ] && echo
 DOTPROG=.
 
-# This is a parallel version of: do_loudly $BUILD $FILES $LINK || exit 1
+# This is a parallel version of: do_loudly $BUILD lib/*.c $TOYFILES $LINK
 
-# Any headers newer than the oldest generated/obj file?
-X="$(ls -1t generated/obj/* 2>/dev/null | tail -n 1)"
-# TODO: redo this
-if [ ! -e "$X" ] || [ ! -z "$(find toys -name "*.h" -newer "$X")" ]
+# Build all if oldest generated/obj file isn't newer than all header files.
+X="$(ls -1t "$GENDIR"/obj/* 2>/dev/null | tail -n 1)"
+if [ ! -e "$X" ] || [ -n "$(find toys -name "*.h" -newer "$X")" ]
 then
-  rm -rf generated/obj && mkdir -p generated/obj || exit 1
+  rm -rf "$GENDIR"/obj && mkdir -p "$GENDIR"/obj || exit 1
 else
-  rm -f generated/obj/{main,lib_help}.o || exit 1
+  # always redo toy_list[] and help_data[]
+  rm -f "$GENDIR"/obj/main.o || exit 1
 fi
 
 # build each generated/obj/*.o file in parallel
 
-unset PENDING LNKFILES CLICK
-DONE=0
-COUNT=0
-
-for i in $LIBFILES click $TOYFILES
+PENDING= LNKFILES= CLICK= DONE=0 COUNT=0
+for i in lib/*.c click $TOYFILES
 do
   [ "$i" == click ] && CLICK=1 && continue
 
   X=${i/lib\//lib_}
   X=${X##*/}
-  OUT="generated/obj/${X%%.c}.o"
+  OUT="$GENDIR/obj/${X%%.c}.o"
   LNKFILES="$LNKFILES $OUT"
 
-  # $LIBFILES don't need to be rebuilt if older than .config, $TOYFILES do
-  # ($TOYFILES contents can depend on CONFIG symbols, lib/*.c never should.)
-
+  # Library files don't get rebuilt if older than .config, but commands do.
   [ "$OUT" -nt "$i" ] && [ -z "$CLICK" -o "$OUT" -nt "$KCONFIG_CONFIG" ] &&
     continue
 
@@ -279,8 +281,8 @@ do
   [ $((++COUNT)) -ge $CPUS ] && { wait $DASHN; DONE=$?; : $((--COUNT)); }
   [ $DONE -ne 0 ] && break
 done
-# wait for all background jobs, detecting errors
 
+# wait for all background jobs, detecting errors
 while [ $((COUNT--)) -gt 0 ]
 do
   wait $DASHN;
@@ -288,8 +290,9 @@ do
 done
 [ $DONE -ne 0 ] && exit 1
 
-do_loudly $BUILD $LNKFILES $LINK || exit 1
-if [ ! -z "$NOSTRIP" ] ||
+UNSTRIPPED="$UNSTRIPPED/${OUTNAME/*\//}"
+do_loudly $BUILD $LNKFILES $LINK -o "$UNSTRIPPED" || exit 1
+if [ -n "$NOSTRIP" ] ||
   ! do_loudly ${CROSS_COMPILE}${STRIP} "$UNSTRIPPED" -o "$OUTNAME"
 then
   [ -z "$NOSTRIP" ] && echo "strip failed, using unstripped"
@@ -297,10 +300,8 @@ then
   cp "$UNSTRIPPED" "$OUTNAME" || exit 1
 fi
 
-# gcc 4.4's strip command is buggy, and doesn't set the executable bit on
-# its output the way SUSv4 suggests it do so. While we're at it, make sure
-# we don't have the "w" bit set so things like bzip2's "cp -f" install don't
-# overwrite our binary through the symlink.
+# Remove write bit set so buggy installs (like bzip's) don't overwrite the
+# multiplexer binary via truncate-and-write through a symlink.
 do_loudly chmod 555 "$OUTNAME" || exit 1
 
 echo

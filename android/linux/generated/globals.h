@@ -25,7 +25,7 @@ struct skeleton_data {
       long c;
       struct arg_list *d;
       long e;
-      char *also, *blubber;
+      char *f, *g, *h, *also, *blubber;
     } s;
     struct {
       long b;
@@ -99,9 +99,8 @@ struct mktemp_data {
 // toys/lsb/mount.c
 
 struct mount_data {
-  struct arg_list *optlist;
-  char *type;
-  char *bigO;
+  struct arg_list *o;
+  char *t, *O;
 
   unsigned long flags;
   char *opts;
@@ -213,6 +212,22 @@ struct tunctl_data {
   char *u;
 };
 
+// toys/net/wget.c
+
+struct wget_data {
+  char *p, *O;
+  long max_redirect;
+
+  int sock, https;
+  char *url;
+#if CFG_WGET_LIBTLS
+  struct tls *tls;
+#elif CFG_TOYBOX_LIBCRYPTO
+  struct ssl_ctx_st *ctx;
+  struct ssl_st *ssl;
+#endif
+};
+
 // toys/other/acpi.c
 
 struct acpi_data {
@@ -239,6 +254,7 @@ struct blkdiscard_data {
 
 struct blkid_data {
   struct arg_list *s;
+  char *o;
 };
 
 // toys/other/blockdev.c
@@ -387,7 +403,7 @@ struct modinfo_data {
 // toys/other/nsenter.c
 
 struct nsenter_data {
-  char *Uupnmi[6];
+  char *UupnmiC[6];
   long t;
 };
 
@@ -395,6 +411,12 @@ struct nsenter_data {
 
 struct oneit_data {
   char *c;
+};
+
+// toys/other/openvt.c
+
+struct openvt_data {
+  long c;
 };
 
 // toys/other/pwgen.c
@@ -483,11 +505,9 @@ struct tac_data {
 struct timeout_data {
   char *s, *k;
 
-  int nextsig;
-  pid_t pid;
-  struct timespec kts;
-  struct itimerspec its;
-  timer_t timer;
+  struct pollfd pfd;
+  sigjmp_buf sj;
+  int fds[2], pid;
 };
 
 // toys/other/truncate.c
@@ -610,8 +630,7 @@ struct crontab_data {
 
 struct dd_data {
   int show_xfer, show_records;
-  unsigned long long bytes, c_count, in_full, in_part, out_full, out_part;
-  struct timeval start;
+  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
   struct {
     char *name;
     int fd;
@@ -661,13 +680,20 @@ struct dhcpd_data {
 // toys/pending/diff.c
 
 struct diff_data {
-  long ct;
-  char *start;
-  struct arg_list *L_list;
+  long U;
+  struct arg_list *L;
+  char *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
-  int dir_num, size, is_binary, status, change, len[2];
-  int *offset[2];
+  int dir_num, size, is_binary, differ, change, len[2], *offset[2];
   struct stat st[2];
+  struct {
+    char **list;
+    int nr_elm;
+  } dir[2];
+  struct {
+    FILE *fp;
+    int len;
+  } file[2];
 };
 
 // toys/pending/dumpleases.c
@@ -862,12 +888,6 @@ struct more_data {
   int cin_fd;
 };
 
-// toys/pending/openvt.c
-
-struct openvt_data {
-  long c;
-};
-
 // toys/pending/route.c
 
 struct route_data {
@@ -890,7 +910,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, varslen, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion;
 
   // Callable function array
   struct sh_function {
@@ -916,11 +936,11 @@ struct sh_data {
       long flags;
       char *str;
     } *vars;
-    long varslen, shift;
+    long varslen, varscap, shift, oldlineno;
 
     struct sh_function *func; // TODO wire this up
     struct sh_pipeline *pl;
-    char *ifs;
+    char *ifs, *omnom;
     struct sh_arg arg;
     struct arg_list *delete;
 
@@ -1154,22 +1174,6 @@ struct vi_data {
       const char *data;
     } *node;
   } *slices;
-};
-
-// toys/pending/wget.c
-
-struct wget_data {
-  char *filename;
-  long redirects;
-
-  int sock;
-  char *url;
-#if CFG_WGET_LIBTLS
-  struct tls *tls;
-#elif CFG_WGET_OPENSSL
-  struct ssl_ctx_st *ctx;
-  struct ssl_st *ssl;
-#endif
 };
 
 // toys/posix/basename.c
@@ -1465,7 +1469,10 @@ struct ps_data {
     } pgrep;
   };
 
-  struct ptr_len gg, GG, pp, PP, ss, tt, uu, UU;
+  struct ps_ptr_len {
+    void *ptr;
+    long len;
+  } gg, GG, pp, PP, ss, tt, uu, UU;
   struct dirtree *threadparent;
   unsigned width, height, scroll;
   dev_t tty;
@@ -1537,31 +1544,31 @@ struct tail_data {
   struct {
     char *path;
     int fd;
-    dev_t dev;
-    ino_t ino;
+    struct dev_ino di;
   } *F;
 };
 
 // toys/posix/tar.c
 
 struct tar_data {
-  char *f, *C;
-  struct arg_list *T, *X;
-  char *I, *to_command, *owner, *group, *mtime, *mode;
+  char *f, *C, *I;
+  struct arg_list *T, *X, *xform;
+  long strip;
+  char *to_command, *owner, *group, *mtime, *mode;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
-  char *cwd;
-  int fd, ouid, ggid, hlc, warn, adev, aino, sparselen, pid;
+  char *cwd, **xfsed;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
 
   // hardlinks seen so far (hlc many)
   struct {
     char *arg;
-    ino_t ino;
-    dev_t dev;
+    struct dev_ino di;
   } *hlx;
 
   // Parsed information about a tar header.
@@ -1653,6 +1660,7 @@ extern union global_union {
 	struct ping_data ping;
 	struct sntp_data sntp;
 	struct tunctl_data tunctl;
+	struct wget_data wget;
 	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
@@ -1678,6 +1686,7 @@ extern union global_union {
 	struct modinfo_data modinfo;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
+	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
 	struct reboot_data reboot;
@@ -1728,7 +1737,6 @@ extern union global_union {
 	struct mke2fs_data mke2fs;
 	struct modprobe_data modprobe;
 	struct more_data more;
-	struct openvt_data openvt;
 	struct route_data route;
 	struct sh_data sh;
 	struct strace_data strace;
@@ -1744,7 +1752,6 @@ extern union global_union {
 	struct traceroute_data traceroute;
 	struct useradd_data useradd;
 	struct vi_data vi;
-	struct wget_data wget;
 	struct basename_data basename;
 	struct cal_data cal;
 	struct chgrp_data chgrp;

@@ -3,11 +3,6 @@
  * Copyright 2006 Rob Landley <rob@landley.net>
  */
 
-struct ptr_len {
-  void *ptr;
-  long len;
-};
-
 // llist.c
 
 // All these list types can be handled by the same code because first element
@@ -33,6 +28,11 @@ struct num_cache {
   struct num_cache *next;
   long long num;
   char data[];
+};
+
+struct dev_ino {
+  dev_t dev;
+  ino_t ino;
 };
 
 void llist_free_arg(void *node);
@@ -114,8 +114,8 @@ struct dirtree *dirtree_read(char *path, int (*callback)(struct dirtree *node));
 // xwrap.c
 void xstrncpy(char *dest, char *src, size_t size);
 void xstrncat(char *dest, char *src, size_t size);
-void _xexit(void) __attribute__((__noreturn__));
-void xexit(void) __attribute__((__noreturn__));
+_Noreturn void _xexit(void);
+_Noreturn void xexit(void);
 void *xmmap(void *addr, size_t length, int prot, int flags, int fd, off_t off);
 void *xmalloc(size_t size);
 void *xzalloc(size_t size);
@@ -139,6 +139,7 @@ int xpclose_both(pid_t pid, int *pipes);
 pid_t xpopen(char **argv, int *pipe, int isstdout);
 pid_t xpclose(pid_t pid, int pipe);
 int xrun(char **argv);
+char *xrunread(char *argv[], char *stdin);
 int xpspawn(char **argv, int*pipes);
 void xaccess(char *path, int flags);
 void xunlink(char *path);
@@ -194,13 +195,13 @@ time_t xmktime(struct tm *tm, int utc);
 void verror_msg(char *msg, int err, va_list va);
 void error_msg(char *msg, ...) printf_format;
 void perror_msg(char *msg, ...) printf_format;
-void error_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
-void perror_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
-void help_exit(char *msg, ...) printf_format __attribute__((__noreturn__));
+_Noreturn void error_exit(char *msg, ...) printf_format;
+_Noreturn void perror_exit(char *msg, ...) printf_format;
+_Noreturn void help_exit(char *msg, ...) printf_format;
 void error_msg_raw(char *msg);
 void perror_msg_raw(char *msg);
-void error_exit_raw(char *msg) __attribute__((__noreturn__));
-void perror_exit_raw(char *msg) __attribute__((__noreturn__));
+_Noreturn void error_exit_raw(char *msg);
+_Noreturn void perror_exit_raw(char *msg);
 ssize_t readall(int fd, void *buf, size_t len);
 ssize_t writeall(int fd, void *buf, size_t len);
 off_t lskip(int fd, off_t offset);
@@ -239,6 +240,8 @@ int unescape2(char **c, int echo);
 char *strend(char *str, char *suffix);
 int strstart(char **a, char *b);
 int strcasestart(char **a, char *b);
+int same_file(struct stat *st1, struct stat *st2);
+int same_dev_ino(struct stat *st, struct dev_ino *di);
 off_t fdlength(int fd);
 void loopfiles_rw(char **argv, int flags, int permissions,
   void (*function)(int fd, char *name));
@@ -260,7 +263,9 @@ int qstrcmp(const void *a, const void *b);
 void create_uuid(char *uuid);
 char *show_uuid(char *uuid);
 char *next_printf(char *s, char **start);
+struct passwd *bufgetpwnamuid(char *name, uid_t uid);
 struct passwd *bufgetpwuid(uid_t uid);
+struct group *bufgetgrnamgid(char *name, gid_t gid);
 struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
 int readlink0(char *path, char *buf, int len);
@@ -354,6 +359,8 @@ int pollinate(int in1, int in2, int out1, int out2, int timeout, int shutdown_ti
 char *ntop(struct sockaddr *sa);
 void xsendto(int sockfd, void *buf, size_t len, struct sockaddr *dest);
 int xrecvwait(int fd, char *buf, int len, union socksaddr *sa, int timeout);
+char *escape_url(char *str, char *and);
+void unescape_url(char *str);
 
 // password.c
 int get_salt(char *salt, char * algo);
@@ -371,6 +378,8 @@ int comma_remove(char *optlist, char *opt);
 
 long long gzip_fd(int infd, int outfd);
 long long gunzip_fd(int infd, int outfd);
+long long gunzip_fd_preload(int infd, int outfd, char *buf, unsigned len);
+
 
 // getmountlist.c
 struct mtab_list {
