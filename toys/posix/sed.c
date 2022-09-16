@@ -12,10 +12,12 @@
  * test '//q' with no previous regex, also repeat previous regex?
  *
  * Deviations from POSIX: allow extended regular expressions with -r,
- * editing in place with -i, separate with -s, NUL-separated input with -z,
+ * editing in place with -i, separate with -s, NUL-delimited strings with -z,
  * printf escapes in text, line continuations, semicolons after all commands,
  * 2-address anywhere an address is allowed, "T" command, multiline
  * continuations for [abc], \; to end [abc] argument before end of line.
+ * Explicit violations of stuff posix says NOT to do: N at EOF does default
+ * print, l escapes \n
 
 USE_SED(NEWTOY(sed, "(help)(version)e*f*i:;nErz(null-data)s[+Er]", TOYFLAG_BIN|TOYFLAG_LOCALE|TOYFLAG_NOHELP))
 
@@ -74,8 +76,8 @@ config SED
       G  Get remembered line (appending to current line)
       h  Remember this line (overwriting remembered line)
       H  Remember this line (appending to remembered line, if any)
-      l  Print line escaping \abfrtv (but not \n), octal escape other nonprintng
-         chars, wrap lines to terminal width with \, append $ to end of line.
+      l  Print line escaping \abfrtvn, octal escape other nonprintng chars,
+         wrap lines to terminal width with \, append $ to end of line.
       n  Print default output and read next line over current line (quit at EOF)
       N  Append \n and next line of input to this line. Quit at EOF without
          default output. Advances line counter for ADDRESS and "=".
@@ -156,9 +158,9 @@ static int emit(char *line, long len, int eol)
 {
   int l, old = line[len];
 
-  if (TT.noeol && !writeall(TT.fdout, "\n", 1)) return 1;
+  if (TT.noeol && !writeall(TT.fdout, &TT.delim, 1)) return 1;
   TT.noeol = !eol;
-  if (eol) line[len++] = '\n';
+  if (eol) line[len++] = TT.delim;
   if (!len) return 0;
   l = writeall(TT.fdout, line, len);
   if (eol) line[len-1] = old;
@@ -180,7 +182,7 @@ static char *extend_string(char **old, char *new, int oldlen, int newlen)
 
   if (newline) newlen = -newlen;
   s = *old = xrealloc(*old, oldlen+newlen+newline+1);
-  if (newline) s[oldlen++] = '\n';
+  if (newline) s[oldlen++] = TT.delim;
   memcpy(s+oldlen, new, newlen);
   s[oldlen+newlen] = 0;
 
@@ -226,7 +228,7 @@ static void sed_line(char **pline, long plen)
   }
 
   if (!line || !len) return;
-  if (line[len-1] == '\n') line[--len] = eol++;
+  if (line[len-1] == TT.delim) line[--len] = eol++;
   TT.count++;
 
   // The restart-1 is because we added one to make sure it wasn't NULL,
@@ -379,10 +381,10 @@ static void sed_line(char **pline, long plen)
           emit(toybuf, off, 1);
           off = 0;
         }
-        x = stridx("\\\a\b\f\r\t\v", line[i]);
+        x = stridx("\\\a\b\f\r\t\v\n", line[i]);
         if (x != -1) {
           toybuf[off++] = '\\';
-          toybuf[off++] = "\\abfrtv"[x];
+          toybuf[off++] = "\\abfrtvn"[x];
         } else if (line[i] >= ' ') toybuf[off++] = line[i];
         else off += sprintf(toybuf+off, "\\%03o", line[i]);
       }
@@ -407,7 +409,7 @@ static void sed_line(char **pline, long plen)
       // Pending append goes out right after N
       goto done; 
     } else if (c=='p' || c=='P') {
-      char *l = (c=='P') ? strchr(line, '\n') : 0;
+      char *l = (c=='P') ? strchr(line, TT.delim) : 0;
 
       if (emit(line, l ? l-line : len, eol)) break;
     } else if (c=='q' || c=='Q') {
@@ -572,9 +574,9 @@ writenow:
     command = command->next;
   }
 
+done:
   if (line && !FLAG(n)) emit(line, len, eol);
 
-done:
   if (dlist_terminate(append)) while (append) {
     struct append *a = append->next;
 

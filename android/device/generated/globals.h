@@ -284,7 +284,7 @@ struct fallocate_data {
 // toys/other/fmt.c
 
 struct fmt_data {
-  int width;
+  long width;
 
   int level, pos;
 };
