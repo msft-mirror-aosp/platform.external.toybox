@@ -3694,9 +3694,9 @@
 #undef FLAG_E
 #endif
 
-// xxd >1c#<0>256l#o#g#<1=2iprs#[!rs] >1c#<0>256l#o#g#<1=2iprs#[!rs]
+// xxd >1c#<0>256l#o#g#<0=2iprs#[!rs] >1c#<0>256l#o#g#<0=2iprs#[!rs]
 #undef OPTSTR_xxd
-#define OPTSTR_xxd ">1c#<0>256l#o#g#<1=2iprs#[!rs]"
+#define OPTSTR_xxd ">1c#<0>256l#o#g#<0=2iprs#[!rs]"
 #ifdef CLEANUP_xxd
 #undef CLEANUP_xxd
 #undef FOR_xxd
