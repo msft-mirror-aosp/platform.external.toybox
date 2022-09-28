@@ -239,6 +239,7 @@ struct acpi_data {
 
 struct base64_data {
   long w;
+
   unsigned total;
   unsigned n;  // number of bits used in encoding. 5 for base32, 6 for base64
   unsigned align;  // number of bits to align to
@@ -1326,6 +1327,7 @@ struct grep_data {
   struct double_list *reg;
   char indelim, outdelim;
   int found, tried;
+  struct arg_list *fixed[256];
 };
 
 // toys/posix/head.c
