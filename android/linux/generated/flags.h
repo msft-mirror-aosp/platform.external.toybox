@@ -2671,9 +2671,9 @@
 #undef FOR_runcon
 #endif
 
-// sed (help)(version)e*f*i:;nErz(null-data)s[+Er] (help)(version)e*f*i:;nErz(null-data)s[+Er]
+// sed (help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er] (help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]
 #undef OPTSTR_sed
-#define OPTSTR_sed "(help)(version)e*f*i:;nErz(null-data)s[+Er]"
+#define OPTSTR_sed "(help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]"
 #ifdef CLEANUP_sed
 #undef CLEANUP_sed
 #undef FOR_sed
@@ -2685,6 +2685,7 @@
 #undef FLAG_i
 #undef FLAG_f
 #undef FLAG_e
+#undef FLAG_tarxform
 #undef FLAG_version
 #undef FLAG_help
 #endif
@@ -6213,8 +6214,9 @@
 #define FLAG_i (1<<5)
 #define FLAG_f (1<<6)
 #define FLAG_e (1<<7)
-#define FLAG_version (1<<8)
-#define FLAG_help (1<<9)
+#define FLAG_tarxform (1<<8)
+#define FLAG_version (1<<9)
+#define FLAG_help (1<<10)
 #endif
 
 #ifdef FOR_sendevent
