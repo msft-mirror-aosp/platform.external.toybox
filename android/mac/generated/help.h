@@ -214,7 +214,7 @@
 
 #define HELP_printenv "usage: printenv [-0] [env_var...]\n\nPrint environment variables.\n\n-0	Use \\0 as delimiter instead of \\n"
 
-#define HELP_pmap "usage: pmap [-pqx] PID...\n\nReport the memory map of a process or processes.\n\n-q	Show full paths\n-q	Do not show header or footer\n-x	Show the extended format"
+#define HELP_pmap "usage: pmap [-pqx] PID...\n\nReport the memory map of a process or processes.\n\n-p	Show full paths\n-q	Do not show header or footer\n-x	Show the extended format"
 
 #define HELP_pivot_root "usage: pivot_root OLD NEW\n\nSwap OLD and NEW filesystems (as if by simultaneous mount --move), and\nmove all processes with chdir or chroot under OLD into NEW (including\nkernel threads) so OLD may be unmounted.\n\nThe directory NEW must exist under OLD. This doesn't work on initramfs,\nwhich can't be moved (about the same way PID 1 can't be killed; see\nswitch_root instead)."
 
