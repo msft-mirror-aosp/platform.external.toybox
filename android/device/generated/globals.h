@@ -683,7 +683,7 @@ struct dhcpd_data {
 struct diff_data {
   long U;
   struct arg_list *L;
-  char *S, *new_line_format, *old_line_format, *unchanged_line_format;
+  char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
   int dir_num, size, is_binary, differ, change, len[2], *offset[2];
   struct stat st[2];
@@ -1325,8 +1325,7 @@ struct grep_data {
 
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
-  char indelim, outdelim;
-  int found, tried;
+  int found, tried, delim;
   struct arg_list *fixed[256];
 };
 
@@ -1504,8 +1503,8 @@ struct sed_data {
   void *restart, *lastregex;
   long nextlen, rememberlen, count;
   int fdout, noeol;
-  unsigned xx, tarxlen;
-  char delim;
+  unsigned xx, tarxlen, xflags;
+  char delim, xftype;
 };
 
 // toys/posix/sort.c
