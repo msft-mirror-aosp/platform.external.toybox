@@ -704,9 +704,9 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
@@ -714,6 +714,7 @@
 #undef FLAG_r
 #undef FLAG_N
 #undef FLAG_L
+#undef FLAG_F
 #undef FLAG_S
 #undef FLAG_a
 #undef FLAG_q
@@ -4402,23 +4403,24 @@
 #define FLAG_r (1<<1)
 #define FLAG_N (1<<2)
 #define FLAG_L (1<<3)
-#define FLAG_S (1<<4)
-#define FLAG_a (1<<5)
-#define FLAG_q (1<<6)
-#define FLAG_s (1<<7)
-#define FLAG_T (1<<8)
-#define FLAG_i (1<<9)
-#define FLAG_w (1<<10)
-#define FLAG_t (1<<11)
-#define FLAG_u (1<<12)
-#define FLAG_b (1<<13)
-#define FLAG_d (1<<14)
-#define FLAG_B (1<<15)
-#define FLAG_strip_trailing_cr (1<<16)
-#define FLAG_color (1<<17)
-#define FLAG_new_line_format (1<<18)
-#define FLAG_old_line_format (1<<19)
-#define FLAG_unchanged_line_format (1<<20)
+#define FLAG_F (1<<4)
+#define FLAG_S (1<<5)
+#define FLAG_a (1<<6)
+#define FLAG_q (1<<7)
+#define FLAG_s (1<<8)
+#define FLAG_T (1<<9)
+#define FLAG_i (1<<10)
+#define FLAG_w (1<<11)
+#define FLAG_t (1<<12)
+#define FLAG_u (1<<13)
+#define FLAG_b (1<<14)
+#define FLAG_d (1<<15)
+#define FLAG_B (1<<16)
+#define FLAG_strip_trailing_cr (1<<17)
+#define FLAG_color (1<<18)
+#define FLAG_new_line_format (1<<19)
+#define FLAG_old_line_format (1<<20)
+#define FLAG_unchanged_line_format (1<<21)
 #endif
 
 #ifdef FOR_dirname
