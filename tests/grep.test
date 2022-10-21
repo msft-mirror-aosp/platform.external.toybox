@@ -193,7 +193,13 @@ testcmd "-Fix" "-Fix h input" "H\nh\n" \
   "missing\nH\nthis is HELLO\nthis is WORLD\nh\nmissing" ""
 testcmd "-F bucket sort" "-F '\.zip'" '\\.zip\n' '' '\\.zip\n'
 testcmd "-f /dev/null" "-f /dev/null" "" "" "hello\n"
-testcmd "-z with \n in pattern" "-f input" "hi\nthere\n" "i\nt" "hi\nthere"
+
+# -z doesn't apply to the \n in -e or -f patterns
+# Because x\n becomes "x" and "" the second of which matches every line.
+testcmd '-z patter\n' "-ze $'x\n' | xxd -pc0" \
+  '6f6e650a74776f0a74687265650a00\n' '' 'one\ntwo\nthree\n'
+testcmd "-z patter\n 2" "-zof input | xxd -pc0" "69007400\n" "i\nt" "hi\nthere"
+testcmd '-lZ' '-lZ ^t input' 'input\0' 'one\ntwo' ''
 
 testcmd "print zero length match" "'[0-9]*'" "abc\n" "" "abc\n"
 testcmd "-o skip zero length match" "-o '[0-9]*'" "1234\n" "" "a1234b"
@@ -210,3 +216,6 @@ rm -f testfile
 
 testcmd 'initial \' '\\.jar' 'bell.jar\n' '' 'bell.jar\n'
 testcmd '^$' '^\$' '\n' '' 'one\n\ntwo\n'
+testcmd 'middle ^ not special' 'a^' 'a^b\n' '' 'a^b\nb^a\n'
+# Quoted to protect it from the shell, grep should just see '$b'
+testcmd 'middle $ not special' "'\$b'" 'a$b\n' '' 'a$b\nb$a\n'
