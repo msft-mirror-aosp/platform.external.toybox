@@ -178,7 +178,7 @@
 
 #define HELP_swapon "usage: swapon [-d] [-p priority] filename\n\nEnable swapping on a given device/file.\n\n-d	Discard freed SSD pages\n-p	Priority (highest priority areas allocated first)"
 
-#define HELP_swapoff "usage: swapoff swapregion\n\nDisable swapping on a given swapregion."
+#define HELP_swapoff "usage: swapoff FILE\n\nDisable swapping on a device or file."
 
 #define HELP_stat "usage: stat [-tfL] [-c FORMAT] FILE...\n\nDisplay status of files or filesystems.\n\n-c	Output specified FORMAT string instead of default\n-f	Display filesystem status instead of file status\n-L	Follow symlinks\n-t	terse (-c \"%n %s %b %f %u %g %D %i %h %t %T %X %Y %Z %o\")\n	      (with -f = -c \"%n %i %l %t %s %S %b %f %a %c %d\")\n\nThe valid format escape sequences for files:\n%a  Access bits (octal) |%A  Access bits (flags)|%b  Size/512\n%B  Bytes per %b (512)  |%C  Security context   |%d  Device ID (dec)\n%D  Device ID (hex)     |%f  All mode bits (hex)|%F  File type\n%g  Group ID            |%G  Group name         |%h  Hard links\n%i  Inode               |%m  Mount point        |%n  Filename\n%N  Long filename       |%o  I/O block size     |%s  Size (bytes)\n%t  Devtype major (hex) |%T  Devtype minor (hex)|%u  User ID\n%U  User name           |%x  Access time        |%X  Access unix time\n%y  Modification time   |%Y  Mod unix time      |%z  Creation time\n%Z  Creation unix time\n\nThe valid format escape sequences for filesystems:\n%a  Available blocks    |%b  Total blocks       |%c  Total inodes\n%d  Free inodes         |%f  Free blocks        |%i  File system ID\n%l  Max filename length |%n  File name          |%s  Best transfer size\n%S  Actual block size   |%t  FS type (hex)      |%T  FS type (driver name)"
 
