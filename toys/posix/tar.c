@@ -236,20 +236,23 @@ static int add_to_tar(struct dirtree *node)
   }
 
   // Consume the 1 extra byte alocated in dirtree_path()
-  if (S_ISDIR(st->st_mode) && name[i-1] != '/') strcat(name, "/");
+  if (S_ISDIR(st->st_mode) && lnk[-1] != '/') strcpy(lnk, "/");
 
   // remove leading / and any .. entries from saved name
-  if (!FLAG(P)) while (*hname == '/') hname++;
-  for (lnk = hname;;) {
-    if (!(lnk = strstr(lnk, ".."))) break;
-    if (lnk == hname || lnk[-1] == '/') {
-      if (!lnk[2]) goto done;
-      if (lnk[2]=='/') {
-        lnk = hname = lnk+3;
-        continue;
+  if (!FLAG(P)) {
+    while (*hname == '/') hname++;
+    for (lnk = hname;;) {
+      if (!(lnk = strstr(lnk, ".."))) break;
+      if (lnk == hname || lnk[-1] == '/') {
+        if (!lnk[2]) goto done;
+        if (lnk[2]=='/') {
+          lnk = hname = lnk+3;
+          continue;
+        }
       }
+      lnk += 2;
     }
-    lnk += 2;
+    if (!*hname) hname = "./";
   }
   if (!*hname) goto done;
 
@@ -259,6 +262,7 @@ static int add_to_tar(struct dirtree *node)
     TT.warn = 0;
   }
 
+  // Override dentry data from command line and fill out header data
   if (TT.owner) st->st_uid = TT.ouid;
   if (TT.group) st->st_gid = TT.ggid;
   if (TT.mode) st->st_mode = string_to_mode(TT.mode, st->st_mode);
@@ -271,19 +275,13 @@ static int add_to_tar(struct dirtree *node)
   ITOO(hdr.mtime, st->st_mtime);
   strcpy(hdr.magic, "ustar  ");
 
-  xfname = xform(&hname, 'r');
-  strncpy(hdr.name, hname, sizeof(hdr.name));
-
-  // Hard link or symlink? i=0 neither, i=1 hardlink, i=2 symlink
-
   // Are there hardlinks to a non-directory entry?
+  lnk = 0;
   if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
     for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
-    if (i != TT.hlc) {
-      lnk = TT.hlx[i].arg;
-      i = 1;
-    } else {
+    if (i != TT.hlc) lnk = TT.hlx[i].arg;
+    else {
       // first time we've seen it. Store as normal file, but remember it.
       if (!(TT.hlc&255))
         TT.hlx = xrealloc(TT.hlx, sizeof(*TT.hlx)*(TT.hlc+256));
@@ -291,20 +289,25 @@ static int add_to_tar(struct dirtree *node)
       TT.hlx[TT.hlc].di.ino = st->st_ino;
       TT.hlx[TT.hlc].di.dev = st->st_dev;
       TT.hlc++;
-      i = 0;
     }
-  } else i = 0;
+  }
 
-  // Handle file types
-  if (i || S_ISLNK(st->st_mode)) {
-    hdr.type = '1'+!i;
-    if (!i && !(lnk = xreadlink(name))) {
+  xfname = xform(&hname, 'r');
+  strncpy(hdr.name, hname, sizeof(hdr.name));
+
+  // Handle file types: 0=reg, 1=hardlink, 2=sym, 3=chr, 4=blk, 5=dir, 6=fifo
+  if (lnk || S_ISLNK(st->st_mode)) {
+    hdr.type = '1'+!lnk;
+    if (lnk) {
+      if (!xform(&lnk, 'h')) lnk = xstrdup(lnk);
+    } else if (!(lnk = xreadlink(name))) {
       perror_msg("readlink");
       goto done;
-    }
+    } else xform(&lnk, 's');
+
     maybe_prefix_block(lnk, sizeof(hdr.link), 'K');
     strncpy(hdr.link, lnk, sizeof(hdr.link));
-    if (!i) free(lnk);
+    free(lnk);
   } else if (S_ISREG(st->st_mode)) {
     hdr.type = '0';
     ITOO(hdr.size, st->st_size);
@@ -799,6 +802,7 @@ static void unpack_tar(char *first)
       free(TT.hdr.name);
       TT.hdr.name = name;
     }
+    if ((i = "\0hs"[stridx("12", tar.type)+1])) xform(&TT.hdr.link_target, i);
 
     for (i = 0; i<TT.strip; i++) {
       char *s = strchr(name, '/');
@@ -829,7 +833,8 @@ static void unpack_tar(char *first)
           lc->tm_mday, lc->tm_hour, lc->tm_min, FLAG(full_time) ? perm : "");
       }
       printf("%s", name);
-      if (TT.hdr.link_target) printf(" -> %s", TT.hdr.link_target);
+      if (TT.hdr.link_target)
+        printf(" %s %s", tar.type=='2' ? "->" : "link to", TT.hdr.link_target);
       xputc('\n');
       skippy(TT.hdr.size);
     } else {
@@ -881,7 +886,7 @@ static void trim2list(void *list, char *pline)
 
   dlist_add(list, n);
   if (i && n[i-1]=='\n') i--;
-  while (i && n[i-1] == '/') i--;
+  while (i>1 && n[i-1] == '/') i--;
   n[i] = 0;
 }
 

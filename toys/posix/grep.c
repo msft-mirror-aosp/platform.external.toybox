@@ -7,7 +7,7 @@
  * Posix doesn't even specify -r: too many deviations to document.
  * TODO: -i is only ascii case insensitive, not unicode.
 
-USE_GREP(NEWTOY(grep, "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
+USE_GREP(NEWTOY(grep, "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]", TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 USE_EGREP(OLDTOY(egrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 USE_FGREP(OLDTOY(fgrep, grep, TOYFLAG_BIN|TOYFLAG_ARGFAIL(2)|TOYFLAG_LINEBUF))
 
@@ -71,8 +71,7 @@ GLOBALS(
 
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
-  char indelim, outdelim;
-  int found, tried;
+  int found, tried, delim;
   struct arg_list *fixed[256];
 )
 
@@ -94,16 +93,14 @@ static void outline(char *line, char dash, char *name, long lcount, long bcount,
 {
   if (!trim && FLAG(o)) return;
   if (name && FLAG(H)) printf("%s%s%s%c", TT.purple, name, TT.cyan, dash);
-  if (FLAG(c)) {
-    printf("%s%ld", TT.grey, lcount);
-    xputc(TT.outdelim);
-  } else if (lcount && FLAG(n)) numdash(lcount, dash);
+  if (FLAG(c)) xprintf("%s%ld%c", TT.grey, lcount, TT.delim);
+  else if (lcount && FLAG(n)) numdash(lcount, dash);
   if (bcount && FLAG(b)) numdash(bcount-1, dash);
   if (line) {
     if (FLAG(color)) xputsn(FLAG(o) ? TT.red : TT.grey);
     // support embedded NUL bytes in output
     xputsl(line, trim);
-    xputc(TT.outdelim);
+    xputc(TT.delim);
   }
 }
 
@@ -152,10 +149,10 @@ static void do_grep(int fd, char *name)
     // get next line, check and trim delimiter
     lcount++;
     errno = 0;
-    ulen = len = getdelim(&line, &ulen, TT.indelim, file);
+    ulen = len = getdelim(&line, &ulen, TT.delim, file);
     if (len == -1 && errno) perror_msg("%s", name);
     if (len<1) break;
-    if (line[ulen-1] == TT.indelim) line[--ulen] = 0;
+    if (line[ulen-1] == TT.delim) line[--ulen] = 0;
 
     // Prepare for next line
     start = line;
@@ -271,7 +268,7 @@ got:
         xexit();
       }
       if (FLAG(L) || FLAG(l)) {
-        if (FLAG(l)) xprintf("%s%c", name, TT.outdelim);
+        if (FLAG(l)) xprintf("%s%c", name, '\n'*!FLAG(Z));
         free(line);
         fclose(file);
         return;
@@ -317,7 +314,7 @@ got:
       if (FLAG(color) && !FLAG(o)) {
         xputsn(TT.grey);
         if (ulen > start-line) xputsl(start, ulen-(start-line));
-        xputc(TT.outdelim);
+        xputc(TT.delim);
       }
       mcount++;
     } else {
@@ -354,7 +351,7 @@ got:
     if (FLAG(m) && mcount >= TT.m) break;
   }
 
-  if (FLAG(L)) xprintf("%s%c", name, TT.outdelim);
+  if (FLAG(L)) xprintf("%s%c", name, TT.delim);
   else if (FLAG(c)) outline(0, ':', name, mcount, 0, 1);
 
   // loopfiles will also close the fd, but this frees an (opaque) struct.
@@ -388,11 +385,11 @@ static void parse_regex(void)
   al = TT.f ? TT.f : TT.e;
   while (al) {
     if (TT.f) {
-      if (!*(s = ss = xreadfile(al->arg, 0, 0))) {
-        free(ss);
+      if (!*(s = xreadfile(al->arg, 0, 0))) {
+        free(s);
         s = 0;
-      }
-    } else s = ss = al->arg;
+      } else if (*(ss = s+strlen(s)-1)=='\n') *--ss = 0;
+    } else s = al->arg;
 
     // Advance, when we run out of -f switch to -e.
     al = al->next;
@@ -405,14 +402,13 @@ static void parse_regex(void)
     // NOTE: even with -z, -f is still \n delimited. Blank line = match all
     // Split lines at \n, add individual lines to new list.
     do {
-      ss = FLAG(z) ? 0 : strchr(s, '\n');
-      if (ss) *(ss++) = 0;
+      if ((ss = strchr(s, '\n'))) *(ss++) = 0;
       new = xmalloc(sizeof(struct arg_list));
       new->next = list;
       new->arg = s;
       list = new;
       s = ss;
-    } while (ss && *s);
+    } while (s);
   }
   TT.e = list;
 
@@ -527,8 +523,7 @@ void grep_main(void)
   if (!TT.A) TT.A = TT.C;
   if (!TT.B) TT.B = TT.C;
 
-  TT.indelim = '\n' * !FLAG(z);
-  TT.outdelim = '\n' * !FLAG(Z);
+  TT.delim = '\n' * !FLAG(z);
 
   // Handle egrep and fgrep
   if (*toys.which->name == 'e') toys.optflags |= FLAG_E;
