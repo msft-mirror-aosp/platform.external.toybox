@@ -476,9 +476,9 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]
+// date d:D:I(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
@@ -936,9 +936,9 @@
 #undef FLAG_C
 #endif
 
-// file <1bhLs[!hL] <1bhLs[!hL]
+// file <1b(brief)hLs[!hL] <1b(brief)hLs[!hL]
 #undef OPTSTR_file
-#define OPTSTR_file "<1bhLs[!hL]"
+#define OPTSTR_file "<1b(brief)hLs[!hL]"
 #ifdef CLEANUP_file
 #undef CLEANUP_file
 #undef FOR_file
@@ -1182,9 +1182,9 @@
 #undef FLAG_l
 #endif
 
-// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]
+// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]
 #undef OPTSTR_grep
-#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]"
+#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]"
 #ifdef CLEANUP_grep
 #undef CLEANUP_grep
 #undef FOR_grep
@@ -1270,9 +1270,9 @@
 #undef FLAG_c
 #endif
 
-// gzip ncdfk123456789[-123456789] ncdfk123456789[-123456789]
+// gzip n(no-name)cdfk123456789[-123456789] n(no-name)cdfk123456789[-123456789]
 #undef OPTSTR_gzip
-#define OPTSTR_gzip "ncdfk123456789[-123456789]"
+#define OPTSTR_gzip "n(no-name)cdfk123456789[-123456789]"
 #ifdef CLEANUP_gzip
 #undef CLEANUP_gzip
 #undef FOR_gzip
@@ -1509,9 +1509,9 @@
 #undef FOR_insmod
 #endif
 
-// install <1cdDpsvt:m:o:g: <1cdDpsvt:m:o:g:
+// install <1cdDp(preserve-timestamps)svt:m:o:g: <1cdDp(preserve-timestamps)svt:m:o:g:
 #undef OPTSTR_install
-#define OPTSTR_install "<1cdDpsvt:m:o:g:"
+#define OPTSTR_install "<1cdDp(preserve-timestamps)svt:m:o:g:"
 #ifdef CLEANUP_install
 #undef CLEANUP_install
 #undef FOR_install
@@ -2098,9 +2098,9 @@
 #undef FLAG_q
 #endif
 
-// mv <1vnF(remove-destination)fit:T[-ni] <1vnF(remove-destination)fit:T[-ni]
+// mv <1v(verbose)nF(remove-destination)fit:T[-ni] <1v(verbose)nF(remove-destination)fit:T[-ni]
 #undef OPTSTR_mv
-#define OPTSTR_mv "<1vnF(remove-destination)fit:T[-ni]"
+#define OPTSTR_mv "<1v(verbose)nF(remove-destination)fit:T[-ni]"
 #ifdef CLEANUP_mv
 #undef CLEANUP_mv
 #undef FOR_mv
@@ -2603,9 +2603,9 @@
 #undef FOR_rfkill
 #endif
 
-// rm fiRrv[-fi] fiRrv[-fi]
+// rm f(force)iRrv[-fi] f(force)iRrv[-fi]
 #undef OPTSTR_rm
-#define OPTSTR_rm "fiRrv[-fi]"
+#define OPTSTR_rm "f(force)iRrv[-fi]"
 #ifdef CLEANUP_rm
 #undef CLEANUP_rm
 #undef FOR_rm
@@ -2975,12 +2975,14 @@
 #undef FLAG_t
 #endif
 
-// swapoff <1>1 <1>1
+// swapoff <1>1av <1>1av
 #undef OPTSTR_swapoff
-#define OPTSTR_swapoff "<1>1"
+#define OPTSTR_swapoff "<1>1av"
 #ifdef CLEANUP_swapoff
 #undef CLEANUP_swapoff
 #undef FOR_swapoff
+#undef FLAG_v
+#undef FLAG_a
 #endif
 
 // swapon <1>1p#<0>32767d <1>1p#<0>32767d
@@ -3417,9 +3419,9 @@
 #undef FLAG_c
 #endif
 
-// uname aomvrns aomvrns
+// uname paomvrns paomvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "aomvrns"
+#define OPTSTR_uname "paomvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -3430,6 +3432,7 @@
 #undef FLAG_m
 #undef FLAG_o
 #undef FLAG_a
+#undef FLAG_p
 #endif
 
 // unicode   <1
@@ -3680,9 +3683,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^E:P#<0=1optrn#<1(max-args)s#0[!0E] ^E:P#<0=1optrn#<1(max-args)s#0[!0E]
+// xargs ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^E:P#<0=1optrn#<1(max-args)s#0[!0E]"
+#define OPTSTR_xargs "^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
@@ -6488,6 +6491,8 @@
 #ifndef TT
 #define TT this.swapoff
 #endif
+#define FLAG_v (1<<0)
+#define FLAG_a (1<<1)
 #endif
 
 #ifdef FOR_swapon
@@ -6906,6 +6911,7 @@
 #define FLAG_m (1<<4)
 #define FLAG_o (1<<5)
 #define FLAG_a (1<<6)
+#define FLAG_p (1<<7)
 #endif
 
 #ifdef FOR_unicode
