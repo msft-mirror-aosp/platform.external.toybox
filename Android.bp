@@ -408,6 +408,7 @@ toybox_symlinks = [
     "uudecode",
     "uuencode",
     "uuidgen",
+    "vi",
     "vmstat",
     "watch",
     "wc",

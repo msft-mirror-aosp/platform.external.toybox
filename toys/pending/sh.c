@@ -2122,7 +2122,7 @@ barf:
             }
 
             if (yy != -1) {
-              if (*delete && (*delete)->arg==ifs) ifs[yy] = 0;
+              if (delete && *delete && (*delete)->arg==ifs) ifs[yy] = 0;
               else push_arg(delete, ifs = xstrndup(ifs, yy));
             }
           }
@@ -2149,7 +2149,7 @@ barf:
                 ll++;
                 continue;
               }
-              if (*delete && (*delete)->arg==ifs) {
+              if (delete && *delete && (*delete)->arg==ifs) {
                 if (jj==dd) memcpy(ifs+ll, ss, jj);
                 else if (jj<dd) sprintf(ifs+ll, "%s%s", ss, ifs+ll+dd);
                 else bird = ifs;

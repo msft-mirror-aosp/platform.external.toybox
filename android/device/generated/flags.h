@@ -476,9 +476,9 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]
+// date d:D:I(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso)(iso-8601):;r:s:u(utc)[!dr]"
+#define OPTSTR_date "d:D:I(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
@@ -704,9 +704,9 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):L(label)*N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
@@ -714,6 +714,7 @@
 #undef FLAG_r
 #undef FLAG_N
 #undef FLAG_L
+#undef FLAG_F
 #undef FLAG_S
 #undef FLAG_a
 #undef FLAG_q
@@ -935,9 +936,9 @@
 #undef FLAG_C
 #endif
 
-// file <1bhLs[!hL] <1bhLs[!hL]
+// file <1b(brief)hLs[!hL] <1b(brief)hLs[!hL]
 #undef OPTSTR_file
-#define OPTSTR_file "<1bhLs[!hL]"
+#define OPTSTR_file "<1b(brief)hLs[!hL]"
 #ifdef CLEANUP_file
 #undef CLEANUP_file
 #undef FOR_file
@@ -1181,9 +1182,9 @@
 #undef FLAG_l
 #endif
 
-// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]
+// grep (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF] (line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]
 #undef OPTSTR_grep
-#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwcL(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]"
+#define OPTSTR_grep "(line-buffered)(color):;(exclude-dir)*S(exclude)*M(include)*ZzEFHIab(byte-offset)h(no-filename)ino(only-matching)rRsvwc(count)L(files-without-match)l(files-with-matches)q(quiet)(silent)e*f*C#B#A#m#x[!wx][!EF]"
 #ifdef CLEANUP_grep
 #undef CLEANUP_grep
 #undef FOR_grep
@@ -1269,9 +1270,9 @@
 #undef FLAG_c
 #endif
 
-// gzip ncdfk123456789[-123456789] ncdfk123456789[-123456789]
+// gzip n(no-name)cdfk123456789[-123456789] n(no-name)cdfk123456789[-123456789]
 #undef OPTSTR_gzip
-#define OPTSTR_gzip "ncdfk123456789[-123456789]"
+#define OPTSTR_gzip "n(no-name)cdfk123456789[-123456789]"
 #ifdef CLEANUP_gzip
 #undef CLEANUP_gzip
 #undef FOR_gzip
@@ -1508,9 +1509,9 @@
 #undef FOR_insmod
 #endif
 
-// install <1cdDpsvt:m:o:g: <1cdDpsvt:m:o:g:
+// install <1cdDp(preserve-timestamps)svt:m:o:g: <1cdDp(preserve-timestamps)svt:m:o:g:
 #undef OPTSTR_install
-#define OPTSTR_install "<1cdDpsvt:m:o:g:"
+#define OPTSTR_install "<1cdDp(preserve-timestamps)svt:m:o:g:"
 #ifdef CLEANUP_install
 #undef CLEANUP_install
 #undef FOR_install
@@ -2097,9 +2098,9 @@
 #undef FLAG_q
 #endif
 
-// mv <1vnF(remove-destination)fit:T[-ni] <1vnF(remove-destination)fit:T[-ni]
+// mv <1v(verbose)nF(remove-destination)fit:T[-ni] <1v(verbose)nF(remove-destination)fit:T[-ni]
 #undef OPTSTR_mv
-#define OPTSTR_mv "<1vnF(remove-destination)fit:T[-ni]"
+#define OPTSTR_mv "<1v(verbose)nF(remove-destination)fit:T[-ni]"
 #ifdef CLEANUP_mv
 #undef CLEANUP_mv
 #undef FOR_mv
@@ -2122,12 +2123,13 @@
 #undef FLAG_n
 #endif
 
-// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]
+// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uU[!tlL][!Lw][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
+#undef FLAG_n
 #undef FLAG_U
 #undef FLAG_u
 #undef FLAG_6
@@ -2601,9 +2603,9 @@
 #undef FOR_rfkill
 #endif
 
-// rm fiRrv[-fi] fiRrv[-fi]
+// rm f(force)iRrv[-fi] f(force)iRrv[-fi]
 #undef OPTSTR_rm
-#define OPTSTR_rm "fiRrv[-fi]"
+#define OPTSTR_rm "f(force)iRrv[-fi]"
 #ifdef CLEANUP_rm
 #undef CLEANUP_rm
 #undef FOR_rm
@@ -2671,9 +2673,9 @@
 #undef FOR_runcon
 #endif
 
-// sed (help)(version)e*f*i:;nErz(null-data)s[+Er] (help)(version)e*f*i:;nErz(null-data)s[+Er]
+// sed (help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er] (help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]
 #undef OPTSTR_sed
-#define OPTSTR_sed "(help)(version)e*f*i:;nErz(null-data)s[+Er]"
+#define OPTSTR_sed "(help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]"
 #ifdef CLEANUP_sed
 #undef CLEANUP_sed
 #undef FOR_sed
@@ -2685,6 +2687,7 @@
 #undef FLAG_i
 #undef FLAG_f
 #undef FLAG_e
+#undef FLAG_tarxform
 #undef FLAG_version
 #undef FLAG_help
 #endif
@@ -2972,12 +2975,14 @@
 #undef FLAG_t
 #endif
 
-// swapoff <1>1 <1>1
+// swapoff <1>1av <1>1av
 #undef OPTSTR_swapoff
-#define OPTSTR_swapoff "<1>1"
+#define OPTSTR_swapoff "<1>1av"
 #ifdef CLEANUP_swapoff
 #undef CLEANUP_swapoff
 #undef FOR_swapoff
+#undef FLAG_v
+#undef FLAG_a
 #endif
 
 // swapon <1>1p#<0>32767d <1>1p#<0>32767d
@@ -3414,9 +3419,9 @@
 #undef FLAG_c
 #endif
 
-// uname aomvrns aomvrns
+// uname paomvrns paomvrns
 #undef OPTSTR_uname
-#define OPTSTR_uname "aomvrns"
+#define OPTSTR_uname "paomvrns"
 #ifdef CLEANUP_uname
 #undef CLEANUP_uname
 #undef FOR_uname
@@ -3427,6 +3432,7 @@
 #undef FLAG_m
 #undef FLAG_o
 #undef FLAG_a
+#undef FLAG_p
 #endif
 
 // unicode   <1
@@ -3677,9 +3683,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^E:P#<0=1optrn#<1(max-args)s#0[!0E] ^E:P#<0=1optrn#<1(max-args)s#0[!0E]
+// xargs ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^E:P#<0=1optrn#<1(max-args)s#0[!0E]"
+#define OPTSTR_xargs "^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
@@ -3694,9 +3700,9 @@
 #undef FLAG_E
 #endif
 
-// xxd >1c#<0>256l#o#g#<1=2iprs#[!rs] >1c#<0>256l#o#g#<1=2iprs#[!rs]
+// xxd >1c#<0>256l#o#g#<0=2iprs#[!rs] >1c#<0>256l#o#g#<0=2iprs#[!rs]
 #undef OPTSTR_xxd
-#define OPTSTR_xxd ">1c#<0>256l#o#g#<1=2iprs#[!rs]"
+#define OPTSTR_xxd ">1c#<0>256l#o#g#<0=2iprs#[!rs]"
 #ifdef CLEANUP_xxd
 #undef CLEANUP_xxd
 #undef FOR_xxd
@@ -4401,23 +4407,24 @@
 #define FLAG_r (1<<1)
 #define FLAG_N (1<<2)
 #define FLAG_L (1<<3)
-#define FLAG_S (1<<4)
-#define FLAG_a (1<<5)
-#define FLAG_q (1<<6)
-#define FLAG_s (1<<7)
-#define FLAG_T (1<<8)
-#define FLAG_i (1<<9)
-#define FLAG_w (1<<10)
-#define FLAG_t (1<<11)
-#define FLAG_u (1<<12)
-#define FLAG_b (1<<13)
-#define FLAG_d (1<<14)
-#define FLAG_B (1<<15)
-#define FLAG_strip_trailing_cr (1<<16)
-#define FLAG_color (1<<17)
-#define FLAG_new_line_format (1<<18)
-#define FLAG_old_line_format (1<<19)
-#define FLAG_unchanged_line_format (1<<20)
+#define FLAG_F (1<<4)
+#define FLAG_S (1<<5)
+#define FLAG_a (1<<6)
+#define FLAG_q (1<<7)
+#define FLAG_s (1<<8)
+#define FLAG_T (1<<9)
+#define FLAG_i (1<<10)
+#define FLAG_w (1<<11)
+#define FLAG_t (1<<12)
+#define FLAG_u (1<<13)
+#define FLAG_b (1<<14)
+#define FLAG_d (1<<15)
+#define FLAG_B (1<<16)
+#define FLAG_strip_trailing_cr (1<<17)
+#define FLAG_color (1<<18)
+#define FLAG_new_line_format (1<<19)
+#define FLAG_old_line_format (1<<20)
+#define FLAG_unchanged_line_format (1<<21)
 #endif
 
 #ifdef FOR_dirname
@@ -5697,20 +5704,21 @@
 #ifndef TT
 #define TT this.netcat
 #endif
-#define FLAG_U (1<<0)
-#define FLAG_u (1<<1)
-#define FLAG_6 (1<<2)
-#define FLAG_4 (1<<3)
-#define FLAG_f (1<<4)
-#define FLAG_s (1<<5)
-#define FLAG_q (1<<6)
-#define FLAG_p (1<<7)
-#define FLAG_W (1<<8)
-#define FLAG_w (1<<9)
-#define FLAG_L (1<<10)
-#define FLAG_l (1<<11)
-#define FLAG_E (1<<12)
-#define FLAG_t (1<<13)
+#define FLAG_n (1<<0)
+#define FLAG_U (1<<1)
+#define FLAG_u (1<<2)
+#define FLAG_6 (1<<3)
+#define FLAG_4 (1<<4)
+#define FLAG_f (1<<5)
+#define FLAG_s (1<<6)
+#define FLAG_q (1<<7)
+#define FLAG_p (1<<8)
+#define FLAG_W (1<<9)
+#define FLAG_w (1<<10)
+#define FLAG_L (1<<11)
+#define FLAG_l (1<<12)
+#define FLAG_E (1<<13)
+#define FLAG_t (1<<14)
 #endif
 
 #ifdef FOR_netstat
@@ -6213,8 +6221,9 @@
 #define FLAG_i (1<<5)
 #define FLAG_f (1<<6)
 #define FLAG_e (1<<7)
-#define FLAG_version (1<<8)
-#define FLAG_help (1<<9)
+#define FLAG_tarxform (1<<8)
+#define FLAG_version (1<<9)
+#define FLAG_help (1<<10)
 #endif
 
 #ifdef FOR_sendevent
@@ -6482,6 +6491,8 @@
 #ifndef TT
 #define TT this.swapoff
 #endif
+#define FLAG_v (1<<0)
+#define FLAG_a (1<<1)
 #endif
 
 #ifdef FOR_swapon
@@ -6900,6 +6911,7 @@
 #define FLAG_m (1<<4)
 #define FLAG_o (1<<5)
 #define FLAG_a (1<<6)
+#define FLAG_p (1<<7)
 #endif
 
 #ifdef FOR_unicode

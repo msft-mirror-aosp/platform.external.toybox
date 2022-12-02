@@ -63,6 +63,7 @@ if [ -z "$NOAIRLOCK"] && [ -n "$CROSS_COMPILE" ]; then
     rm .singleconfig_airlock || exit 1
   fi
   export PATH="$AIRLOCK"
+  CPIO_OPTS+=--no-preserve-owner
 fi
 
 # Create per-target work directories
@@ -116,6 +117,7 @@ mountpoint -q sys || mount -t sysfs sys sys
 echo 0 99999 > /proc/sys/net/ipv4/ping_group_range
 
 if [ $$ -eq 1 ]; then # Setup networking for QEMU (needs /proc)
+  mountpoint -q mnt || [ -e /dev/?da ] && mount /dev/?da /mnt
   ifconfig lo 127.0.0.1
   ifconfig eth0 10.0.2.15
   route add default gw 10.0.2.2
@@ -126,6 +128,7 @@ if [ $$ -eq 1 ]; then # Setup networking for QEMU (needs /proc)
   for i in $(ls -1 /etc/rc 2>/dev/null | sort); do . /etc/rc/"$i"; done
 
   [ -z "$CONSOLE" ] && CONSOLE="$(</sys/class/tty/console/active)"
+  [ -z "$HANDOFF" ] && [ -e /mnt/init ] && HANDOFF=/mnt/init
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo -e '\e[?7hType exit when done.'
   echo 3 > /proc/sys/kernel/printk
   exec oneit -c /dev/"${CONSOLE:-console}" $HANDOFF
@@ -154,7 +157,7 @@ done
 
 # Build static toybox with existing .config if there is one, else defconfig+sh
 announce toybox
-[ ! -z "$PENDING" ] && rm -f .config
+[ -n "$PENDING" ] && rm -f .config
 [ -e .config ] && CONF=silentoldconfig || unset CONF
 for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
 [ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
@@ -163,6 +166,9 @@ PREFIX="$ROOT" make clean \
 unset LDFLAGS
 
 # ------------------ Part 3: Build + package bootable system ------------------
+
+# Convert comma separated values in $1 to CONFIG=$2 lines
+csv2cfg() { sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1='"$2"'\n/g' <<< "$1"; }
 
 # ----- Build kernel for target
 
@@ -211,7 +217,7 @@ else
     KCONF=$KCONF,UNWINDER_FRAME_POINTER,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_INTEL,E1000,SERIAL_8250,SERIAL_8250_CONSOLE,RTC_CLASS
   elif [ "$TARGET" == m68k ]; then
     QEMU="m68k -M q800" KARCH=m68k KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI,SCSI_LOWLEVEL,BLK_DEV_SD,SCSI_MAC_ESP,MACINTOSH_DRIVERS,ADB,ADB_MACII,NET_CORE,NET_VENDOR_NATSEMI,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
+    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI,SCSI_LOWLEVEL,BLK_DEV_SD,SCSI_MAC_ESP,MACINTOSH_DRIVERS,NET_CORE,NET_VENDOR_NATSEMI,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
   elif [ "$TARGET" == mips ] || [ "$TARGET" == mipsel ]; then
     QEMU="mips -M malta" KARCH=mips KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
@@ -255,22 +261,23 @@ else
   announce "linux-$KARCH"
   pushd "$LINUX" && make distclean && popd &&
   cp -sfR "$LINUX" "$TEMP/linux" && pushd "$TEMP/linux" &&
-  # Fix x86-64 and sh2eb
-  sed -Eis '/select HAVE_(STACK_VALIDATION|OBJTOOL)/d' arch/x86/Kconfig &&
+  # Fix x86-64, sh2eb, and building with cc pointing to llvm or gcc
+  sed -Eis '/select HAVE_(STACK_VALIDATION|OBJTOOL)[^_]/d' arch/x86/Kconfig &&
   sed -is 's/depends on !SMP/& || !MMU/' mm/Kconfig &&
+  sed -i 's@=\(.*[ )]\)gcc$@:=\1$(shell $(CROSS_COMPILE)cc --version >/dev/null 2>\&1 \&\& echo cc || echo gcc)@' Makefile &&
 
   # Write linux-miniconfig
   { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
     echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
-    echo "# CONFIG_EMBEDDED is not set"
 
     # Expand list of =y symbols, first generic then architecture-specific
     for i in BINFMT_ELF,BINFMT_SCRIPT,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC $KCONF $KEXTRA ; do
       echo "# architecture ${X:-independent}"
-      sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1=y\n/g' <<< "$i"
+      csv2cfg "$i" y
       X=specific
     done
     [ -n "$BUILTIN" ] && echo -e CONFIG_INITRAMFS_SOURCE="\"$OUTPUT/fs\""
+    for i in $MODULES; do csv2cfg "$i" m; done
     echo "$KERNEL_CONFIG"
   } > "$OUTPUT/linux-miniconfig" &&
   make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTPUT/linux-miniconfig" &&
@@ -284,16 +291,22 @@ else
   cp .config "$OUTPUT/linux-fullconfig" &&
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
-  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) || exit 1
+  make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) all || exit 1
   [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT/linux.dtb" || exit 1 ;}
+  if [ -n "$MODULES" ]; then
+    make ARCH=$KARCH INSTALL_MOD_PATH=modz modules_install &&
+      (cd modz && find lib/modules | cpio -o -H newc $CPIO_OPTS ) | gzip \
+       > "$OUTPUT/modules.cpio.gz" || exit 1
+  fi
   cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
 fi
 
 # clean up and package root filesystem for initramfs.
 if [ -z "$BUILTIN" ]; then
   announce initramfs
-  (cd "$ROOT" && find . | cpio -o -H newc ${CROSS_COMPILE:+--no-preserve-owner}\
-    | gzip) > "$OUTPUT"/initramfs.cpio.gz || exit 1
+  { (cd "$ROOT" && find . | cpio -o -H newc $CPIO_OPTS i ) || exit 1
+    ! test -e "$OUTPUT/modules.cpio.gz" || zcat $_;} | gzip \
+    > "$OUTPUT"/initramfs.cpio.gz || exit 1
 fi
 
 mv "$LOG/$CROSS".{n,y}

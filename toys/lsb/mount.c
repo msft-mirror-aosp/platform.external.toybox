@@ -175,7 +175,7 @@ static void mount_filesystem(char *dev, char *dir, char *type,
 
   // Autodetect bind mount or filesystem type
 
-  if (type && !strcmp(type, "auto")) type = 0;
+  if (type && (!strcmp(type, "auto") || !strcmp(type, "none"))) type = 0;
   if (flags & MS_MOVE) {
     if (type) error_exit("--move with -t");
   } else if (!type) {

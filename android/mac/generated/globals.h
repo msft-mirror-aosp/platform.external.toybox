@@ -239,6 +239,7 @@ struct acpi_data {
 
 struct base64_data {
   long w;
+
   unsigned total;
   unsigned n;  // number of bits used in encoding. 5 for base32, 6 for base64
   unsigned align;  // number of bits to align to
@@ -284,7 +285,7 @@ struct fallocate_data {
 // toys/other/fmt.c
 
 struct fmt_data {
-  int width;
+  long width;
 
   int level, pos;
 };
@@ -682,7 +683,7 @@ struct dhcpd_data {
 struct diff_data {
   long U;
   struct arg_list *L;
-  char *S, *new_line_format, *old_line_format, *unchanged_line_format;
+  char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
   int dir_num, size, is_binary, differ, change, len[2], *offset[2];
   struct stat st[2];
@@ -1324,8 +1325,8 @@ struct grep_data {
 
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
-  char indelim, outdelim;
-  int found, tried;
+  int found, tried, delim;
+  struct arg_list *fixed[256];
 };
 
 // toys/posix/head.c
@@ -1498,12 +1499,12 @@ struct sed_data {
   // processed pattern list
   struct double_list *pattern;
 
-  char *nextline, *remember;
+  char *nextline, *remember, *tarxform;
   void *restart, *lastregex;
   long nextlen, rememberlen, count;
   int fdout, noeol;
-  unsigned xx;
-  char delim;
+  unsigned xx, tarxlen, xflags;
+  char delim, xftype;
 };
 
 // toys/posix/sort.c
@@ -1560,7 +1561,7 @@ struct tar_data {
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd, **xfsed;
-  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid, xfpipe[2];
   struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
