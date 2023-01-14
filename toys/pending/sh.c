@@ -555,21 +555,18 @@ static struct sh_vars *addvar(char *s, struct sh_fcall *ff)
 // Recursively calculate string into dd, returns 0 if failed, ss = error point
 // Recursion resolves operators of lower priority level to a value
 // Loops through operators at same priority
+#define NO_ASSIGN 128
 static int recalculate(long long *dd, char **ss, int lvl)
 {
   long long ee, ff;
   char *var = 0, *val, cc = **nospace(ss);
-  int ii, assign = 1;
-
-  if (lvl>99) {
-    lvl -= 100;
-    assign = 0;
-  }
+  int ii, noa = lvl&NO_ASSIGN;
+  lvl &= NO_ASSIGN-1;
 
   // Unary prefixes can only occur at the start of a parse context
   if (cc=='!' || cc=='~') {
     ++*ss;
-    if (!recalculate(dd, ss, 15)) return 0;
+    if (!recalculate(dd, ss, noa|15)) return 0;
     *dd = (cc=='!') ? !*dd : ~*dd;
   } else if (cc=='+' || cc=='-') {
     // Is this actually preincrement/decrement? (Requires assignable var.)
@@ -582,12 +579,12 @@ static int recalculate(long long *dd, char **ss, int lvl)
       }
     }
     if (!var) {
-      if (!recalculate(dd, ss, 15)) return 0;
+      if (!recalculate(dd, ss, noa|15)) return 0;
       if (cc=='-') *dd = -*dd;
     }
   } else if (cc=='(') {
     ++*ss;
-    if (!recalculate(dd, ss, 1)) return 0;
+    if (!recalculate(dd, ss, noa|1)) return 0;
     if (**ss!=')') return 0;
     else ++*ss;
   } else if (isdigit(cc)) {
@@ -601,6 +598,7 @@ static int recalculate(long long *dd, char **ss, int lvl)
     // At lvl 0 "" is ok, anything higher needs a non-empty equation
     if (lvl || (cc && cc!=')')) return 0;
     *dd = 0;
+
     return 1;
   }
 
@@ -614,7 +612,7 @@ static int recalculate(long long *dd, char **ss, int lvl)
       return 0;
     }
     val = getvar(var = *ss) ? : "";
-    ii = recalculate(dd, &val, 0);
+    ii = recalculate(dd, &val, noa);
     TT.recursion--;
     if (!ii) return 0;
     if (*val) {
@@ -638,17 +636,15 @@ static int recalculate(long long *dd, char **ss, int lvl)
       *ss += 2;
 
     // Assignment operators: = *= /= %= += -= <<= >>= &= ^= |=
-    } else if (lvl<=2 && (*ss)[ii = !!strchr("*/%+-", **ss)
-               +2*!memcmp(*ss, "<<", 2)+2*!memcmp(*ss, ">>", 2)]=='=')
+    } else if (lvl<=2 && (*ss)[ii = (-1 != stridx("*/%+-", **ss))
+               +2*!smemcmp(*ss, "<<", 2)+2*!smemcmp(*ss, ">>", 2)]=='=')
     {
       // TODO: assignments are lower priority BUT must go after variable,
       // come up with precedence checking tests?
       cc = **ss;
       *ss += ii+1;
-      if (!recalculate(&ee, ss, 1)) return 0; // lvl instead of 1?
+      if (!recalculate(&ee, ss, noa|1)) return 0; // TODO lvl instead of 1?
       if (cc=='*') *dd *= ee;
-      else if (cc=='/') *dd /= ee;
-      else if (cc=='%') *dd %= ee;
       else if (cc=='+') *dd += ee;
       else if (cc=='-') *dd -= ee;
       else if (cc=='<') *dd <<= ee;
@@ -656,87 +652,94 @@ static int recalculate(long long *dd, char **ss, int lvl)
       else if (cc=='&') *dd &= ee;
       else if (cc=='^') *dd ^= ee;
       else if (cc=='|') *dd |= ee;
-      else *dd = ee;
+      else if (!cc) *dd = ee;
+      else if (!ee) {
+        perror_msg("%c0", cc);
+
+        return 0;
+      } else if (cc=='/') *dd /= ee;
+      else if (cc=='%') *dd %= ee;
       ee = *dd;
     }
-    if (cc && assign) setvar(xmprintf("%.*s=%lld", (int)(val-var), var, ee));
+    if (cc && !noa) setvar(xmprintf("%.*s=%lld", (int)(val-var), var, ee));
   }
 
   // x**y binds first
-  if (lvl<=13) while (strstart(nospace(ss), "**")) {
-    if (!recalculate(&ee, ss, 14)) return 0;
+  if (lvl<=14) while (strstart(nospace(ss), "**")) {
+    if (!recalculate(&ee, ss, noa|15)) return 0;
     if (ee<0) perror_msg("** < 0");
     for (ff = *dd, *dd = 1; ee; ee--) *dd *= ff;
   }
 
   // w*x/y%z bind next
-  if (lvl<=12) while ((cc = **nospace(ss)) && strchr("*/%", cc)) {
+  if (lvl<=13) while ((cc = **nospace(ss)) && strchr("*/%", cc)) {
     ++*ss;
-    if (!recalculate(&ee, ss, 13)) return 0;
+    if (!recalculate(&ee, ss, noa|14)) return 0;
     if (cc=='*') *dd *= ee;
-    else if (cc=='%') *dd %= ee;
     else if (!ee) {
-      perror_msg("/0");
+      perror_msg("%c0", cc);
+
       return 0;
-    } else *dd /= ee;
+    } else if (cc=='%') *dd %= ee;
+    else *dd /= ee;
   }
 
   // x+y-z
-  if (lvl<=11) while ((cc = **nospace(ss)) && strchr("+-", cc)) {
+  if (lvl<=12) while ((cc = **nospace(ss)) && strchr("+-", cc)) {
     ++*ss;
-    if (!recalculate(&ee, ss, 12)) return 0;
+    if (!recalculate(&ee, ss, noa|13)) return 0;
     if (cc=='+') *dd += ee;
     else *dd -= ee;
   }
 
   // x<<y >>
 
-  if (lvl<=10) while ((cc = **nospace(ss)) && strchr("<>", cc) && cc==(*ss)[1]){
+  if (lvl<=11) while ((cc = **nospace(ss)) && strchr("<>", cc) && cc==(*ss)[1]){
     *ss += 2;
-    if (!recalculate(&ee, ss, 11)) return 0;
+    if (!recalculate(&ee, ss, noa|12)) return 0;
     if (cc == '<') *dd <<= ee;
     else *dd >>= ee;
   }
 
   // x<y <= > >=
-  if (lvl<=9) while ((cc = **nospace(ss)) && strchr("<>", cc)) {
+  if (lvl<=10) while ((cc = **nospace(ss)) && strchr("<>", cc)) {
     if ((ii = *++*ss=='=')) ++*ss;
-    if (!recalculate(&ee, ss, 10)) return 0;
+    if (!recalculate(&ee, ss, noa|11)) return 0;
     if (cc=='<') *dd = ii ? (*dd<=ee) : (*dd<ee);
     else *dd = ii ? (*dd>=ee) : (*dd>ee);
   }
 
-  if (lvl<=8) while ((cc = **nospace(ss)) && strchr("=!", cc) && (*ss)[1]=='='){
+  if (lvl<=9) while ((cc = **nospace(ss)) && strchr("=!", cc) && (*ss)[1]=='='){
     *ss += 2;
-    if (!recalculate(&ee, ss, 9)) return 0;
+    if (!recalculate(&ee, ss, noa|10)) return 0;
     *dd = (cc=='!') ? *dd != ee : *dd == ee;
   }
 
-  if (lvl<=7) while (**nospace(ss)=='&') {
+  if (lvl<=8) while (**nospace(ss)=='&' && (*ss)[1]!='&') {
     ++*ss;
-    if (!recalculate(&ee, ss, 8)) return 0;
+    if (!recalculate(&ee, ss, noa|9)) return 0;
     *dd &= ee;
   }
 
-  if (lvl<=6) while (**nospace(ss)=='^') {
+  if (lvl<=7) while (**nospace(ss)=='^') {
     ++*ss;
-    if (!recalculate(&ee, ss, 7)) return 0;
+    if (!recalculate(&ee, ss, noa|8)) return 0;
     *dd ^= ee;
   }
 
-  if (lvl<=5) while (**nospace(ss)=='|') {
+  if (lvl<=6) while (**nospace(ss)=='|' && (*ss)[1]!='|') {
     ++*ss;
-    if (!recalculate(&ee, ss, 6)) return 0;
+    if (!recalculate(&ee, ss, noa|7)) return 0;
     *dd |= ee;
   }
 
   if (lvl<=5) while (strstart(nospace(ss), "&&")) {
-    if (!recalculate(&ee, ss, 6+100*!!*dd)) return 0;
+    if (!recalculate(&ee, ss, noa|6|NO_ASSIGN*!*dd)) return 0;
     *dd = *dd && ee;
   }
 
   if (lvl<=4) while (strstart(nospace(ss), "||")) {
-    if (!recalculate(&ee, ss, 5+100*!*dd)) return 0;
+    if (!recalculate(&ee, ss, noa|5|NO_ASSIGN*!!*dd)) return 0;
     *dd = *dd || ee;
   }
 
@@ -745,19 +748,19 @@ static int recalculate(long long *dd, char **ss, int lvl)
   if (lvl<=3) if (**nospace(ss)=='?') {
     ++*ss;
     if (**nospace(ss)==':' && *dd) ee = *dd;
-    else if (!recalculate(&ee, ss, 1+100*!*dd) || **nospace(ss)!=':')
+    else if (!recalculate(&ee, ss, noa|1|NO_ASSIGN*!*dd) || **nospace(ss)!=':')
       return 0;
     ++*ss;
-    if (!recalculate(&ff, ss, 1+100*!!*dd)) return 0;
+    if (!recalculate(&ff, ss, noa|1|NO_ASSIGN*!!*dd)) return 0;
     *dd = *dd ? ee : ff;
   }
 
   // lvl<=2 assignment would go here, but handled above because variable
 
   // , (slightly weird, replaces dd instead of modifying it via ee/ff)
-  if (lvl<=1) while ((cc = **nospace(ss)) && cc==',') {
+  if (lvl<=1) while (**nospace(ss)==',') {
     ++*ss;
-    if (!recalculate(dd, ss, 2)) return 0;
+    if (!recalculate(dd, ss, noa|2)) return 0;
   }
 
   return 1;
@@ -881,9 +884,9 @@ static struct sh_vars *setvar_found(char *s, int freeable, struct sh_vars *var)
   if (flags&VAR_INT) {
     sd = ss;
     if (!recalculate(&ll, &sd, 0) || *sd) {
-     perror_msg("bad math: %s @ %d", ss, (int)(sd-ss));
+      perror_msg("bad math: %s @ %d", ss, (int)(sd-ss));
 
-     goto bad;
+      goto bad;
     }
 
     sprintf(buf, "%lld", ll);
@@ -1572,7 +1575,7 @@ char *wildcard_path(char *pattern, int off, struct sh_arg *deck, int *idx,
       j = 0;
     }
 
-    // Got wildcard? Return if start of name if out of count, else skip [] ()
+    // Got wildcard? Return start of name if out of count, else skip [] ()
     if (*idx<deck->c && p-pattern == (long)deck->v[*idx]) {
       if (!j++ && !count--) return old;
       ++*idx;
@@ -1777,7 +1780,8 @@ char *slashcopy(char *s, char *c, struct sh_arg *deck)
 #define SEMI_IFS (1<<6)    // Use ' ' instead of IFS to combine $*
 // expand str appending to arg using above flag defines, add mallocs to delete
 // if ant not null, save wildcard deck there instead of expanding vs filesystem
-// returns 0 for success, 1 for error
+// returns 0 for success, 1 for error.
+// If measure stop at *measure and return input bytes consumed in *measure
 static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
   struct arg_list **delete, struct sh_arg *ant, long *measure)
 {
@@ -1834,10 +1838,7 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
     ifs = slice = 0;
 
     // handle escapes and quoting
-    if (cc == '\\') {
-      if (!(qq&1) || (str[ii] && strchr("\"\\$`", str[ii])))
-        new[oo++] = str[ii] ? str[ii++] : cc;
-    } else if (cc == '"') qq++;
+    if (cc == '"') qq++;
     else if (cc == '\'') {
       if (qq&1) new[oo++] = cc;
       else {
@@ -1847,12 +1848,12 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
 
     // both types of subshell work the same, so do $( here not in '$' below
 // TODO $((echo hello) | cat) ala $(( becomes $( ( retroactively
-    } else if (cc == '`' || (cc == '$' && str[ii] && strchr("([", str[ii]))) {
+    } else if (cc == '`' || (cc == '$' && (str[ii]=='(' || str[ii]=='['))) {
       off_t pp = 0;
 
       s = str+ii-1;
       kk = parse_word(s, 1, 0)-s;
-      if (str[ii] == '[' || *toybuf == 255) {
+      if (str[ii] == '[' || *toybuf == 255) { // (( parsed together, not (( ) )
         struct sh_arg aa = {0};
         long long ll;
 
@@ -1900,10 +1901,13 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
           for (kk = strlen(ifs); kk && ifs[kk-1]=='\n'; ifs[--kk] = 0);
         close(jj);
       }
+    } else if (cc=='\\' || !str[ii]) {
+      if (!(qq&1) || (str[ii] && strchr("\"\\$`", str[ii])))
+        new[oo++] = str[ii] ? str[ii++] : cc;
 
     // $VARIABLE expansions
 
-    } else if (cc == '$') {
+    } else if (cc == '$' && str[ii]) {
       cc = *(ss = str+ii++);
       if (cc=='\'') {
         for (s = str+ii; *s != '\''; oo += wcrtomb(new+oo, unescape2(&s, 0),0));
@@ -2284,50 +2288,60 @@ static int expand_arg(struct sh_arg *arg, char *old, unsigned flags,
   if ((TT.options&OPT_B) && !(flags&NO_BRACE)) for (i = 0; ; i++) {
     // skip quoted/escaped text
     while ((s = parse_word(old+i, 1, 0)) != old+i) i += s-(old+i);
-    // stop at end of string if we haven't got any more open braces
-    if (!bb && !old[i]) break;
-    // end a brace?
-    if (bb && (!old[i] || old[i] == '}')) {
-      bb->active = bb->commas[bb->cnt+1] = i;
-      // pop brace from bb into bnext
-      for (bnext = bb; bb && bb->active; bb = (bb==blist) ? 0 : bb->prev);
-      // Is this a .. span?
-      j = 1+*bnext->commas;
-      if (old[i] && !bnext->cnt && i-j>=4) {
-        // a..z span? Single digit numbers handled here too. TODO: utf8
-        if (old[j+1]=='.' && old[j+2]=='.') {
-          bnext->commas[2] = old[j];
-          bnext->commas[3] = old[j+3];
-          k = 0;
-          if (old[j+4]=='}' ||
-            (sscanf(old+j+4, "..%u}%n", bnext->commas+4, &k) && k))
-              bnext->cnt = -1;
-        }
-        // 3..11 numeric span?
-        if (!bnext->cnt) {
-          for (k=0, j = 1+*bnext->commas; k<3; k++, j += x)
-            if (!sscanf(old+j, "..%u%n"+2*!k, bnext->commas+2+k, &x)) break;
-          if (old[j] == '}') bnext->cnt = -2;
-        }
-        // Increment goes in the right direction by at least 1
-        if (bnext->cnt) {
-          if (!bnext->commas[4]) bnext->commas[4] = 1;
-          if ((bnext->commas[3]-bnext->commas[2]>0) != (bnext->commas[4]>0))
-            bnext->commas[4] *= -1;
-        }
-      }
-      // discard unterminated span, or commaless span that wasn't x..y
-      if (!old[i] || !bnext->cnt)
-        free(dlist_pop((blist == bnext) ? &blist : &bnext));
-    // starting brace
-    } else if (old[i] == '{') {
+
+    // start a new span
+    if (old[i] == '{') {
       dlist_add_nomalloc((void *)&blist,
         (void *)(bb = xzalloc(sizeof(struct sh_brace)+34*4)));
       bb->commas[0] = i;
+    // end of string: abort unfinished spans and end loop
+    } else if (!old[i]) {
+      for (bb = blist; bb;) {
+        if (!bb->active) {
+          if (bb==blist) {
+            dlist_pop(&blist);
+            bb = blist;
+          } else dlist_pop(&bb);
+        } else bb = (bb->next==blist) ? 0 : bb->next;
+      }
+      break;
     // no active span?
     } else if (!bb) continue;
+    // end current span
+    else if (old[i] == '}') {
+      bb->active = bb->commas[bb->cnt+1] = i;
+      // Is this a .. span?
+      j = 1+*bb->commas;
+      if (!bb->cnt && i-j>=4) {
+        // a..z span? Single digit numbers handled here too. TODO: utf8
+        if (old[j+1]=='.' && old[j+2]=='.') {
+          bb->commas[2] = old[j];
+          bb->commas[3] = old[j+3];
+          k = 0;
+          if (old[j+4]=='}' ||
+            (sscanf(old+j+4, "..%u}%n", bb->commas+4, &k) && k))
+              bb->cnt = -1;
+        }
+        // 3..11 numeric span?
+        if (!bb->cnt) {
+          for (k=0, j = 1+*bb->commas; k<3; k++, j += x)
+            if (!sscanf(old+j, "..%u%n"+2*!k, bb->commas+2+k, &x)) break;
+          if (old[j]=='}') bb->cnt = -2;
+        }
+        // Increment goes in the right direction by at least 1
+        if (bb->cnt) {
+          if (!bb->commas[4]) bb->commas[4] = 1;
+          if ((bb->commas[3]-bb->commas[2]>0) != (bb->commas[4]>0))
+            bb->commas[4] *= -1;
+        }
+      }
+      // discard commaless span that wasn't x..y
+      if (!bb->cnt) free(dlist_pop((blist==bb) ? &blist : &bb));
+      // Set bb to last unfinished brace (if any)
+      for (bb = blist ? blist->prev : 0; bb && bb->active;
+           bb = (bb==blist) ? 0 : bb->prev);
     // add a comma to current span
-    else if (bb && old[i] == ',') {
+    } else if (old[i] == ',') {
       if (bb->cnt && !(bb->cnt&31)) {
         dlist_lpop(&blist);
         dlist_add_nomalloc((void *)&blist,
@@ -2740,7 +2754,7 @@ static struct sh_process *run_command(void)
 
   // Skip [[ ]] and (( )) contents for now
   if ((s = arg->v[envlen])) {
-    if (!memcmp(s, "((", 2)) skiplen = 1;
+    if (!smemcmp(s, "((", 2)) skiplen = 1;
     else if (!strcmp(s, "[[")) while (strcmp(arg->v[envlen+skiplen++], "]]"));
   }
   pp = expand_redir(arg, envlen+skiplen, 0);
@@ -2804,7 +2818,7 @@ static struct sh_process *run_command(void)
 //   Several NOFORK can just NOP in a pipeline? Except ${a?b} still errors
 
   // ((math))
-  else if (!memcmp(s = *pp->arg.v, "((", 2)) {
+  else if (!smemcmp(s = *pp->arg.v, "((", 2)) {
     char *ss = s+2;
     long long ll;
 
@@ -2855,6 +2869,7 @@ static struct sh_process *run_command(void)
       }
       toys.rebound = 0;
       pp->exit = toys.exitval;
+      clearerr(stdout);
       if (toys.optargs != toys.argv+1) free(toys.optargs);
       if (toys.old_umask) umask(toys.old_umask);
       memcpy(&toys, &temp, jj);
@@ -3073,7 +3088,7 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
       }
 
       // "for" on its own line is an error.
-      if (arg->c == 1 && ex && !memcmp(ex, "do\0A", 4)) {
+      if (arg->c == 1 && ex && !smemcmp(ex, "do\0A", 4)) {
         s = "newline";
         goto flush;
       }
@@ -3161,26 +3176,25 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
     } else if (strchr(";|&", *s) && strncmp(s, "&>", 2)) {
       arg->c--;
 
+      // Connecting nonexistent statements is an error
+      if (!arg->c || !smemcmp(ex, "do\0A", 4)) goto flush;
+
       // treat ; as newline so we don't have to check both elsewhere.
       if (!strcmp(s, ";")) {
         arg->v[arg->c] = 0;
         free(s);
         s = 0;
 // TODO can't have ; between "for i" and in or do. (Newline yes, ; no. Why?)
-        if (!arg->c && ex && !memcmp(ex, "do\0C", 4)) continue;
+        if (!arg->c && ex && !smemcmp(ex, "do\0C", 4)) continue;
 
       // ;; and friends only allowed in case statements
       } else if (*s == ';') goto flush;
-
-      // Connecting nonexistent statements is an error
-      if (!arg->c) goto flush;
       pl->count = -1;
 
       continue;
 
     // a for/select must have at least one additional argument on same line
-    } else if (ex && !memcmp(ex, "do\0A", 4)) {
-
+    } else if (ex && !smemcmp(ex, "do\0A", 4)) {
       // Sanity check and break the segment
       if (strncmp(s, "((", 2) && *varend(s)) goto flush;
       pl->count = -1;
@@ -3198,7 +3212,7 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
 
     // The "test" part of for/select loops can have (at most) one "in" line,
     // for {((;;))|name [in...]} do
-    if (ex && !memcmp(ex, "do\0C", 4)) {
+    if (ex && !smemcmp(ex, "do\0C", 4)) {
       if (strcmp(s, "do")) {
         // can only have one "in" line between for/do, but not with for(())
         if (pl->prev->type == 's') goto flush;
@@ -3230,7 +3244,7 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
 
     // Expecting NULL means any statement (don't care which).
     if (!ex && *expect) {
-      if (pl->prev->type == 'f' && !end && memcmp(s, "((", 2)) goto flush;
+      if (pl->prev->type == 'f' && !end && smemcmp(s, "((", 2)) goto flush;
       free(dlist_lpop(expect));
     }
 

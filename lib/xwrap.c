@@ -457,9 +457,7 @@ int xdup(int fd)
   return fd;
 }
 
-// Move file descriptor above stdin/stdout/stderr, using /dev/null to consume
-// old one. (We should never be called with stdin/stdout/stderr closed, but...)
-int notstdio(int fd)
+int xnotstdio(int fd)
 {
   if (fd<0) return fd;
 
@@ -492,13 +490,13 @@ int xtempfile(char *name, char **tempname)
 // Create a file but don't return stdin/stdout/stderr
 int xcreate(char *path, int flags, int mode)
 {
-  return notstdio(xcreate_stdio(path, flags, mode));
+  return xnotstdio(xcreate_stdio(path, flags, mode));
 }
 
 // Open a file descriptor NOT in stdin/stdout/stderr
 int xopen(char *path, int flags)
 {
-  return notstdio(xopen_stdio(path, flags));
+  return xnotstdio(xopen_stdio(path, flags));
 }
 
 // Open read only, treating "-" as a synonym for stdin, defaulting to warn only
@@ -631,8 +629,8 @@ char *xabspath(char *path, int flags)
     }
 
     // Is this a symlink?
-    if (flags & (ABS_KEEP<<!todo)) errno = len = 0;
-    else len = readlinkat(dirfd, new->str, libbuf, sizeof(libbuf));
+    if (flags & (ABS_KEEP<<!todo)) len = 0, errno = EINVAL;
+    else len = readlinkat(dirfd, str, libbuf, sizeof(libbuf));
     if (len>4095) goto error;
 
     // Not a symlink: add to linked list, move dirfd, fail if error

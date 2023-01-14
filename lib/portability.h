@@ -114,9 +114,6 @@ void *memmem(const void *haystack, size_t haystack_length,
   const void *needle, size_t needle_length);
 #endif // defined(glibc)
 
-// getopt_long(), getopt_long_only(), and struct option.
-#include <getopt.h>
-
 #if !defined(__GLIBC__)
 // POSIX basename.
 #include <libgen.h>
@@ -147,6 +144,10 @@ void *memmem(const void *haystack, size_t haystack_length,
 #else
 #define IS_BIG_ENDIAN 0
 #endif
+
+#define bswap_16(x) bswap16(x)
+#define bswap_32(x) bswap32(x)
+#define bswap_64(x) bswap64(x)
 
 #else
 
@@ -255,6 +256,9 @@ static inline void endutxent(void) {;}
 
 // Some systems don't define O_NOFOLLOW, and it varies by architecture, so...
 #include <fcntl.h>
+#if defined(__APPLE__)
+#define O_PATH 0
+#else
 #ifndef O_NOFOLLOW
 #define O_NOFOLLOW 0
 #endif
@@ -269,6 +273,7 @@ static inline void endutxent(void) {;}
 #endif
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK (1<<30)
+#endif
 #endif
 
 // Glibc won't give you linux-kernel constants unless you say "no, a BUD lite"

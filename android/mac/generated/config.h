@@ -208,6 +208,18 @@
 #define USE_GETOPT(...) __VA_ARGS__
 #define CFG_GETTY 0
 #define USE_GETTY(...)
+#define CFG_GITCHECKOUT 0
+#define USE_GITCHECKOUT(...)
+#define CFG_GITCLONE 0
+#define USE_GITCLONE(...)
+#define CFG_GITCOMPAT 0
+#define USE_GITCOMPAT(...)
+#define CFG_GITFETCH 0
+#define USE_GITFETCH(...)
+#define CFG_GITINIT 0
+#define USE_GITINIT(...)
+#define CFG_GITREMOTE 0
+#define USE_GITREMOTE(...)
 #define CFG_GPIODETECT 0
 #define USE_GPIODETECT(...)
 #define CFG_GPIOFIND 0
@@ -390,6 +402,8 @@
 #define USE_MV(...) __VA_ARGS__
 #define CFG_NBD_CLIENT 0
 #define USE_NBD_CLIENT(...)
+#define CFG_NBD_SERVER 0
+#define USE_NBD_SERVER(...)
 #define CFG_NETCAT 0
 #define USE_NETCAT(...)
 #define CFG_NETSTAT 0
