@@ -145,7 +145,7 @@ int xopenro(char *path);
 void xpipe(int *pp);
 void xclose(int fd);
 int xdup(int fd);
-int notstdio(int fd);
+int xnotstdio(int fd);
 FILE *xfdopen(int fd, char *mode);
 FILE *xfopen(char *path, char *mode);
 size_t xread(int fd, void *buf, size_t len);
@@ -272,6 +272,7 @@ unsigned tar_cksum(void *data);
 int is_tar_header(void *pkt);
 char *elf_arch_name(int type);
 void octal_deslash(char *s);
+int smemcmp(char *one, char *two, unsigned long len);
 
 #define HR_SPACE  1 // Space between number and units
 #define HR_B      2 // Use "B" for single byte units
@@ -352,7 +353,7 @@ char *ntop(struct sockaddr *sa);
 void xsendto(int sockfd, void *buf, size_t len, struct sockaddr *dest);
 int xrecvwait(int fd, char *buf, int len, union socksaddr *sa, int timeout);
 char *escape_url(char *str, char *and);
-void unescape_url(char *str);
+char *unescape_url(char *str, int do_cut);
 
 // password.c
 int get_salt(char *salt, char * algo);
@@ -398,7 +399,8 @@ mode_t string_to_mode(char *mode_str, mode_t base);
 void mode_to_string(mode_t mode, char *buf);
 char *getbasename(char *name);
 char *fileunderdir(char *file, char *dir);
-char *relative_path(char *from, char *to);
+void *mepcpy(void *from, void *to, unsigned long len);
+char *relative_path(char *from, char *to, int abs);
 void names_to_pid(char **names, int (*callback)(pid_t pid, char *name),
     int scripts);
 

@@ -116,7 +116,7 @@
 
 #define HELP_tunctl "usage: tunctl [-dtT] [-u USER] NAME\n\nCreate and delete tun/tap virtual ethernet devices.\n\n-T	Use tap (ethernet frames) instead of tun (ip packets)\n-d	Delete tun/tap device\n-t	Create tun/tap device\n-u	Set owner (user who can read/write device without root access)"
 
-#define HELP_sntp "usage: sntp [-saSdDq] [-r SHIFT] [-mM[ADDRESS]] [-p PORT] [SERVER]\n\nSimple Network Time Protocol client. Query SERVER and display time.\n\n-p	Use PORT (default 123)\n-s	Set system clock suddenly\n-a	Adjust system clock gradually\n-S	Serve time instead of querying (bind to SERVER address if specified)\n-m	Wait for updates from multicast ADDRESS (RFC 4330 default 224.0.1.1)\n-M	Multicast server on ADDRESS (default 224.0.0.1)\n-t	TTL (multicast only, default 1)\n-d	Daemonize (run in background re-querying )\n-D	Daemonize but stay in foreground: re-query time every 1000 seconds\n-r	Retry shift (every 1<<SHIFT seconds)\n-q	Quiet (don't display time)"
+#define HELP_sntp "usage: sntp [-saSdDq] [-r SHIFT] [-mM[ADDRESS]] [-p PORT] [SERVER]\n\nSimple Network Time Protocol client. Query SERVER and display time.\n\n-p	Use PORT (default 123)\n-s	Set system clock suddenly\n-a	Adjust system clock gradually\n-S	Serve time instead of querying (bind to SERVER address if specified)\n-m	Wait for updates from multicast ADDRESS (RFC 4330 suggests 224.0.1.1)\n-M	Multicast server on ADDRESS (RFC 4330 suggests 224.0.1.1)\n-t	TTL (multicast only, default 1)\n-d	Daemonize (run in background re-querying)\n-D	Daemonize but stay in foreground: re-query time every 1000 seconds\n-r	Retry shift (every 1<<SHIFT seconds)\n-q	Quiet (don't display time)"
 
 #define HELP_rfkill "usage: rfkill COMMAND [DEVICE]\n\nEnable/disable wireless devices.\n\nCommands:\nlist [DEVICE]   List current state\nblock DEVICE    Disable device\nunblock DEVICE  Enable device\n\nDEVICE is an index number, or one of:\nall, wlan(wifi), bluetooth, uwb(ultrawideband), wimax, wwan, gps, fm."
 
@@ -130,7 +130,7 @@
 
 #define HELP_ifconfig "usage: ifconfig [-aS] [INTERFACE [ACTION...]]\n\nDisplay or configure network interface.\n\nWith no arguments, display active interfaces. First argument is interface\nto operate on, one argument by itself displays that interface.\n\n-a	All interfaces displayed, not just active ones\n-S	Short view, one line per interface\n\nStandard ACTIONs to perform on an INTERFACE:\n\nADDR[/MASK]        - set IPv4 address (1.2.3.4/5) and activate interface\nadd|del ADDR[/LEN] - add/remove IPv6 address (1111::8888/128)\nup|down            - activate or deactivate interface\n\nAdvanced ACTIONs (default values usually suffice):\n\ndefault          - remove IPv4 address\nnetmask ADDR     - set IPv4 netmask via 255.255.255.0 instead of /24\ntxqueuelen LEN   - number of buffered packets before output blocks\nmtu LEN          - size of outgoing packets (Maximum Transmission Unit)\nbroadcast ADDR   - Set broadcast address\npointopoint ADDR - PPP and PPPOE use this instead of \"route add default gw\"\nhw TYPE ADDR     - set hardware (mac) address (type = ether|infiniband)\nrename NEWNAME   - rename interface\n\nFlags you can set on an interface (or -remove by prefixing with -):\n\narp       - don't use Address Resolution Protocol to map LAN routes\npromisc   - don't discard packets that aren't to this LAN hardware address\nmulticast - force interface into multicast mode if the driver doesn't\nallmulti  - promisc for multicast packets"
 
-#define HELP_httpd "usage: httpd [DIR]\n\nServe contents of directory as static web pages."
+#define HELP_httpd "usage: httpd [-e STR] [DIR]\n\nServe contents of directory as static web pages.\n\n-e	Escape STR as URL, printing result and exiting.\n-d	Decode escaped STR, printing result and exiting.\n-v	Verbose"
 
 #define HELP_host "usage: host [-v] [-t TYPE] NAME [SERVER]\n\nLook up DNS records for NAME, either domain name or IPv4/IPv6 address to\nreverse lookup, from SERVER or default DNS server(s).\n\n-a	All records\n-t TYPE	Record TYPE (number or ANY A AAAA CNAME MX NS PTR SOA SRV TXT)\n-v	Verbose"
 
@@ -200,9 +200,9 @@
 
 #define HELP_reboot "usage: reboot/halt/poweroff [-fn] [-d DELAY]\n\nRestart, halt, or power off the system.\n\n-d	Wait DELAY before proceeding (in seconds or m/h/d suffix: -d 1.5m = 90s)\n-f	Force reboot (don't signal init, reboot directly)\n-n	Don't sync filesystems before reboot"
 
-#define HELP_realpath "usage: realpath FILE...\n\nDisplay the canonical absolute pathname"
+#define HELP_realpath "usage: realpath [-LPemqsz] [--relative-base DIR] [-R DIR] FILE...\n\nDisplay the canonical absolute pathname\n\n-R Show ../path relative to DIR (--relative-to)\n-L Logical path (resolve .. before symlinks)\n-P Physical path (default)\n-e Canonical path to existing entry (fail if missing)\n-m Ignore missing entries, show where it would be\n-q Quiet (no error messages)\n-s Don't expand symlinks\n-z NUL instead of newline\n--relative-base  If path under DIR trim off prefix"
 
-#define HELP_readlink "usage: readlink FILE...\n\nWith no options, show what symlink points to, return error if not symlink.\n\nOptions for producing canonical paths (all symlinks/./.. resolved):\n\n-e	Canonical path to existing entry (fail if missing)\n-f	Full path (fail if directory missing)\n-m	Ignore missing entries, show where it would be\n-n	No trailing newline\n-q	Quiet (no output, just error code)"
+#define HELP_readlink "usage: readlink FILE...\n\nWith no options, show what symlink points to, return error if not symlink.\n\nOptions for producing canonical paths (all symlinks/./.. resolved):\n\n-e	Canonical path to existing entry (fail if missing)\n-f	Full path (fail if directory missing)\n-m	Ignore missing entries, show where it would be\n-n	No trailing newline\n-q	Quiet (no error messages)\n-z	NUL instead of newline"
 
 #define HELP_readelf "usage: readelf [-adehlnSs] [-p SECTION] [-x SECTION] [file...]\n\nDisplays information about ELF files.\n\n-a	Equivalent to -dhlnSs\n-d	Show dynamic section\n-e	Headers (equivalent to -hlS)\n-h	Show ELF header\n-l	Show program headers\n-n	Show notes\n-p S	Dump strings found in named/numbered section\n-S	Show section headers\n-s	Show symbol tables (.dynsym and .symtab)\n-x S	Hex dump of named/numbered section\n\n--dyn-syms	Show just .dynsym symbol table"
 
@@ -232,7 +232,9 @@
 
 #define HELP_unshare "usage: unshare [-imnpuUr] COMMAND...\n\nCreate new container namespace(s) for this process and its children, allowing\nthe new set of processes to have a different view of the system than the\nparent process.\n\n-a	Unshare all supported namespaces\n-f	Fork command in the background (--fork)\n-r	Become root (map current euid/egid to 0/0, implies -U) (--map-root-user)\n\nAvailable namespaces:\n-C	Control groups (--cgroup)\n-i	SysV IPC (message queues, semaphores, shared memory) (--ipc)\n-m	Mount/unmount tree (--mount)\n-n	Network address, sockets, routing, iptables (--net)\n-p	Process IDs and init (--pid)\n-u	Host and domain names (--uts)\n-U	UIDs, GIDs, capabilities (--user)\n\nEach namespace can take an optional argument, a persistent mountpoint usable\nby the nsenter command to add new processes to that the namespace. (Specify\nmultiple namespaces to unshare separately, ala -c -i -m because -cim is -c\nwith persistent mount \"im\".)"
 
-#define HELP_nbd_client "usage: nbd-client [-ns] HOST PORT DEVICE\n\n-n	Do not fork into background\n-s	nbd swap support (lock server into memory)"
+#define HELP_nbd_server "usage: nbd-server [-r] FILE\n\nServe a Network Block Device from FILE on stdin/out (ala inetd).\n\n-r	Read only export"
+
+#define HELP_nbd_client "usage: nbd-client [-ns] [-b BLKSZ] HOST PORT DEVICE\n\n-b	Block size (default 4096)\n-n	Do not daemonize\n-s	nbd swap support (lock server into memory)"
 
 #define HELP_mountpoint "usage: mountpoint [-qd] DIR\n       mountpoint [-qx] DEVICE\n\nCheck whether the directory or device is a mountpoint.\n\n-q	Be quiet, return zero if directory is a mountpoint\n-d	Print major/minor device number of the directory\n-x	Print major/minor device number of the block device"
 
@@ -452,6 +454,18 @@
 
 #define HELP_groupadd "usage: groupadd [-S] [-g GID] [USER] GROUP\n\nAdd a group or add a user to a group\n\n  -g GID Group id\n  -S     Create a system group"
 
+#define HELP_gitcheckout "usage: gitcheckout <branch>\nA minimal git checkout."
+
+#define HELP_gitfetch "usage: gitfetch\nA minimal git fetch."
+
+#define HELP_gitremote "usage: gitremote URL\nA minimal git remote add origin."
+
+#define HELP_gitinit "usage: gitinit NAME\nA minimal git init."
+
+#define HELP_gitclone "usage: gitclone URL\nA minimal git clone."
+
+#define HELP_gitcompat "Enable git compatible repos instead of minimal clone downloader."
+
 #define HELP_getty "usage: getty [OPTIONS] BAUD_RATE[,BAUD_RATE]... TTY [TERMTYPE]\n\nWait for a modem to dial into serial port, adjust baud rate, call login.\n\n-h    Enable hardware RTS/CTS flow control\n-L    Set CLOCAL (ignore Carrier Detect state)\n-m    Get baud rate from modem's CONNECT status message\n-n    Don't prompt for login name\n-w    Wait for CR or LF before sending /etc/issue\n-i    Don't display /etc/issue\n-f ISSUE_FILE  Display ISSUE_FILE instead of /etc/issue\n-l LOGIN  Invoke LOGIN instead of /bin/login\n-t SEC    Terminate after SEC if no login name is read\n-I INITSTR  Send INITSTR before anything else\n-H HOST    Log HOST into the utmp file as the hostname"
 
 #define HELP_getopt "usage: getopt [OPTIONS] [--] ARG...\n\nParse command-line options for use in shell scripts.\n\n-a	Allow long options starting with a single -.\n-l OPTS	Specify long options.\n-n NAME	Command name for error messages.\n-o OPTS	Specify short options.\n-T	Test whether this is a modern getopt.\n-u	Output options unquoted."
@@ -582,7 +596,7 @@
 
 #define HELP_mkdir "usage: mkdir [-vp] [-m MODE] [DIR...]\n\nCreate one or more directories.\n\n-m	Set permissions of directory to mode\n-p	Make parent directories as needed\n-v	Verbose"
 
-#define HELP_ls "usage: ls [-ACFHLRSZacdfhiklmnpqrstuwx1] [--color[=auto]] [FILE...]\n\nList files.\n\nwhat to show:\n-a  all files including .hidden    -b  escape nongraphic chars\n-c  use ctime for timestamps       -d  directory, not contents\n-i  inode number                   -p  put a '/' after dir names\n-q  unprintable chars as '?'       -s  storage used (1024 byte units)\n-u  use access time for timestamps -A  list all files but . and ..\n-H  follow command line symlinks   -L  follow symlinks\n-R  recursively list in subdirs    -F  append /dir *exe @sym |FIFO\n-Z  security context\n\noutput formats:\n-1  list one file per line         -C  columns (sorted vertically)\n-g  like -l but no owner           -h  human readable sizes\n-l  long (show full details)       -m  comma separated\n-n  like -l but numeric uid/gid    -o  like -l but no group\n-w  set column width               -x  columns (horizontal sort)\n-ll long with nanoseconds (--full-time)\n--color  device=yellow  symlink=turquoise/red  dir=blue  socket=purple\n         files: exe=green  suid=red  suidfile=redback  stickydir=greenback\n         =auto means detect if output is a tty.\n\nsorting (default is alphabetical):\n-f  unsorted    -r  reverse    -t  timestamp    -S  size"
+#define HELP_ls "usage: ls [-ACFHLRSZacdfhiklmnpqrstuwx1] [--color[=auto]] [FILE...]\n\nList files.\n\nwhat to show:\n-a  all files including .hidden    -b  escape nongraphic chars\n-c  use ctime for timestamps       -d  directory, not contents\n-i  inode number                   -p  put a '/' after dir names\n-q  unprintable chars as '?'       -s  storage used (1024 byte units)\n-u  use access time for timestamps -A  list all files but . and ..\n-H  follow command line symlinks   -L  follow symlinks\n-R  recursively list in subdirs    -F  append /dir *exe @sym |FIFO\n-N  no escaping, even on tty       -Z  security context\n\noutput formats:\n-1  list one file per line         -C  columns (sorted vertically)\n-g  like -l but no owner           -h  human readable sizes\n-l  long (show full details)       -m  comma separated\n-n  like -l but numeric uid/gid    -o  like -l but no group\n-w  set column width               -x  columns (horizontal sort)\n-ll long with nanoseconds (--full-time)\n--color  device=yellow  symlink=turquoise/red  dir=blue  socket=purple\n         files: exe=green  suid=red  suidfile=redback  stickydir=greenback\n         =auto means detect if output is a tty.\n\nsorting (default is alphabetical):\n-f  unsorted    -r  reverse    -t  timestamp    -S  size"
 
 #define HELP_logger "usage: logger [-s] [-t TAG] [-p [FACILITY.]PRIORITY] [MESSAGE...]\n\nLog message (or stdin) to syslog.\n\n-s	Also write message to stderr\n-t	Use TAG instead of username to identify message source\n-p	Specify PRIORITY with optional FACILITY. Default is \"user.notice\""
 

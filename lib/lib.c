@@ -738,7 +738,7 @@ void loopfiles_rw(char **argv, int flags, int permissions,
     // Inability to open a file prints a warning, but doesn't exit.
 
     if (!strcmp(*argv, "-")) fd = 0;
-    else if (0>(fd = notstdio(open(*argv, flags, permissions))) && !failok) {
+    else if (0>(fd = xnotstdio(open(*argv, flags, permissions))) && !failok) {
       perror_msg_raw(*argv);
       if (!anyway) continue;
     }
@@ -1077,30 +1077,47 @@ char *fileunderdir(char *file, char *dir)
   return rc ? s2 : 0;
 }
 
-// return (malloced) relative path to get from "from" to "to"
-char *relative_path(char *from, char *to)
+void *mepcpy(void *to, void *from, unsigned long len)
+{
+  memcpy(to, from, len);
+
+  return ((char *)to)+len;
+}
+
+// return (malloced) relative path to get between two normalized absolute paths
+// normalized: no duplicate / or trailing / or .. or . (symlinks optional)
+char *relative_path(char *from, char *to, int abs)
 {
   char *s, *ret = 0;
   int i, j, k;
 
-  if (!(from = xabspath(from, 0))) return 0;
-  if (!(to = xabspath(to, 0))) goto error;
+  if (abs) {
+    if (!(from = xabspath(from, 0))) return 0;
+    if (!(to = xabspath(to, 0))) goto error;
+  }
 
-  // skip common directories from root
-  for (i = j = 0; from[i] && from[i] == to[i]; i++) if (to[i] == '/') j = i+1;
+  for (i = j = 0;; i++) {
+    if (!from[i] || !to[i]) {
+      if (from[i]=='/' || to[i]=='/' || from[i]==to[i]) j = i;
+      break;
+    }
+    if (from[i] != to[i]) break;
+    if (from[i] == '/') j = i;
+  }
 
   // count remaining destination directories
   for (i = j, k = 0; from[i]; i++) if (from[i] == '/') k++;
-
-  if (!k) ret = xstrdup(to+j);
+  if (!k) ret = xstrdup(to[j] ? to+j : ".");
   else {
-    s = ret = xmprintf("%*c%s", 3*k, ' ', to+j);
-    while (k--) memcpy(s+3*k, "../", 3);
+    s = ret = xmprintf("%*c%s", 3*k-!!k, ' ', to+j);
+    for (i = 0; i<k; i++) s = mepcpy(s, "/.."+!i, 3-!i);
   }
 
 error:
-  free(from);
-  free(to);
+  if (abs) {
+    free(from);
+    free(to);
+  }
 
   return ret;
 }
@@ -1475,7 +1492,7 @@ int is_tar_header(void *pkt)
   char *p = pkt;
   int i = 0;
 
-  if (p[257] && memcmp("ustar", p+257, 5)) return 0;
+  if (p[257] && smemcmp("ustar", p+257, 5)) return 0;
   if (p[148] != '0' && p[148] != ' ') return 0;
   sscanf(p+148, "%8o", &i);
 
@@ -1533,3 +1550,15 @@ void octal_deslash(char *s)
 
   *o = 0;
 }
+
+// ASAN flips out about memcmp("a", "abc", 4) but the result is well-defined.
+// This one's guaranteed to stop at len _or_ the first difference.
+int smemcmp(char *one, char *two, unsigned long len)
+{
+  int ii = 0;
+
+  while (len--) if ((ii = *one++ - *two++)) break;
+
+  return ii;
+}
+
