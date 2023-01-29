@@ -78,7 +78,12 @@ void login_main(void)
       if (*(pass = pwd->pw_passwd) == 'x') {
         struct spwd *spwd = getspnam (username);
 
-        if (spwd) pass = spwd->sp_pwdp;
+        if (spwd) {
+          pass = spwd->sp_pwdp;
+
+          // empty shadow password
+          if (pass && !*pass) break;
+        }
       }
     } else if (TT.f) error_exit("bad -f '%s'", TT.f);
 
@@ -91,7 +96,7 @@ void login_main(void)
       if (x) break;
     }
 
-    syslog(LOG_WARNING, "invalid password for '%s' on %s %s%s", pwd->pw_name,
+    syslog(LOG_WARNING, "invalid password for '%s' on %s %s%s", username,
       ttyname(tty), hh ? "from " : "", hh ? TT.h : "");
 
     sleep(3);

@@ -1265,7 +1265,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *H;
+  char *F, *H, *R;
 };
 
 // toys/posix/cut.c

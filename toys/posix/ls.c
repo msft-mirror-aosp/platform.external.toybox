@@ -290,7 +290,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
     if (toys.optflags == (FLAG_1|FLAG_f)) return;
   // Read directory contents. We dup() the fd because this will close it.
   // This reads/saves contents to display later, except for in "ls -1f" mode.
-  } else dirtree_recurse(indir, filter, dup(dirfd),
+  } else dirtree_recurse(indir, filter, dirfd,
       DIRTREE_STATLESS|DIRTREE_SYMFOLLOW*!!FLAG(L));
 
   // Copy linked list to array and sort it. Directories go in array because
@@ -544,7 +544,7 @@ void ls_main(void)
 
     // note: double_list->prev temporarily goes in dirtree->parent
     if (dt) {
-      if (dt->again&2) {
+      if (dt->again&DIRTREE_STATLESS) {
         perror_msg_raw(*s);
         free(dt);
       } else dlist_add_nomalloc((void *)&TT.files->child, (void *)dt);
