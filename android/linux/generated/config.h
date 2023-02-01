@@ -1,3 +1,5 @@
+#define CFG_TOYBOX 1
+#define USE_TOYBOX(...) __VA_ARGS__
 #define CFG_TOYBOX_DEBUG 0
 #define USE_TOYBOX_DEBUG(...)
 #define CFG_TOYBOX_FLOAT 1
@@ -16,20 +18,18 @@
 #define USE_TOYBOX_LIBZ(...) __VA_ARGS__
 #define CFG_TOYBOX_LSM_NONE 1
 #define USE_TOYBOX_LSM_NONE(...) __VA_ARGS__
-#define CFG_TOYBOX_NORECURSE 0
-#define USE_TOYBOX_NORECURSE(...)
+#define CFG_TOYBOX_NORECURSE 1
+#define USE_TOYBOX_NORECURSE(...) __VA_ARGS__
 #define CFG_TOYBOX_ON_ANDROID 0
 #define USE_TOYBOX_ON_ANDROID(...)
 #define CFG_TOYBOX_SELINUX 0
 #define USE_TOYBOX_SELINUX(...)
 #define CFG_TOYBOX_SMACK 0
 #define USE_TOYBOX_SMACK(...)
-#define CFG_TOYBOX_SUID 1
-#define USE_TOYBOX_SUID(...) __VA_ARGS__
+#define CFG_TOYBOX_SUID 0
+#define USE_TOYBOX_SUID(...)
 #define CFG_TOYBOX_UID_SYS 100
 #define CFG_TOYBOX_UID_USR 500
-#define CFG_TOYBOX 1
-#define USE_TOYBOX(...) __VA_ARGS__
 #define CFG_ACPI 0
 #define USE_ACPI(...)
 #define CFG_ARCH 0
@@ -208,6 +208,18 @@
 #define USE_GETOPT(...) __VA_ARGS__
 #define CFG_GETTY 0
 #define USE_GETTY(...)
+#define CFG_GITCHECKOUT 0
+#define USE_GITCHECKOUT(...)
+#define CFG_GITCLONE 0
+#define USE_GITCLONE(...)
+#define CFG_GITCOMPAT 0
+#define USE_GITCOMPAT(...)
+#define CFG_GITFETCH 0
+#define USE_GITFETCH(...)
+#define CFG_GITINIT 0
+#define USE_GITINIT(...)
+#define CFG_GITREMOTE 0
+#define USE_GITREMOTE(...)
 #define CFG_GPIODETECT 0
 #define USE_GPIODETECT(...)
 #define CFG_GPIOFIND 0
@@ -390,6 +402,8 @@
 #define USE_MV(...) __VA_ARGS__
 #define CFG_NBD_CLIENT 0
 #define USE_NBD_CLIENT(...)
+#define CFG_NBD_SERVER 0
+#define USE_NBD_SERVER(...)
 #define CFG_NETCAT 0
 #define USE_NETCAT(...)
 #define CFG_NETSTAT 0

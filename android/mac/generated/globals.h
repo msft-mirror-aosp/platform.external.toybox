@@ -239,6 +239,7 @@ struct acpi_data {
 
 struct base64_data {
   long w;
+
   unsigned total;
   unsigned n;  // number of bits used in encoding. 5 for base32, 6 for base64
   unsigned align;  // number of bits to align to
@@ -284,7 +285,7 @@ struct fallocate_data {
 // toys/other/fmt.c
 
 struct fmt_data {
-  int width;
+  long width;
 
   int level, pos;
 };
@@ -400,6 +401,14 @@ struct modinfo_data {
   int count;
 };
 
+// toys/other/nbd_client.c
+
+struct nbd_client_data {
+  long b;
+
+  int nbd;
+};
+
 // toys/other/nsenter.c
 
 struct nsenter_data {
@@ -433,6 +442,12 @@ struct readelf_data {
   char *elf, *shstrtab, *f;
   unsigned long long shoff, phoff, size, shstrtabsz;
   int bits, endian, shnum, shentsize, phentsize;
+};
+
+// toys/other/readlink.c
+
+struct readlink_data {
+  char *R, *relative_base;
 };
 
 // toys/other/reboot.c
@@ -507,6 +522,7 @@ struct timeout_data {
 
   struct pollfd pfd;
   sigjmp_buf sj;
+  int fds[2], pid;
 };
 
 // toys/other/truncate.c
@@ -681,7 +697,7 @@ struct dhcpd_data {
 struct diff_data {
   long U;
   struct arg_list *L;
-  char *S, *new_line_format, *old_line_format, *unchanged_line_format;
+  char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
   int dir_num, size, is_binary, differ, change, len[2], *offset[2];
   struct stat st[2];
@@ -762,6 +778,13 @@ struct getty_data {
   char *tty_name, buff[128];
   int speeds[20], sc;
   struct termios termios;
+};
+
+// toys/pending/git.c
+
+struct git_data {
+  char *url, *name; //git repo remote url and init directory name
+  struct IndexV2 *i; //git creates a index for each pack file, git clone just needs one index for the received pack file
 };
 
 // toys/pending/groupadd.c
@@ -1242,7 +1265,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *H;
+  char *F, *H, *R;
 };
 
 // toys/posix/cut.c
@@ -1323,8 +1346,8 @@ struct grep_data {
 
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
-  char indelim, outdelim;
-  int found, tried;
+  int found, tried, delim;
+  struct arg_list *fixed[256];
 };
 
 // toys/posix/head.c
@@ -1497,12 +1520,12 @@ struct sed_data {
   // processed pattern list
   struct double_list *pattern;
 
-  char *nextline, *remember;
+  char *nextline, *remember, *tarxform;
   void *restart, *lastregex;
   long nextlen, rememberlen, count;
   int fdout, noeol;
-  unsigned xx;
-  char delim;
+  unsigned xx, tarxlen, xflags;
+  char delim, xftype;
 };
 
 // toys/posix/sort.c
@@ -1559,7 +1582,7 @@ struct tar_data {
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd, **xfsed;
-  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid, xfpipe[2];
   struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
@@ -1683,11 +1706,13 @@ extern union global_union {
 	struct mkpasswd_data mkpasswd;
 	struct mkswap_data mkswap;
 	struct modinfo_data modinfo;
+	struct nbd_client_data nbd_client;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
 	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
+	struct readlink_data readlink;
 	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
@@ -1724,6 +1749,7 @@ extern union global_union {
 	struct getfattr_data getfattr;
 	struct getopt_data getopt;
 	struct getty_data getty;
+	struct git_data git;
 	struct groupadd_data groupadd;
 	struct hexdump_data hexdump;
 	struct ip_data ip;

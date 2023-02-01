@@ -8,26 +8,28 @@ export FILES="$PWD"/tests/files
 
 trap 'kill $(jobs -p) 2>/dev/null; exit 1' INT
 
-rm -rf generated/testdir
-mkdir -p generated/testdir/testdir
+export PREFIX=generated/testdir
+rm -rf "$PREFIX"
+mkdir -p "$PREFIX"/testdir
 
 if [ -z "$TEST_HOST" ]
 then
   if [ $# -ne 0 ]
   then
-    PREFIX=generated/testdir/ scripts/single.sh "$@" || exit 1
+    scripts/single.sh "$@" || exit 1
   else
-    make install_flat PREFIX=generated/testdir || exit 1
+    scripts/install.sh --symlink --force || exit 1
   fi
 fi
 
-cd generated/testdir
+export -n PREFIX
+cd "$PREFIX"
 PATH="$PWD:$PATH"
 TESTDIR="$PWD"
 export LC_COLLATE=C
 
 [ -f "$TOPDIR/generated/config.h" ] &&
-  export OPTIONFLAGS=:$(echo $($SED -nr 's/^#define CFG_(.*) 1/\1/p' "$TOPDIR/generated/config.h") | $SED 's/ /:/g')
+  export OPTIONFLAGS=:$($SED -nr 's/^#define CFG_(.*) 1$/\1/p' "$TOPDIR/generated/config.h" | tr '\n' :)
 
 do_test()
 {
@@ -38,7 +40,7 @@ do_test()
   if [ -z "$TEST_HOST" ]
   then
     C="$TESTDIR/$CMDNAME"
-    [ ! -e "$C" ] && echo "$CMDNAME disabled" && return
+    [ ! -e "$C" ] && echo "$SHOWSKIP: $CMDNAME disabled" && return
     C="$(dirname $(realpath "$C"))/$CMDNAME"
   else
     C="$(which $CMDNAME 2>/dev/null)"

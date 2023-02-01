@@ -34,6 +34,7 @@ GLOBALS(
 
   struct pollfd pfd;
   sigjmp_buf sj;
+  int fds[2], pid;
 )
 
 static void handler(int sig)
@@ -46,29 +47,35 @@ static long nantomil(struct timespec *ts)
   return ts->tv_sec*1000+ts->tv_nsec/1000000;
 }
 
+static void callback(char *argv[])
+{
+  xsignal(SIGCHLD, SIG_DFL);
+  if (!FLAG(foreground)) setpgid(0, 0);
+}
+
 void timeout_main(void)
 {
-  int fds[] = {0, -1}, ii, ms, nextsig, pid;
+  int ii, ms, nextsig = SIGTERM;
   struct timespec tts, kts;
 
   // Use same ARGFAIL value for any remaining parsing errors
   toys.exitval = 125;
   xparsetimespec(*toys.optargs, &tts);
   if (TT.k) xparsetimespec(TT.k, &kts);
-
-  nextsig = SIGTERM;
-  if (TT.s && -1 == (nextsig = sig_to_num(TT.s)))
-    error_exit("bad -s: '%s'", TT.s);
-
-  if (!FLAG(foreground)) setpgid(0, 0);
+  if (TT.s && -1==(nextsig = sig_to_num(TT.s))) error_exit("bad -s: '%s'",TT.s);
 
   toys.exitval = 0;
   TT.pfd.events = POLLIN;
+  TT.fds[1] = -1;
   if (sigsetjmp(TT.sj, 1)) goto done;
   xsignal_flags(SIGCHLD, handler, SA_NOCLDSTOP);
-  pid = xpopen_both(toys.optargs+1, FLAG(i) ? fds : 0);
-  if (!FLAG(i)) xpipe(fds);
-  TT.pfd.fd = fds[1];
+
+  TT.pid = xpopen_setup(toys.optargs+1, FLAG(i) ? TT.fds : 0, callback);
+  xsignal(SIGTTIN, SIG_IGN);
+  xsignal(SIGTTOU, SIG_IGN);
+  xsignal(SIGTSTP, SIG_IGN);
+  if (!FLAG(i)) xpipe(TT.fds);
+  TT.pfd.fd = TT.fds[1];
   ms = nantomil(&tts);
   for (;;) {
     if (1 != xpoll(&TT.pfd, 1, ms)) {
@@ -76,7 +83,7 @@ void timeout_main(void)
         perror_msg("sending signal %s to command %s", num_to_sig(nextsig),
           toys.optargs[1]);
       toys.exitval = (nextsig==9) ? 137 : 124;
-      kill(pid, nextsig);
+      kill(FLAG(foreground) ? TT.pid : -TT.pid, nextsig);
       if (!TT.k || nextsig==SIGKILL) break;
       nextsig = SIGKILL;
       ms = nantomil(&kts);
@@ -85,7 +92,7 @@ void timeout_main(void)
     }
     if (TT.pfd.revents&POLLIN) {
       errno = 0;
-      if (1>(ii = read(fds[1], toybuf, sizeof(toybuf)))) {
+      if (1>(ii = read(TT.fds[1], toybuf, sizeof(toybuf)))) {
         if (errno==EINTR) continue;
         break;
       }
@@ -95,7 +102,7 @@ void timeout_main(void)
   }
 done:
   xsignal(SIGCHLD, SIG_DFL);
-  ii = xpclose_both(pid, fds);
+  ii = xpclose_both(TT.pid, TT.fds);
 
   if (FLAG(preserve_status) || !toys.exitval) toys.exitval = ii;
 }

@@ -85,7 +85,7 @@ then
   [ -z "$V" ] && X=/dev/null || X=/dev/stderr
   for i in util crypt m resolv selinux smack attr crypto z log iconv tls ssl
   do
-    do_loudly ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -l$i &>$X \
+    do_loudly ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -l$i >>$X 2>&1 \
       -o "$UNSTRIPPED"/libprobe <<<"int main(int argc,char*argv[]){return 0;}"&&
       do_loudly echo -n ' '-l$i >> "$GENDIR"/optlibs.new
   done
@@ -243,8 +243,7 @@ fi
 
 [ -n "$NOBUILD" ] && exit 0
 
-echo -n "Compile $OUTNAME"
-[ -n "$V" ] && echo
+echo "Compile $OUTNAME"
 DOTPROG=.
 
 # This is a parallel version of: do_loudly $BUILD lib/*.c $TOYFILES $LINK
@@ -304,4 +303,5 @@ fi
 # multiplexer binary via truncate-and-write through a symlink.
 do_loudly chmod 555 "$OUTNAME" || exit 1
 
-echo
+# Ensure make wrapper sees success return code
+[ -z "$V" ] && echo >&2 || true

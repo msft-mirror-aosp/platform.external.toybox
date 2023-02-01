@@ -10,7 +10,7 @@
  * xxd -p "plain" output:
  *   "4c696e75782076657273696f6e20342e392e302d342d616d643634202864"
 
-USE_XXD(NEWTOY(xxd, ">1c#<0>256l#o#g#<1=2iprs#[!rs]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_XXD(NEWTOY(xxd, ">1c#<0>256l#o#g#<0=2iprs#[!rs]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config XXD
   bool "xxd"
@@ -26,7 +26,7 @@ config XXD
     -i	Output include file (CSV hex bytes, plus C header/footer if not stdin)
     -l n	Limit of n bytes before stopping (default is no limit)
     -o n	Add n to display offset
-    -p	Plain hexdump (30 bytes/line, no grouping)
+    -p	Plain hexdump (30 bytes/line, no grouping. With -c 0 no wrap/group)
     -r	Reverse operation: turn a hexdump into a binary file
     -s n	Skip to offset n
 */
@@ -42,7 +42,7 @@ static void do_xxd(int fd, char *name)
 {
   long long pos = 0;
   long long limit = TT.l;
-  int i, len, space;
+  int i, len, space, c = TT.c ? : sizeof(toybuf);
 
   if (FLAG(s)) {
     xlseek(fd, TT.s, SEEK_SET);
@@ -51,15 +51,16 @@ static void do_xxd(int fd, char *name)
   }
 
   while (0<(len = readall(fd, toybuf,
-                          (limit && limit-pos<TT.c)?limit-pos:TT.c)))
+                          (limit && limit-pos<c)?limit-pos:c)))
   {
     if (!FLAG(p)) printf("%08llx: ", TT.o + pos);
     pos += len;
-    space = 2*TT.c+(TT.c+TT.g-1)/TT.g+1;
+    space = 2*TT.c;
+    space += TT.g ? (TT.c+TT.g-1)/TT.g+1 : 2;
 
     for (i=0; i<len;) {
-      space -= printf("%02x", toybuf[i]);
-      if (!(++i%TT.g)) {
+      space -= printf("%02x", toybuf[i++]);
+      if (TT.g && !(i%TT.g)) {
         putchar(' ');
         space--;
       }
@@ -70,8 +71,9 @@ static void do_xxd(int fd, char *name)
       for (i = 0; i<len; i++)
         putchar((toybuf[i]>=' ' && toybuf[i]<='~') ? toybuf[i] : '.');
     }
-    putchar('\n');
+    if (TT.c || !FLAG(p)) putchar('\n');
   }
+  if (!TT.c && FLAG(p)) putchar('\n');
   if (len<0) perror_exit("read");
 }
 
@@ -105,7 +107,7 @@ static int dehex(char ch)
 static void do_xxd_reverse(int fd, char *name)
 {
   FILE *fp = xfdopen(xdup(fd), "r");
-  long long current_pos = 0;
+  long long pos, current_pos = 0;
   int tmp;
 
   // -ri is a very easy special case.
@@ -115,21 +117,17 @@ static void do_xxd_reverse(int fd, char *name)
 
     // Each line of a regular hexdump starts with an offset/address.
     // Each line of a plain hexdump just goes straight into the bytes.
-    if (!FLAG(p)) {
-      long long pos;
-
-      if (fscanf(fp, "%llx: ", &pos) == 1) {
-        if (pos != current_pos && fseek(stdout, pos, SEEK_SET) != 0) {
-          // TODO: just write out zeros if non-seekable?
-          perror_exit("%s: seek failed", name);
-        }
+    if (!FLAG(p) && fscanf(fp, "%llx: ", &pos) == 1) {
+      if (pos != current_pos && fseek(stdout, pos, SEEK_SET)) {
+        // TODO: just write out zeros if non-seekable?
+        perror_exit("%s: seek failed", name);
       }
     }
 
     // A plain hexdump can have as many bytes per line as you like,
     // but a non-plain hexdump assumes garbage after it's seen the
     // specified number of bytes.
-    while (FLAG(p) || col < TT.c) {
+    while (FLAG(p) || !TT.c || col < TT.c) {
       int n1, n2;
 
       // If we're at EOF or EOL or we read some non-hex...
@@ -159,10 +157,9 @@ static void do_xxd_reverse(int fd, char *name)
 
 void xxd_main(void)
 {
-  if (!TT.c) TT.c = FLAG(i) ? 12 : 16;
-
   // Plain style is 30 bytes/line, no grouping.
-  if (FLAG(p)) TT.c = TT.g = 30;
+  if (!FLAG(c)) TT.c = FLAG(p) ? 30 : FLAG(i) ? 12 : 16;
+  if (FLAG(p) && !FLAG(g)) TT.g = TT.c;
 
   loopfiles(toys.optargs,
     FLAG(r) ? do_xxd_reverse : (FLAG(i) ? do_xxd_include : do_xxd));

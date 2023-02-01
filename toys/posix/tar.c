@@ -61,7 +61,7 @@ GLOBALS(
   struct double_list *incl, *excl, *seen;
   struct string_list *dirs;
   char *cwd, **xfsed;
-  int fd, ouid, ggid, hlc, warn, sparselen, pid;
+  int fd, ouid, ggid, hlc, warn, sparselen, pid, xfpipe[2];
   struct dev_ino archive_di;
   long long *sparse;
   time_t mtt;
@@ -192,6 +192,23 @@ static void alloread(void *buf, int len)
   (*b)[len] = 0;
 }
 
+static char *xform(char **name, char type)
+{
+  char buf[9], *end;
+  off_t len;
+
+  if (!TT.xform) return 0;
+
+  buf[8] = 0;
+  if (dprintf(TT.xfpipe[0], "%s%c%c", *name, type, 0) != strlen(*name)+2
+    || readall(TT.xfpipe[1], buf, 8) != 8
+    || !(len = estrtol(buf, &end, 16)) || errno ||*end) error_exit("bad xform");
+  xreadall(TT.xfpipe[1], *name = xmalloc(len+1), len);
+  (*name)[len] = 0;
+
+  return *name;
+}
+
 // callback from dirtree to create archive
 static int add_to_tar(struct dirtree *node)
 {
@@ -219,20 +236,23 @@ static int add_to_tar(struct dirtree *node)
   }
 
   // Consume the 1 extra byte alocated in dirtree_path()
-  if (S_ISDIR(st->st_mode) && name[i-1] != '/') strcat(name, "/");
+  if (S_ISDIR(st->st_mode) && lnk[-1] != '/') strcpy(lnk, "/");
 
   // remove leading / and any .. entries from saved name
-  if (!FLAG(P)) while (*hname == '/') hname++;
-  for (lnk = hname;;) {
-    if (!(lnk = strstr(lnk, ".."))) break;
-    if (lnk == hname || lnk[-1] == '/') {
-      if (!lnk[2]) goto done;
-      if (lnk[2]=='/') {
-        lnk = hname = lnk+3;
-        continue;
+  if (!FLAG(P)) {
+    while (*hname == '/') hname++;
+    for (lnk = hname;;) {
+      if (!(lnk = strstr(lnk, ".."))) break;
+      if (lnk == hname || lnk[-1] == '/') {
+        if (!lnk[2]) goto done;
+        if (lnk[2]=='/') {
+          lnk = hname = lnk+3;
+          continue;
+        }
       }
+      lnk += 2;
     }
-    lnk += 2;
+    if (!*hname) hname = "./";
   }
   if (!*hname) goto done;
 
@@ -242,17 +262,12 @@ static int add_to_tar(struct dirtree *node)
     TT.warn = 0;
   }
 
-  // Note: linux sed doesn't add newline, so no need to remove it or use -z.
-  if (TT.xfsed)
-    if (!(hname = xfname = xrunread(TT.xfsed, hname))) error_exit("bad xform");
-
+  // Override dentry data from command line and fill out header data
   if (TT.owner) st->st_uid = TT.ouid;
   if (TT.group) st->st_gid = TT.ggid;
   if (TT.mode) st->st_mode = string_to_mode(TT.mode, st->st_mode);
   if (TT.mtime) st->st_mtime = TT.mtt;
-
   memset(&hdr, 0, sizeof(hdr));
-  strncpy(hdr.name, hname, sizeof(hdr.name));
   ITOO(hdr.mode, st->st_mode &07777);
   ITOO(hdr.uid, st->st_uid);
   ITOO(hdr.gid, st->st_gid);
@@ -260,16 +275,13 @@ static int add_to_tar(struct dirtree *node)
   ITOO(hdr.mtime, st->st_mtime);
   strcpy(hdr.magic, "ustar  ");
 
-  // Hard link or symlink? i=0 neither, i=1 hardlink, i=2 symlink
-
   // Are there hardlinks to a non-directory entry?
+  lnk = 0;
   if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
     for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
-    if (i != TT.hlc) {
-      lnk = TT.hlx[i].arg;
-      i = 1;
-    } else {
+    if (i != TT.hlc) lnk = TT.hlx[i].arg;
+    else {
       // first time we've seen it. Store as normal file, but remember it.
       if (!(TT.hlc&255))
         TT.hlx = xrealloc(TT.hlx, sizeof(*TT.hlx)*(TT.hlc+256));
@@ -277,20 +289,25 @@ static int add_to_tar(struct dirtree *node)
       TT.hlx[TT.hlc].di.ino = st->st_ino;
       TT.hlx[TT.hlc].di.dev = st->st_dev;
       TT.hlc++;
-      i = 0;
     }
-  } else i = 0;
+  }
 
-  // Handle file types
-  if (i || S_ISLNK(st->st_mode)) {
-    hdr.type = '1'+!i;
-    if (!i && !(lnk = xreadlink(name))) {
+  xfname = xform(&hname, 'r');
+  strncpy(hdr.name, hname, sizeof(hdr.name));
+
+  // Handle file types: 0=reg, 1=hardlink, 2=sym, 3=chr, 4=blk, 5=dir, 6=fifo
+  if (lnk || S_ISLNK(st->st_mode)) {
+    hdr.type = '1'+!lnk;
+    if (lnk) {
+      if (!xform(&lnk, 'h')) lnk = xstrdup(lnk);
+    } else if (!(lnk = xreadlink(name))) {
       perror_msg("readlink");
       goto done;
-    }
+    } else xform(&lnk, 's');
+
     maybe_prefix_block(lnk, sizeof(hdr.link), 'K');
     strncpy(hdr.link, lnk, sizeof(hdr.link));
-    if (!i) free(lnk);
+    free(lnk);
   } else if (S_ISREG(st->st_mode)) {
     hdr.type = '0';
     ITOO(hdr.size, st->st_size);
@@ -781,11 +798,11 @@ static void unpack_tar(char *first)
 
     // We accept --show-transformed but always do, so it's a NOP.
     name = TT.hdr.name;
-    if (TT.xfsed) {
-      if (!(name = xrunread(TT.xfsed, name))) error_exit("bad xform");
+    if (xform(&name, 'r')) {
       free(TT.hdr.name);
       TT.hdr.name = name;
     }
+    if ((i = "\0hs"[stridx("12", tar.type)+1])) xform(&TT.hdr.link_target, i);
 
     for (i = 0; i<TT.strip; i++) {
       char *s = strchr(name, '/');
@@ -816,7 +833,8 @@ static void unpack_tar(char *first)
           lc->tm_mday, lc->tm_hour, lc->tm_min, FLAG(full_time) ? perm : "");
       }
       printf("%s", name);
-      if (TT.hdr.link_target) printf(" -> %s", TT.hdr.link_target);
+      if (TT.hdr.link_target)
+        printf(" %s %s", tar.type=='2' ? "->" : "link to", TT.hdr.link_target);
       xputc('\n');
       skippy(TT.hdr.size);
     } else {
@@ -868,7 +886,7 @@ static void trim2list(void *list, char *pline)
 
   dlist_add(list, n);
   if (i && n[i-1]=='\n') i--;
-  while (i && n[i-1] == '/') i--;
+  while (i>1 && n[i-1] == '/') i--;
   n[i] = 0;
 }
 
@@ -878,10 +896,14 @@ static void do_XT(char **pline, long len)
   if (pline) trim2list(TT.X ? &TT.excl : &TT.incl, *pline);
 }
 
+static  char *get_archiver()
+{
+  return FLAG(I) ? TT.I : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
+}
+
 void tar_main(void)
 {
-  char *s, **args = toys.optargs,
-    *archiver = FLAG(I) ? TT.I : (FLAG(z) ? "gzip" : (FLAG(J) ? "xz":"bzip2"));
+  char *s, **xfsed, **args = toys.optargs;
   int len = 0, ii;
 
   // Needed when extracting to command
@@ -923,13 +945,17 @@ void tar_main(void)
     struct arg_list *al;
 
     for (ii = 0, al = TT.xform; al; al = al->next) ii++;
-    TT.xfsed = xmalloc((ii+1)*2*sizeof(char *));
-    TT.xfsed[0] = "sed";
-    for (ii = 1, al = TT.xform; al; al = al->next) {
-      TT.xfsed[ii++] = "-e";
-      TT.xfsed[ii++] = al->arg;
+    xfsed = xmalloc((ii+2)*2*sizeof(char *));
+    xfsed[0] = "sed";
+    xfsed[1] = "--tarxform";
+    for (ii = 2, al = TT.xform; al; al = al->next) {
+      xfsed[ii++] = "-e";
+      xfsed[ii++] = al->arg;
     }
-    TT.xfsed[ii] = 0;
+    xfsed[ii] = 0;
+    TT.xfpipe[0] = TT.xfpipe[1] = -1;
+    xpopen_both(xfsed, TT.xfpipe);
+    free(xfsed);
   }
 
   // nommu reentry for nonseekable input skips this, parent did it for us
@@ -964,7 +990,7 @@ void tar_main(void)
       if (len!=512 || !is_tar_header(hdr)) {
         // detect gzip and bzip signatures
         if (SWAP_BE16(*(short *)hdr)==0x1f8b) toys.optflags |= FLAG_z;
-        else if (!memcmp(hdr, "BZh", 3)) toys.optflags |= FLAG_j;
+        else if (!smemcmp(hdr, "BZh", 3)) toys.optflags |= FLAG_j;
         else if (peek_be(hdr, 7) == 0xfd377a585a0000UL) toys.optflags |= FLAG_J;
         else error_exit("Not tar");
 
@@ -976,11 +1002,11 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {hdr ? -1 : TT.fd, -1}, i, pid;
       struct string_list *zcat = FLAG(I) ? 0 : find_in_path(getenv("PATH"),
-        FLAG(j) ? "bzcat" : FLAG(J) ? "xzcat" : "zcat");
+        FLAG(z) ? "zcat" : FLAG(j) ? "bzcat" : "xzcat");
 
       // Toybox provides more decompressors than compressors, so try them first
       TT.pid = xpopen_both(zcat ? (char *[]){zcat->str, 0} :
-        (char *[]){archiver, "-d", 0}, pipefd);
+        (char *[]){get_archiver(), "-d", 0}, pipefd);
       if (CFG_TOYBOX_FREE) llist_traverse(zcat, free);
 
       if (!hdr) {
@@ -1052,7 +1078,7 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){archiver, 0}, pipefd);
+      xpopen_both((char *[]){get_archiver(), 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }

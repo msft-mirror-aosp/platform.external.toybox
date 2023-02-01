@@ -279,13 +279,13 @@ done:
 // read a filename that has been quoted or escaped
 static char *unquote_file(char *filename)
 {
-  char *s = filename, *t;
+  char *s = filename, *t, *newfile;
 
   // Return copy of file that wasn't quoted
   if (*s++ != '"' || !*s) return xstrdup(filename);
 
   // quoted and escaped filenames are larger than the original
-  for (t = filename = xmalloc(strlen(s) + 1); *s != '"'; s++) {
+  for (t = newfile = xmalloc(strlen(s) + 1); *s != '"'; s++) {
     if (!s[1]) error_exit("bad %s", filename);
 
     // don't accept escape sequences unless the filename is quoted
@@ -300,7 +300,7 @@ static char *unquote_file(char *filename)
   }
   *t = 0;
 
-  return filename;
+  return newfile;
 }
 
 // Read a patch file and find hunks, opening/creating/deleting files.
@@ -449,7 +449,7 @@ void patch_main(void)
 
         if (del) {
           if (!FLAG(s)) printf("removing %s\n", name);
-          xunlink(name);
+          if (!FLAG(dry_run)) xunlink(name);
           state = 0;
         // If we've got a file to open, do so.
         } else if (!FLAG(p) || i <= TT.p) {
@@ -457,8 +457,11 @@ void patch_main(void)
           if ((!strcmp(oldname, "/dev/null") || !oldsum) && access(name, F_OK))
           {
             if (!FLAG(s)) printf("creating %s\n", name);
-            if (mkpath(name)) perror_exit("mkpath %s", name);
-            TT.filein = xcreate(name, O_CREAT|O_EXCL|O_RDWR, 0666);
+            if (FLAG(dry_run)) TT.filein = xopen("/dev/null", O_RDWR);
+            else {
+              if (mkpath(name)) perror_exit("mkpath %s", name);
+              TT.filein = xcreate(name, O_CREAT|O_EXCL|O_RDWR, 0666);
+            }
           } else {
             if (!FLAG(s)) printf("patching %s\n", name);
             TT.filein = xopenro(name);

@@ -30,7 +30,7 @@ pid_t xfork(void)
 }
 #endif
 
-int xgetrandom(void *buf, unsigned buflen, unsigned flags)
+void xgetrandom(void *buf, unsigned buflen)
 {
   int fd;
 
@@ -39,15 +39,16 @@ int xgetrandom(void *buf, unsigned buflen, unsigned flags)
   // they were there first). getrandom() and getentropy() both went into glibc
   // in the same release (2.25 in 2017), so this test still works.
 #if __has_include(<sys/random.h>)
-  if (!getentropy(buf, buflen)) return 1;
-  if (errno!=ENOSYS && !(flags&WARN_ONLY)) perror_exit("getrandom");
+  while (buflen) {
+    if (getentropy(buf, fd = buflen>256 ? 256 : buflen)) break;
+    buflen -= fd;
+    buf += fd;
+  }
+  if (!buflen) return;
+  if (errno!=ENOSYS) perror_exit("getrandom");
 #endif
-  fd = xopen(flags ? "/dev/random" : "/dev/urandom",O_RDONLY|(flags&WARN_ONLY));
-  if (fd == -1) return 0;
-  xreadall(fd, buf, buflen);
+  xreadall(fd = xopen("/dev/urandom", O_RDONLY), buf, buflen);
   close(fd);
-
-  return 1;
 }
 
 // Get list of mounted filesystems, including stat and statvfs info.
@@ -95,30 +96,6 @@ struct mtab_list *xgetmountlist(char *path)
 #else
 
 #include <mntent.h>
-
-static void octal_deslash(char *s)
-{
-  char *o = s;
-
-  while (*s) {
-    if (*s == '\\') {
-      int i, oct = 0;
-
-      for (i = 1; i < 4; i++) {
-        if (!isdigit(s[i])) break;
-        oct = (oct<<3)+s[i]-'0';
-      }
-      if (i == 4) {
-        *o++ = oct;
-        s += i;
-        continue;
-      }
-    }
-    *o++ = *s++;
-  }
-
-  *o = 0;
-}
 
 // Check if this type matches list.
 // Odd syntax: typelist all yes = if any, typelist all no = if none.
@@ -586,7 +563,8 @@ char *fs_type_name(struct statfs *statfs)
     {0x3434, "nilfs"}, {0x6969, "nfs"}, {0x9fa0, "proc"},
     {0x534F434B, "sockfs"}, {0x62656572, "sysfs"}, {0x517B, "smb"},
     {0x4d44, "msdos"}, {0x4006, "fat"}, {0x43415d53, "smackfs"},
-    {0x73717368, "squashfs"}
+    {0x73717368, "squashfs"}, {0xF2F52010, "f2fs"}, {0xE0F5E1E2, "erofs"},
+    {0x2011BAB0, "exfat"},
   };
   int i;
 
@@ -625,6 +603,11 @@ int get_block_device_size(int fd, unsigned long long* size)
   *size = lab.d_secsize * lab.d_nsectors;
   return status;
 }
+#else
+int get_block_device_size(int fd, unsigned long long* size)
+{
+  return 0;
+}
 #endif
 
 // Return bytes copied from in to out. If bytes <0 copy all of in to out.
@@ -651,7 +634,7 @@ long long sendfile_len(int in, int out, long long bytes, long long *consumed)
       errno = EINVAL;
       len = -1;
 #endif
-      if (len < 0 && errno == EINVAL) {
+      if (len < 0) {
         try_cfr = 0;
 
         continue;
@@ -710,6 +693,12 @@ int timer_create_wrap(clockid_t c, struct sigevent *se, timer_t *t)
 
   return 0;
 }
+
+#if !defined(SYS_timer_settime) && defined(SYS_timer_settime64)
+// glibc does not define defines SYS_timer_settime on 32-bit systems
+// with 64-bit time_t defaults e.g. riscv32
+#define SYS_timer_settime SYS_timer_settime64
+#endif
 
 int timer_settime_wrap(timer_t t, int flags, struct itimerspec *val,
   struct itimerspec *old)

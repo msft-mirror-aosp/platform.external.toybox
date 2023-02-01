@@ -11,5 +11,10 @@
     {
       "name": "toybox-tests"
     }
+  ],
+  "kernel-presubmit": [
+    {
+      "name": "toybox-tests"
+    }
   ]
 }
