@@ -1141,6 +1141,7 @@ struct useradd_data {
 // toys/pending/vi.c
 
 struct vi_data {
+  char *filename;
   char *s;
   int vi_mode, tabstop, list;
   int cur_col, cur_row, scr_row;
@@ -1161,7 +1162,8 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified;
+  int modified; // TODO: no editing operations actually set this!
+
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
@@ -1576,7 +1578,7 @@ struct tar_data {
   char *f, *C, *I;
   struct arg_list *T, *X, *xform;
   long strip;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *to_command, *owner, *group, *mtime, *mode, *sort;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
