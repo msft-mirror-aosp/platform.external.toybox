@@ -1162,8 +1162,6 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified; // TODO: no editing operations actually set this!
-
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
