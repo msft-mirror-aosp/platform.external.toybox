@@ -354,7 +354,7 @@
 
 #define HELP_xzcat "usage: xzcat [filename...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
 
-#define HELP_vi "usage: vi [-s script] FILE\n-s script: run script file\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical."
+#define HELP_vi "usage: vi [-s script] FILE\n\nVisual text editor. Predates the existence of standardized cursor keys,\nso the controls are weird and historical.\n\n-s script: run script file"
 
 #define HELP_userdel "usage: userdel [-r] USER\nusage: deluser [-r] USER\n\nDelete USER from the SYSTEM\n\n-r	remove home directory"
 
