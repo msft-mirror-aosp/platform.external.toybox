@@ -287,7 +287,7 @@ static int add_to_tar(struct dirtree *node)
       free(name);
 
       return DIRTREE_BREADTH;
-    } else if (node->again&DIRTREE_BREADTH) {
+    } else if ((node->again&DIRTREE_BREADTH) && node->child) {
       struct dirtree *dt, **sort = xmalloc(sizeof(void *)*node->extra);
 
       for (node->extra = 0, dt = node->child; dt; dt = dt->next) 
@@ -1118,7 +1118,7 @@ void tar_main(void)
     unpack_tar(hdr);
     dirflush(0, 0);
     // Shut up archiver about inability to write all trailing NULs to pipe buf
-    if (TT.pid>0) kill(TT.pid, 9);
+    while (0<read(TT.fd, toybuf, sizeof(toybuf)));
 
     // Each time a TT.incl entry is seen it's moved to the end of the list,
     // with TT.seen pointing to first seen list entry. Anything between

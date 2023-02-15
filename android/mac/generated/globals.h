@@ -1141,8 +1141,9 @@ struct useradd_data {
 // toys/pending/vi.c
 
 struct vi_data {
-  char *filename;
   char *s;
+
+  char *filename;
   int vi_mode, tabstop, list;
   int cur_col, cur_row, scr_row;
   int drawn_row, drawn_col;
@@ -1162,14 +1163,9 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified; // TODO: no editing operations actually set this!
-
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
-//
-//
-//
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
