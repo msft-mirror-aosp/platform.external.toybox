@@ -3779,9 +3779,9 @@
 #undef FLAG_E
 #endif
 
-// xxd >1c#<0>256l#o#g#<0=2iprs#[!rs] >1c#<0>256l#o#g#<0=2iprs#[!rs]
+// xxd >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re] >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re]
 #undef OPTSTR_xxd
-#define OPTSTR_xxd ">1c#<0>256l#o#g#<0=2iprs#[!rs]"
+#define OPTSTR_xxd ">1c#<0>256l#o#g#<0=2eiprs#[!rs][!re]"
 #ifdef CLEANUP_xxd
 #undef CLEANUP_xxd
 #undef FOR_xxd
@@ -3789,6 +3789,7 @@
 #undef FLAG_r
 #undef FLAG_p
 #undef FLAG_i
+#undef FLAG_e
 #undef FLAG_g
 #undef FLAG_o
 #undef FLAG_l
@@ -7317,10 +7318,11 @@
 #define FLAG_r (1LL<<1)
 #define FLAG_p (1LL<<2)
 #define FLAG_i (1LL<<3)
-#define FLAG_g (1LL<<4)
-#define FLAG_o (1LL<<5)
-#define FLAG_l (1LL<<6)
-#define FLAG_c (1LL<<7)
+#define FLAG_e (1LL<<4)
+#define FLAG_g (1LL<<5)
+#define FLAG_o (1LL<<6)
+#define FLAG_l (1LL<<7)
+#define FLAG_c (1LL<<8)
 #endif
 
 #ifdef FOR_xzcat
