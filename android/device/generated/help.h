@@ -138,7 +138,7 @@
 
 #define HELP_yes "usage: yes [args...]\n\nRepeatedly output line until killed. If no args, output 'y'."
 
-#define HELP_xxd "usage: xxd [-c n] [-g n] [-i] [-l n] [-o n] [-p] [-r] [-s n] [file]\n\nHexdump a file to stdout. If no file is listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-c n	Show n bytes per line (default 16)\n-g n	Group bytes by adding a ' ' every n bytes (default 2)\n-i	Output include file (CSV hex bytes, plus C header/footer if not stdin)\n-l n	Limit of n bytes before stopping (default is no limit)\n-o n	Add n to display offset\n-p	Plain hexdump (30 bytes/line, no grouping. With -c 0 no wrap/group)\n-r	Reverse operation: turn a hexdump into a binary file\n-s n	Skip to offset n"
+#define HELP_xxd "usage: xxd [-eipr] [-cglos N] [file]\n\nHexdump a file to stdout. If no file is listed, copy from stdin.\nFilename \"-\" is a synonym for stdin.\n\n-c N	Show N bytes per line (default 16)\n-e	Little-endian\n-g N	Group bytes by adding a ' ' every N bytes (default 2)\n-i	Output include file (CSV hex bytes, plus C header/footer if not stdin)\n-l N	Limit of N bytes before stopping (default is no limit)\n-o N	Add N to display offset\n-p	Plain hexdump (30 bytes/line, no grouping. With -c 0 no wrap/group)\n-r	Reverse operation: turn a hexdump into a binary file\n-s N	Skip to offset N"
 
 #define HELP_which "usage: which [-a] filename ...\n\nSearch $PATH for executable files matching filename(s).\n\n-a	Show all matches"
 
