@@ -401,6 +401,14 @@ struct modinfo_data {
   int count;
 };
 
+// toys/other/nbd_client.c
+
+struct nbd_client_data {
+  long b;
+
+  int nbd;
+};
+
 // toys/other/nsenter.c
 
 struct nsenter_data {
@@ -434,6 +442,12 @@ struct readelf_data {
   char *elf, *shstrtab, *f;
   unsigned long long shoff, phoff, size, shstrtabsz;
   int bits, endian, shnum, shentsize, phentsize;
+};
+
+// toys/other/readlink.c
+
+struct readlink_data {
+  char *R, *relative_base;
 };
 
 // toys/other/reboot.c
@@ -764,6 +778,13 @@ struct getty_data {
   char *tty_name, buff[128];
   int speeds[20], sc;
   struct termios termios;
+};
+
+// toys/pending/git.c
+
+struct git_data {
+  char *url, *name; //git repo remote url and init directory name
+  struct IndexV2 *i; //git creates a index for each pack file, git clone just needs one index for the received pack file
 };
 
 // toys/pending/groupadd.c
@@ -1121,6 +1142,8 @@ struct useradd_data {
 
 struct vi_data {
   char *s;
+
+  char *filename;
   int vi_mode, tabstop, list;
   int cur_col, cur_row, scr_row;
   int drawn_row, drawn_col;
@@ -1140,13 +1163,9 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified;
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
-//
-//
-//
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
@@ -1244,7 +1263,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *H;
+  char *F, *H, *R;
 };
 
 // toys/posix/cut.c
@@ -1555,7 +1574,7 @@ struct tar_data {
   char *f, *C, *I;
   struct arg_list *T, *X, *xform;
   long strip;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *to_command, *owner, *group, *mtime, *mode, *sort;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1685,11 +1704,13 @@ extern union global_union {
 	struct mkpasswd_data mkpasswd;
 	struct mkswap_data mkswap;
 	struct modinfo_data modinfo;
+	struct nbd_client_data nbd_client;
 	struct nsenter_data nsenter;
 	struct oneit_data oneit;
 	struct openvt_data openvt;
 	struct pwgen_data pwgen;
 	struct readelf_data readelf;
+	struct readlink_data readlink;
 	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
@@ -1726,6 +1747,7 @@ extern union global_union {
 	struct getfattr_data getfattr;
 	struct getopt_data getopt;
 	struct getty_data getty;
+	struct git_data git;
 	struct groupadd_data groupadd;
 	struct hexdump_data hexdump;
 	struct ip_data ip;

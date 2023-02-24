@@ -35,7 +35,7 @@ config FIND
     -true            always true               -false      always false
     -context PATTERN security context          -executable access(X_OK) perm+ACL
     -samefile FILE   hardlink to FILE          -quit       exit immediately
-    -depth           ignore contents of dir    -maxdepth N at most N dirs down
+    -depth           contents first, then dir  -maxdepth N at most N dirs down
     -newer FILE      newer mtime than FILE     -mindepth N at least N dirs down
     -newerXY FILE    X=acm time > FILE's Y=acm time (Y=t: FILE is literal time)
     -type [bcdflps]  type is (block, char, dir, file, symlink, pipe, socket)
@@ -220,7 +220,7 @@ static int do_find(struct dirtree *new)
   // skip . and .. below topdir, handle -xdev and -depth
   if (new) {
     // Handle stat failures first.
-    if (new->again&2) {
+    if (new->again&DIRTREE_STATLESS) {
       if (!new->parent || errno != ENOENT) {
         perror_msg("'%s'", s = dirtree_path(new, 0));
         free(s);

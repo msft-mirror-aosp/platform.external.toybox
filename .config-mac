@@ -117,6 +117,12 @@ CONFIG_GETCONF=y
 # CONFIG_GETFATTR is not set
 CONFIG_GETOPT=y
 # CONFIG_GETTY is not set
+# CONFIG_GITCHECKOUT is not set
+# CONFIG_GITCLONE is not set
+# CONFIG_GITCOMPAT is not set
+# CONFIG_GITFETCH is not set
+# CONFIG_GITINIT is not set
+# CONFIG_GITREMOTE is not set
 # CONFIG_GPIODETECT is not set
 # CONFIG_GPIOFIND is not set
 # CONFIG_GPIOGET is not set
@@ -208,6 +214,7 @@ CONFIG_MKTEMP=y
 # CONFIG_MOUNTPOINT is not set
 CONFIG_MV=y
 # CONFIG_NBD_CLIENT is not set
+# CONFIG_NBD_SERVER is not set
 # CONFIG_NETCAT is not set
 # CONFIG_NETSTAT is not set
 # CONFIG_NICE is not set
