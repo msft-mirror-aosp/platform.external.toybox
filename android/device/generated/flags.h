@@ -1766,7 +1766,7 @@
 #undef FLAG_p
 #endif
 
-// logger   t:p:s
+// logger t:p:s t:p:s
 #undef OPTSTR_logger
 #define OPTSTR_logger "t:p:s"
 #ifdef CLEANUP_logger
@@ -5457,9 +5457,9 @@
 #ifndef TT
 #define TT this.logger
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
-#define FLAG_p (FORCED_FLAG<<1)
-#define FLAG_t (FORCED_FLAG<<2)
+#define FLAG_s (1LL<<0)
+#define FLAG_p (1LL<<1)
+#define FLAG_t (1LL<<2)
 #endif
 
 #ifdef FOR_login
