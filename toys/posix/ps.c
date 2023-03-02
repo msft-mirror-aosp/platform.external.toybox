@@ -1348,7 +1348,7 @@ void ps_main(void)
     not_o = "F,S,UID,%sPPID,C,PRI,NI,BIT,SZ,WCHAN,TTY,TIME,CMD";
   else if (CFG_TOYBOX_ON_ANDROID)
     sprintf(not_o = toybuf+128,
-            "USER,%%sPPID,VSIZE,RSS,WCHAN:10,ADDR:10,S,%s",
+            "USER,%%sPPID,VSIZE:10,RSS,WCHAN:10,ADDR:10,S,%s",
             FLAG(T) ? "CMD" : "NAME");
   sprintf(toybuf, not_o, FLAG(T) ? "PID,TID," : "PID,");
 
@@ -1521,13 +1521,13 @@ static void top_common(
     "iow", "irq", "sirq", "host"};
   unsigned tock = 0;
   int i, lines, topoff = 0, done = 0;
-  char stdout_buf[BUFSIZ];
+  char stdout_buf[8192];
 
   if (!TT.fields) perror_exit("no -o");
 
   // Avoid flicker and hide the cursor in interactive mode.
   if (!FLAG(b)) {
-    setbuf(stdout, stdout_buf);
+    setbuffer(stdout, stdout_buf, sizeof(stdout_buf));
     sigatexit(top_cursor_cleanup);
     xputsn("\e[?25l");
   }
