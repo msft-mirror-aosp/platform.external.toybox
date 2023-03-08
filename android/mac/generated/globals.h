@@ -2,6 +2,8 @@
 
 struct log_data {
   char *t, *p;
+
+  int pri;
 };
 
 // toys/example/demo_number.c
@@ -1387,6 +1389,8 @@ struct ln_data {
 
 struct logger_data {
   char *p, *t;
+
+  int priority;
 };
 
 // toys/posix/ls.c
