@@ -456,9 +456,9 @@
 #undef FLAG_c
 #endif
 
-// cut b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF] b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]
+// cut b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF] b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF]
 #undef OPTSTR_cut
-#define OPTSTR_cut "b*|c*|f*|F*|C*|O(output-delimiter):d:sDn[!cbfF]"
+#define OPTSTR_cut "b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF]"
 #ifdef CLEANUP_cut
 #undef CLEANUP_cut
 #undef FOR_cut
