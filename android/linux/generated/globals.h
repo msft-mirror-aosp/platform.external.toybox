@@ -2,6 +2,8 @@
 
 struct log_data {
   char *t, *p;
+
+  int pri;
 };
 
 // toys/example/demo_number.c
@@ -1142,6 +1144,8 @@ struct useradd_data {
 
 struct vi_data {
   char *s;
+
+  char *filename;
   int vi_mode, tabstop, list;
   int cur_col, cur_row, scr_row;
   int drawn_row, drawn_col;
@@ -1161,13 +1165,9 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified;
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
-//
-//
-//
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
@@ -1389,6 +1389,8 @@ struct ln_data {
 
 struct logger_data {
   char *p, *t;
+
+  int priority;
 };
 
 // toys/posix/ls.c
@@ -1576,7 +1578,7 @@ struct tar_data {
   char *f, *C, *I;
   struct arg_list *T, *X, *xform;
   long strip;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *to_command, *owner, *group, *mtime, *mode, *sort;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
