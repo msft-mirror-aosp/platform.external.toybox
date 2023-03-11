@@ -13,8 +13,9 @@
  * In order: magic ino mode uid gid nlink mtime filesize devmajor devminor
  * rdevmajor rdevminor namesize check
  * This is the equivalent of mode -H newc in other implementations.
+ * We always do --quiet, but accept it as a compatibility NOP.
  *
- * todo: export/import linux file list text format ala gen_initramfs_list.sh
+ * TODO: export/import linux file list text format ala gen_initramfs_list.sh
 
 USE_CPIO(NEWTOY(cpio, "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]", TOYFLAG_BIN))
 
@@ -80,7 +81,6 @@ static unsigned x8u(char *hex)
 
 void cpio_main(void)
 {
-  // Subtle bit: FLAG_o is 1 so we can just use it to select stdin/stdout.
   int pipe, afd = FLAG(o), empty = 1;
   pid_t pid = 0;
   long Ruid = -1, Rgid = -1;
@@ -101,7 +101,7 @@ void cpio_main(void)
     if (FLAG(d)) {
       if (!*toys.optargs) error_exit("need directory for -p");
       if (mkdir(*toys.optargs, 0700) == -1 && errno != EEXIST)
-        perror_exit("mkdir %s", *toys.optargs);
+        perror_msg("mkdir %s", *toys.optargs);
     }
     if (toys.stacktop) {
       // xpopen() doesn't return from child due to vfork(), instead restarts
@@ -174,7 +174,7 @@ void cpio_main(void)
     // properly aligned with next file.
 
     if (S_ISDIR(mode)) {
-      if (!test) err = mkdir(name, mode) && !FLAG(u);
+      if (!test) err = mkdir(name, mode) && (errno != EEXIST && !FLAG(u));
     } else if (S_ISLNK(mode)) {
       data = strpad(afd, size, 0);
       if (!test) {
