@@ -1468,9 +1468,9 @@
 #undef FLAG_f
 #endif
 
-// i2cget <3>3fy <3>3fy
+// i2cget <2>3fy <2>3fy
 #undef OPTSTR_i2cget
-#define OPTSTR_i2cget "<3>3fy"
+#define OPTSTR_i2cget "<2>3fy"
 #ifdef CLEANUP_i2cget
 #undef CLEANUP_i2cget
 #undef FOR_i2cget
@@ -3207,9 +3207,9 @@
 #undef FLAG_p
 #endif
 
-// tcpsvd   ^<3c#=30<1C:b#=20<0u:l:hEv
+// tcpsvd   ^<3c#=30<1b#=20<0C:u:l:hEv
 #undef OPTSTR_tcpsvd
-#define OPTSTR_tcpsvd "^<3c#=30<1C:b#=20<0u:l:hEv"
+#define OPTSTR_tcpsvd "^<3c#=30<1b#=20<0C:u:l:hEv"
 #ifdef CLEANUP_tcpsvd
 #undef CLEANUP_tcpsvd
 #undef FOR_tcpsvd
@@ -3218,8 +3218,8 @@
 #undef FLAG_h
 #undef FLAG_l
 #undef FLAG_u
-#undef FLAG_b
 #undef FLAG_C
+#undef FLAG_b
 #undef FLAG_c
 #endif
 
@@ -6794,8 +6794,8 @@
 #define FLAG_h (FORCED_FLAG<<2)
 #define FLAG_l (FORCED_FLAG<<3)
 #define FLAG_u (FORCED_FLAG<<4)
-#define FLAG_b (FORCED_FLAG<<5)
-#define FLAG_C (FORCED_FLAG<<6)
+#define FLAG_C (FORCED_FLAG<<5)
+#define FLAG_b (FORCED_FLAG<<6)
 #define FLAG_c (FORCED_FLAG<<7)
 #endif
 
