@@ -127,11 +127,10 @@ if [ $$ -eq 1 ]; then # Setup networking for QEMU (needs /proc)
   # Run package scripts (if any)
   for i in $(ls -1 /etc/rc 2>/dev/null | sort); do . /etc/rc/"$i"; done
 
-  [ -z "$CONSOLE" ] && CONSOLE="$(</sys/class/tty/console/active)"
   [ -z "$HANDOFF" ] && [ -e /mnt/init ] && HANDOFF=/mnt/init
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo -e '\e[?7hType exit when done.'
   echo 3 > /proc/sys/kernel/printk
-  exec oneit -c /dev/"${CONSOLE:-console}" $HANDOFF
+  exec oneit $HANDOFF
 else # for chroot
   /bin/sh
   umount /dev/pts /dev /sys /proc
@@ -300,7 +299,7 @@ fi
 # clean up and package root filesystem for initramfs.
 if [ -z "$BUILTIN" ]; then
   announce initramfs
-  { (cd "$ROOT" && find . | cpio -o -H newc $CPIO_OPTS i ) || exit 1
+  { (cd "$ROOT" && find . | cpio -o -H newc $CPIO_OPTS ) || exit 1
     ! test -e "$OUTPUT/modules.cpio.gz" || zcat $_;} | gzip \
     > "$OUTPUT"/initramfs.cpio.gz || exit 1
 fi

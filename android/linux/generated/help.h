@@ -272,13 +272,13 @@
 
 #define HELP_inotifyd "usage: inotifyd PROG FILE[:MASK] ...\n\nWhen a filesystem event matching MASK occurs to a FILE, run PROG as:\n\n  PROG EVENTS FILE [DIRFILE]\n\nIf PROG is \"-\" events are sent to stdout.\n\nThis file is:\n  a  accessed    c  modified    e  metadata change  w  closed (writable)\n  r  opened      D  deleted     M  moved            0  closed (unwritable)\n  u  unmounted   o  overflow    x  unwatchable\n\nA file in this directory is:\n  m  moved in    y  moved out   n  created          d  deleted\n\nWhen x event happens for all FILEs, inotifyd exits (after waiting for PROG)."
 
-#define HELP_i2cset "usage: i2cset [-fy] BUS CHIP ADDR VALUE... MODE\n\nWrite an i2c register. MODE is b for byte, w for 16-bit word, i for I2C block.\n\n-f	Force access to busy devices\n-y	Answer \"yes\" to confirmation prompts (for script use)"
+#define HELP_i2cset "usage: i2cset [-fy] BUS CHIP ADDR VALUE... MODE\n\nWrite an i2c register. MODE is b for byte, w for 16-bit word, i for I2C block.\n\n-f	Force access to busy devices\n-y	Skip confirmation prompts (yes to all)"
 
-#define HELP_i2cget "usage: i2cget [-fy] BUS CHIP ADDR\n\nRead an i2c register.\n\n-f	Force access to busy devices\n-y	Answer \"yes\" to confirmation prompts (for script use)"
+#define HELP_i2cget "usage: i2cget [-fy] BUS CHIP [ADDR]\n\nRead an i2c register.\n\n-f	Force access to busy devices\n-y	Skip confirmation prompts (yes to all)"
 
-#define HELP_i2cdump "usage: i2cdump [-fy] BUS CHIP\n\nDump i2c registers.\n\n-f	Force access to busy devices\n-y	Answer \"yes\" to confirmation prompts (for script use)"
+#define HELP_i2cdump "usage: i2cdump [-fy] BUS CHIP\n\nDump i2c registers.\n\n-f	Force access to busy devices\n-y	Skip confirmation prompts (yes to all)"
 
-#define HELP_i2cdetect "usage: i2cdetect [-aqry] BUS [FIRST LAST]\nusage: i2cdetect -F BUS\nusage: i2cdetect -l\n\nDetect i2c devices.\n\n-a	All addresses (0x00-0x7f rather than 0x03-0x77 or FIRST-LAST)\n-F	Show functionality\n-l	List available buses\n-q	Probe with SMBus Quick Write (default)\n-r	Probe with SMBus Read Byte\n-y	Answer \"yes\" to confirmation prompts (for script use)"
+#define HELP_i2cdetect "usage: i2cdetect [-aqry] BUS [FIRST LAST]\nusage: i2cdetect -F BUS\nusage: i2cdetect -l\n\nDetect i2c devices.\n\n-a	All addresses (0x00-0x7f rather than 0x03-0x77 or FIRST-LAST)\n-F	Show functionality\n-l	List available buses\n-q	Probe with SMBus Quick Write (default)\n-r	Probe with SMBus Read Byte\n-y	Skip confirmation prompts (yes to all)"
 
 #define HELP_hwclock "usage: hwclock [-rswtluf]\n\nGet/set the hardware clock.\n\n-f FILE	Use specified device file instead of /dev/rtc0 (--rtc)\n-l	Hardware clock uses localtime (--localtime)\n-r	Show hardware clock time (--show)\n-s	Set system time from hardware clock (--hctosys)\n-t	Set the system time based on the current timezone (--systz)\n-u	Hardware clock uses UTC (--utc)\n-w	Set hardware clock from system time (--systohc)"
 
