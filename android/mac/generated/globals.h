@@ -1042,8 +1042,11 @@ struct syslogd_data {
 // toys/pending/tcpsvd.c
 
 struct tcpsvd_data {
-  char *l, *u, *C;
-  long b, c;
+  char *name;
+  char *user;
+  long bn;
+  char *nmsg;
+  long cn;
 
   int maxc;
   int count_all;
