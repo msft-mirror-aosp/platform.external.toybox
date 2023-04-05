@@ -11,40 +11,45 @@
  *   add -Z -ll --color
  *   Posix says the -l date format should vary based on how recent it is
  *   and we do --time-style=long-iso instead
+ *   ignore -k because we default to 1024 byte blocks
 
-USE_LS(NEWTOY(ls, "(color):;(full-time)(show-control-chars)ZgoACFHLNRSabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]", TOYFLAG_BIN|TOYFLAG_LOCALE))
+USE_LS(NEWTOY(ls, "(sort):(color):;(full-time)(show-control-chars)\241\376ZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]", TOYFLAG_BIN|TOYFLAG_LOCALE))
 
 config LS
   bool "ls"
   default y
   help
-    usage: ls [-ACFHLRSZacdfhiklmnpqrstuwx1] [--color[=auto]] [FILE...]
+    usage: ls [-1ACFHLNRSUXZabcdfghilmnopqrstuwx] [--color[=auto]] [FILE...]
 
-    List files.
+    List files
 
     what to show:
-    -a  all files including .hidden    -b  escape nongraphic chars
-    -c  use ctime for timestamps       -d  directory, not contents
-    -i  inode number                   -p  put a '/' after dir names
-    -q  unprintable chars as '?'       -s  storage used (1024 byte units)
-    -u  use access time for timestamps -A  list all files but . and ..
-    -H  follow command line symlinks   -L  follow symlinks
-    -R  recursively list in subdirs    -F  append /dir *exe @sym |FIFO
-    -N  no escaping, even on tty       -Z  security context
+    -A  all files except . and ..      -a  all files including .hidden
+    -b  escape nongraphic chars        -d  directory, not contents
+    -F  append /dir *exe @sym |FIFO    -f  files (no sort/filter/format)
+    -H  follow command line symlinks   -i  inode number
+    -L  follow symlinks                -N  no escaping, even on tty
+    -p  put '/' after dir names        -q  unprintable chars as '?'
+    -R  recursively list in subdirs    -s  storage used (1024 byte units)
+    -Z  security context
 
     output formats:
     -1  list one file per line         -C  columns (sorted vertically)
     -g  like -l but no owner           -h  human readable sizes
-    -l  long (show full details)       -m  comma separated
-    -n  like -l but numeric uid/gid    -o  like -l but no group
+    -l  long (show full details)       -ll long with nanoseconds (--full-time)
+    -m  comma separated                -n  long with numeric uid/gid
+    -o  long without group column      -r  reverse order
     -w  set column width               -x  columns (horizontal sort)
-    -ll long with nanoseconds (--full-time)
-    --color  device=yellow  symlink=turquoise/red  dir=blue  socket=purple
-             files: exe=green  suid=red  suidfile=redback  stickydir=greenback
-             =auto means detect if output is a tty.
 
-    sorting (default is alphabetical):
-    -f  unsorted    -r  reverse    -t  timestamp    -S  size
+    sort by:  (also --sort=longname,longname... ends with alphabetical)
+    -c  ctime      -r  reverse    -S  size     -t  time    -u  atime    -U  none
+    -X  extension  -!  dirfirst   -~  nocase
+
+    --color  =always (default)  =auto (when stdout is tty) =never
+        exe=green  suid=red  suidfile=redback  stickydir=greenback
+        device=yellow  symlink=turquoise/red  dir=blue  socket=purple
+
+    Long output uses -cu for display, use -ltc/-ltu to also sort by ctime/atime.
 */
 
 #define FOR_ls
@@ -55,9 +60,8 @@ config LS
 // ls -lR starts .: then ./subdir:
 
 GLOBALS(
-  long w;
-  long l;
-  char *color;
+  long w, l;
+  char *color, *sort;
 
   struct dirtree *files, *singledir;
   unsigned screen_width;
@@ -155,24 +159,86 @@ static void entrylen(struct dirtree *dt, unsigned *len)
   len[7] = FLAG(Z) ? strwidth((char *)dt->extra) : 0;
 }
 
+// Perform one or more comparisons on a pair of files.
+// Reused FLAG_a to mean "alphabetical"
+static int do_compare(struct dirtree *a, struct dirtree *b, long flags)
+{
+  struct timespec *ts1 = 0, *ts2;
+  char *s1, *s2;
+  int ret;
+
+// TODO -? nocase  -! dirfirst
+
+  if (flags&FLAG_S) {
+    if (a->st.st_size > b->st.st_size) return -1;
+    else if (a->st.st_size < b->st.st_size) return 1;
+  }
+
+  if (flags&FLAG_t) ts1 = &a->st.st_mtim, ts2 = &b->st.st_mtim;
+  if (flags&FLAG_u) ts1 = &a->st.st_atim, ts2 = &b->st.st_atim;
+  if (flags&FLAG_c) ts1 = &a->st.st_ctim, ts2 = &b->st.st_ctim;
+  if (ts1) {
+    if (ts1->tv_sec > ts2->tv_sec) return -1;
+    else if (ts1->tv_sec < ts2->tv_sec) return 1;
+    else if (ts1->tv_nsec > ts2->tv_nsec) return -1;
+    else if (ts1->tv_nsec < ts2->tv_nsec) return 1;
+  }
+  if (flags&FLAG_X21) // dirfirst
+    if (S_ISDIR(a->st.st_mode)!=S_ISDIR(b->st.st_mode))
+      return S_ISDIR(a->st.st_mode) ? -1 : 1;
+
+  // -X is a form of alphabetical sort, without -~ do case sensitive comparison
+  if ((flags&FLAG_X) && (s1 = strrchr(a->name, '.')) && (s2 = strrchr(b->name, '.'))) {
+    if (!(flags&FLAG_X7E)) flags |= FLAG_a;
+  } else {
+    s1 = a->name;
+    s2 = b->name;
+  }
+
+  // case insensitive sort falls back to case sensitive sort when equal
+  ret = (flags&FLAG_X7E) ? strcasecmp(s1, s2) : 0;
+  if (!ret && (flags&FLAG_a)) ret = strcmp(s1, s2);
+
+  return ret;
+}
+
+int comma_start(char **aa, char *b)
+{
+  return strstart(aa, b) && (!**aa || **aa==',');
+}
+
+// callback for qsort
 static int compare(void *a, void *b)
 {
   struct dirtree *dta = *(struct dirtree **)a;
   struct dirtree *dtb = *(struct dirtree **)b;
-  int ret = 0, reverse = FLAG(r) ? -1 : 1;
+  char *ss = TT.sort;
+  long long ll = 0;
+  int ret = 0;
 
-  if (FLAG(S)) {
-    if (dta->st.st_size > dtb->st.st_size) ret = -1;
-    else if (dta->st.st_size < dtb->st.st_size) ret = 1;
+// TODO: test --sort=reverse with fallback alphabetical
+
+  if (ss) while (*ss) {
+    if (comma_start(&ss, "reverse")) toys.optflags |= FLAG_r;
+    else if (comma_start(&ss, "none")) goto skip;
+    else if (ret) continue;
+    else if (comma_start(&ss, "ctime")) ll = FLAG_c;
+    else if (comma_start(&ss, "size")) ll = FLAG_S;
+    else if (comma_start(&ss, "time")) ll = FLAG_t;
+    else if (comma_start(&ss, "atime")) ll = FLAG_u;
+    else if (comma_start(&ss, "nocase")) ll = FLAG_X7E;
+    else if (comma_start(&ss, "extension")) ll = FLAG_X;
+    else if (comma_start(&ss, "dirfirst")) ll = FLAG_X21;
+    else error_exit("bad --sort %s", ss);
+
+    ret = do_compare(dta, dtb, ll);
   }
-  if (FLAG(t)) {
-    if (dta->st.st_mtime > dtb->st.st_mtime) ret = -1;
-    else if (dta->st.st_mtime < dtb->st.st_mtime) ret = 1;
-    else if (dta->st.st_mtim.tv_nsec > dtb->st.st_mtim.tv_nsec) ret = -1;
-    else if (dta->st.st_mtim.tv_nsec < dtb->st.st_mtim.tv_nsec) ret = 1;
-  }
-  if (!ret) ret = strcmp(dta->name, dtb->name);
-  return ret * reverse;
+
+  if (!ret) ret = do_compare(dta, dtb, toys.optflags|FLAG_a);
+skip:
+  if (FLAG(r)) ret *= -1;
+
+  return ret;
 }
 
 // callback from dirtree_recurse() determining how to handle this entry.
@@ -315,7 +381,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
   if (!FLAG(f)) {
     unsigned long long blocks = 0;
 
-    qsort(sort, dtlen, sizeof(void *), (void *)compare);
+    if (!FLAG(U)) qsort(sort, dtlen, sizeof(void *), (void *)compare);
     for (ul = 0; ul<dtlen; ul++) {
       entrylen(sort[ul], len);
       for (width = 0; width<8; width++)
