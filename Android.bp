@@ -432,6 +432,7 @@ cc_defaults {
         "-Werror",
         "-Wno-char-subscripts",
         "-Wno-deprecated-declarations",
+        "-Wno-invalid-source-encoding",
         "-Wno-missing-field-initializers",
         "-Wno-pointer-arith",
         "-Wno-sign-compare",

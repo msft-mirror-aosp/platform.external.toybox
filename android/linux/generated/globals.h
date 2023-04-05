@@ -484,6 +484,15 @@ struct shred_data {
   long o, n, s;
 };
 
+// toys/other/shuf.c
+
+struct shuf_data {
+  long n;
+
+  char **lines;
+  long count;
+};
+
 // toys/other/stat.c
 
 struct stat_data {
@@ -1393,9 +1402,8 @@ struct logger_data {
 // toys/posix/ls.c
 
 struct ls_data {
-  long w;
-  long l;
-  char *color;
+  long w, l;
+  char *color, *sort;
 
   struct dirtree *files, *singledir;
   unsigned screen_width;
@@ -1717,6 +1725,7 @@ extern union global_union {
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
 	struct shred_data shred;
+	struct shuf_data shuf;
 	struct stat_data stat;
 	struct swapon_data swapon;
 	struct switch_root_data switch_root;
