@@ -1904,13 +1904,14 @@
 #undef FLAG_l
 #endif
 
-// lspci emkn@i: emkn@i:
+// lspci emkn@x@i: emkn@x@i:
 #undef OPTSTR_lspci
-#define OPTSTR_lspci "emkn@i:"
+#define OPTSTR_lspci "emkn@x@i:"
 #ifdef CLEANUP_lspci
 #undef CLEANUP_lspci
 #undef FOR_lspci
 #undef FLAG_i
+#undef FLAG_x
 #undef FLAG_n
 #undef FLAG_k
 #undef FLAG_m
@@ -5606,10 +5607,11 @@
 #define TT this.lspci
 #endif
 #define FLAG_i (1LL<<0)
-#define FLAG_n (1LL<<1)
-#define FLAG_k (1LL<<2)
-#define FLAG_m (1LL<<3)
-#define FLAG_e (1LL<<4)
+#define FLAG_x (1LL<<1)
+#define FLAG_n (1LL<<2)
+#define FLAG_k (1LL<<3)
+#define FLAG_m (1LL<<4)
+#define FLAG_e (1LL<<5)
 #endif
 
 #ifdef FOR_lsusb
