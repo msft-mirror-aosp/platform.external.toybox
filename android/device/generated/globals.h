@@ -362,7 +362,7 @@ struct lsattr_data {
 
 struct lsusb_data {
   char *i;
-  long n;
+  long x, n;
 
   void *ids, *class;
   int count;

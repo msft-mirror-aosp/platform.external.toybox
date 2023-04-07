@@ -252,7 +252,7 @@
 
 #define HELP_lsusb "usage: lsusb [-i]\n\nList USB hosts/devices.\n\n-i	ID database (default /etc/usb.ids[.gz])"
 
-#define HELP_lspci "usage: lspci [-ekmn] [-i FILE]\n\nList PCI devices.\n\n-e  Extended (6 digit) class\n-i  ID database (default /etc/pci.ids[.gz])\n-k  Show kernel driver\n-m  Machine readable\n-n  Numeric output (-nn for both)"
+#define HELP_lspci "usage: lspci [-ekmn] [-i FILE]\n\nList PCI devices.\n\n-e	Extended (6 digit) class\n-i	ID database (default /etc/pci.ids[.gz])\n-k	Show kernel driver\n-m	Machine readable\n-n	Numeric output (-nn for both)\n-x	Hex dump of config space (64 bytes; -xxx for 256, -xxxx for 4096)"
 
 #define HELP_lsmod "usage: lsmod\n\nDisplay the currently loaded modules, their sizes and their dependencies."
 
