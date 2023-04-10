@@ -518,6 +518,8 @@
 #define USE_SH(...)
 #define CFG_SHRED 0
 #define USE_SHRED(...)
+#define CFG_SHUF 0
+#define USE_SHUF(...)
 #define CFG_SKELETON_ALIAS 0
 #define USE_SKELETON_ALIAS(...)
 #define CFG_SKELETON 0
