@@ -2,6 +2,8 @@
 
 struct log_data {
   char *t, *p;
+
+  int pri;
 };
 
 // toys/example/demo_number.c
@@ -360,7 +362,7 @@ struct lsattr_data {
 
 struct lsusb_data {
   char *i;
-  long n;
+  long x, n;
 
   void *ids, *class;
   int count;
@@ -480,6 +482,15 @@ struct sha3sum_data {
 
 struct shred_data {
   long o, n, s;
+};
+
+// toys/other/shuf.c
+
+struct shuf_data {
+  long n;
+
+  char **lines;
+  long count;
 };
 
 // toys/other/stat.c
@@ -1040,11 +1051,8 @@ struct syslogd_data {
 // toys/pending/tcpsvd.c
 
 struct tcpsvd_data {
-  char *name;
-  char *user;
-  long bn;
-  char *nmsg;
-  long cn;
+  char *l, *u, *C;
+  long b, c;
 
   int maxc;
   int count_all;
@@ -1142,6 +1150,8 @@ struct useradd_data {
 
 struct vi_data {
   char *s;
+
+  char *filename;
   int vi_mode, tabstop, list;
   int cur_col, cur_row, scr_row;
   int drawn_row, drawn_col;
@@ -1161,13 +1171,9 @@ struct vi_data {
     char* data;
   } yank;
 
-  int modified;
   size_t filesize;
 // mem_block contains RO data that is either original file as mmap
 // or heap allocated inserted data
-//
-//
-//
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
@@ -1265,7 +1271,7 @@ struct cp_data {
 // toys/posix/cpio.c
 
 struct cpio_data {
-  char *F, *H;
+  char *F, *H, *R;
 };
 
 // toys/posix/cut.c
@@ -1389,14 +1395,15 @@ struct ln_data {
 
 struct logger_data {
   char *p, *t;
+
+  int priority;
 };
 
 // toys/posix/ls.c
 
 struct ls_data {
-  long w;
-  long l;
-  char *color;
+  long w, l;
+  char *color, *sort;
 
   struct dirtree *files, *singledir;
   unsigned screen_width;
@@ -1576,7 +1583,7 @@ struct tar_data {
   char *f, *C, *I;
   struct arg_list *T, *X, *xform;
   long strip;
-  char *to_command, *owner, *group, *mtime, *mode;
+  char *to_command, *owner, *group, *mtime, *mode, *sort;
   struct arg_list *exclude;
 
   struct double_list *incl, *excl, *seen;
@@ -1718,6 +1725,7 @@ extern union global_union {
 	struct setfattr_data setfattr;
 	struct sha3sum_data sha3sum;
 	struct shred_data shred;
+	struct shuf_data shuf;
 	struct stat_data stat;
 	struct swapon_data swapon;
 	struct switch_root_data switch_root;

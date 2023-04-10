@@ -37,7 +37,7 @@ static void login_timeout_handler(int sig __attribute__((unused)))
 
 void login_main(void)
 {
-  int hh = FLAG(h), count, tty = tty_fd();
+  int count, tty = tty_fd();
   char *username, *pass = 0, *ss;
   struct passwd *pwd = 0;
 
@@ -78,7 +78,12 @@ void login_main(void)
       if (*(pass = pwd->pw_passwd) == 'x') {
         struct spwd *spwd = getspnam (username);
 
-        if (spwd) pass = spwd->sp_pwdp;
+        if (spwd) {
+          pass = spwd->sp_pwdp;
+
+          // empty shadow password
+          if (pass && !*pass) break;
+        }
       }
     } else if (TT.f) error_exit("bad -f '%s'", TT.f);
 
@@ -91,8 +96,8 @@ void login_main(void)
       if (x) break;
     }
 
-    syslog(LOG_WARNING, "invalid password for '%s' on %s %s%s", pwd->pw_name,
-      ttyname(tty), hh ? "from " : "", hh ? TT.h : "");
+    syslog(LOG_WARNING, "invalid password for '%s' on %s %s%s", username,
+      ttyname(tty), TT.h ? "from " : "", TT.h ? : "");
 
     sleep(3);
     puts("Login incorrect");
@@ -124,7 +129,7 @@ void login_main(void)
   if ((ss = readfile("/etc/motd", 0, 0))) puts(ss);
 
   syslog(LOG_INFO, "%s logged in on %s %s %s", pwd->pw_name,
-    ttyname(tty), hh ? "from" : "", hh ? TT.h : "");
+    ttyname(tty), TT.h ? "from" : "", TT.h ? : "");
 
   // not using xexec(), login calls absolute path from filesystem so must exec()
   execl(pwd->pw_shell, xmprintf("-%s", pwd->pw_shell), (char *)0);

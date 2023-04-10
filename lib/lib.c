@@ -1107,8 +1107,10 @@ char *relative_path(char *from, char *to, int abs)
 
   // count remaining destination directories
   for (i = j, k = 0; from[i]; i++) if (from[i] == '/') k++;
-  if (!k) ret = xstrdup(to[j] ? to+j : ".");
-  else {
+  if (!k) {
+    if (to[j]=='/') j++;
+    ret = xstrdup(to[j] ? to+j : ".");
+  } else {
     s = ret = xmprintf("%*c%s", 3*k-!!k, ' ', to+j);
     for (i = 0; i<k; i++) s = mepcpy(s, "/.."+!i, 3-!i);
   }
@@ -1556,6 +1558,11 @@ void octal_deslash(char *s)
 int smemcmp(char *one, char *two, unsigned long len)
 {
   int ii = 0;
+
+  // NULL sorts after anything else
+  if (one == two) return 0;
+  if (!one) return 1;
+  if (!two) return -1;
 
   while (len--) if ((ii = *one++ - *two++)) break;
 
