@@ -934,7 +934,7 @@
 #undef FLAG_C
 #endif
 
-// file   <1b(brief)hLs[!hL]
+// file <1b(brief)hLs[!hL] <1b(brief)hLs[!hL]
 #undef OPTSTR_file
 #define OPTSTR_file "<1b(brief)hLs[!hL]"
 #ifdef CLEANUP_file
@@ -4716,10 +4716,10 @@
 #ifndef TT
 #define TT this.file
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
-#define FLAG_L (FORCED_FLAG<<1)
-#define FLAG_h (FORCED_FLAG<<2)
-#define FLAG_b (FORCED_FLAG<<3)
+#define FLAG_s (1LL<<0)
+#define FLAG_L (1LL<<1)
+#define FLAG_h (1LL<<2)
+#define FLAG_b (1LL<<3)
 #endif
 
 #ifdef FOR_find
