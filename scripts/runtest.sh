@@ -117,10 +117,10 @@ toyonly()
 # Takes five arguments: "name" "command" "result" "infile" "stdin"
 testing()
 {
-  NAME="$CMDNAME $1"
   wrong_args "$@"
 
-  [ -z "$1" ] && NAME=$2
+  [ -z "$1" ] && NAME="$2" || NAME="$1"
+  [ "${NAME#$CMDNAME }" == "$NAME" ] && NAME="$CMDNAME $1"
 
   [ -n "$DEBUG" ] && set -x
 
@@ -132,15 +132,15 @@ testing()
     return 0
   fi
 
-  echo -ne "$3" > expected
+  echo -ne "$3" > ../expected
   [ ! -z "$4" ] && echo -ne "$4" > input || rm -f input
-  echo -ne "$5" | ${EVAL:-eval --} "$2" > actual
+  echo -ne "$5" | ${EVAL:-eval --} "$2" > ../actual
   RETVAL=$?
 
   # Catch segfaults
   [ $RETVAL -gt 128 ] &&
     echo "exited with signal (or returned $RETVAL)" >> actual
-  DIFF="$(diff -au${NOSPACE:+w} expected actual)"
+  DIFF="$(cd ..; diff -au${NOSPACE:+w} expected actual)"
   [ -z "$DIFF" ] && do_pass || VERBOSE=all do_fail
   if ! verbose_has quiet && { [ -n "$DIFF" ] || verbose_has spam; }
   then
@@ -150,7 +150,7 @@ testing()
   fi
 
   [ -n "$DIFF" ] && ! verbose_has all && exit 1
-  rm -f input expected actual
+  rm -f input ../expected ../actual
 
   [ -n "$DEBUG" ] && set +x
 
@@ -162,9 +162,7 @@ testcmd()
 {
   wrong_args "$@"
 
-  X="$1"
-  [ -z "$X" ] && X="$CMDNAME $2"
-  testing "$X" "\"$C\" $2" "$3" "$4" "$5"
+  testing "${1:-$CMDNAME $2}" "\"$C\" $2" "$3" "$4" "$5"
 }
 
 # Simple implementation of "expect" written in shell.
