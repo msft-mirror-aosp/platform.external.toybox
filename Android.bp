@@ -23,14 +23,14 @@
 
     # Edit the three .config-* files to enable the toy you want for the targets
     # you want it on, and regenerate the generated files:
-    ./regenerate.sh
+    ./post_update.sh .
 
     # Edit the relevant `srcs` below, depending on where the toy should be
     # available.
 
     # If you just want to use the toy via "toybox x" rather than "x", you can
     # stop now. If you want this toy to have a symbolic link in /system/bin,
-    # add the toy to symlinks.
+    # add the toy to `symlinks` below.
 
 */
 
