@@ -194,7 +194,7 @@ static struct double_list *filter(struct double_list *lst, char *name)
 {
   struct double_list *end = lst;
   long long flags = toys.optflags;
-  char *ss, *last;
+  char *ss;
 
   if (!lst || !*name) return 0;
 
@@ -211,13 +211,11 @@ static struct double_list *filter(struct double_list *lst, char *name)
 
   // The +1 instead of ++ is in case of conseutive slashes
   do {
-    for (ss = last = name; *ss; ss++) {
+    if (do_filter(lst->data, name, flags)) return lst;
+    if (!(flags & FLAG_anchored)) for (ss = name; *ss; ss++) {
       if (*ss!='/' || !ss[1]) continue;
-      if (!(flags & FLAG_anchored)) {
-        if (do_filter(lst->data, ss+1, flags)) return lst;
-      } else last = ss+1;
+      if (do_filter(lst->data, ss+1, flags)) return lst;
     }
-    if (do_filter(lst->data, last, flags)) return lst;
   } while (end != (lst = lst->next));
 
   return 0;
@@ -1149,7 +1147,7 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){get_archiver(), 0}, pipefd);
+      TT.pid = xpopen_both((char *[]){get_archiver(), 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }
@@ -1161,6 +1159,7 @@ void tar_main(void)
     } while (TT.incl != (dl = dl->next));
 
     writeall(TT.fd, toybuf, 1024);
+    close(TT.fd);
   }
   if (TT.pid) {
     TT.pid = xpclose_both(TT.pid, 0);
