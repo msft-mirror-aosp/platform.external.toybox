@@ -30,7 +30,7 @@
  * TODO: getuid() vs geteuid()
  * TODO: test that $PS1 color changes work without stupid \[ \] hack
  * TODO: Handle embedded NUL bytes in the command line? (When/how?)
- * TODO: set -e -u -o pipefail, shopt -s nullglob
+ * TODO: set -e -o pipefail, shopt -s nullglob
  *
  * bash man page:
  * control operators || & && ; ;; ;& ;;& ( ) | |& <newline>
@@ -58,7 +58,7 @@ USE_SH(OLDTOY(., source, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(unset, "fvn[!fv]", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(wait, "n", TOYFLAG_NOFORK))
 
-USE_SH(NEWTOY(sh, "0(noediting)(noprofile)(norc)sc:i", TOYFLAG_BIN))
+USE_SH(NEWTOY(sh, "0^(noediting)(noprofile)(norc)sc:i", TOYFLAG_BIN))
 USE_SH(OLDTOY(toysh, sh, TOYFLAG_BIN))
 USE_SH(OLDTOY(bash, sh, TOYFLAG_BIN))
 // Login lies in argv[0], so add some aliases to catch that
@@ -388,6 +388,7 @@ static const char *redirectors[] = {"<<<", "<<-", "<<", "<&", "<>", "<", ">>",
 #define OPT_B	0x100
 #define OPT_C	0x200
 #define OPT_x	0x400
+#define OPT_u	0x800
 
 // only export $PWD and $OLDPWD on first cd
 #define OPT_cd  0x80000000
@@ -1121,7 +1122,7 @@ static char *parse_word(char *start, int early, int quote)
 
     // \? $() ${} $[] ?() *() +() @() !()
     else {
-      if (ii=='\\') { // TODO why end[1] here? sh -c $'abc\\\ndef' Add test.
+      if (ii=='\\') {
         if (!*end || (*end=='\n' && !end[1])) return early ? end : 0;
       } else if (ii=='$' && -1!=(qq = stridx("({[", *end))) {
         if (strstart(&end, "((")) {
@@ -1939,7 +1940,10 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
         } else if (ss[-1]=='{'); // not prefix, fall through
         else if (cc == '#') {  // TODO ${#x[@]}
           dd = !!strchr("@*", *ss);  // For ${#@} or ${#*} do normal ${#}
-          ifs = getvar_special(ss-dd, jj, &kk, delete) ? : "";
+          if (!(ifs = getvar_special(ss-dd, jj, &kk, delete))) {
+            if (TT.options&OPT_u) goto barf;
+            ifs = "";
+          }
           if (!dd) push_arg(delete, ifs = xmprintf("%zu", strlen(ifs)));
         // ${!@} ${!@Q} ${!x} ${!x@} ${!x@Q} ${!x#} ${!x[} ${!x[*]}
         } else if (cc == '!') {  // TODO: ${var[@]} array
@@ -2000,6 +2004,7 @@ barf:
           aa.v = TT.ff->arg.v+1;
         } else {
           ifs = getvar_special(ss, jj, &jj, delete);
+          if (!ifs && (TT.options&OPT_u)) goto barf;
           if (!jj) {
             if (ss[-1] == '{') goto barf;
             new[oo++] = '$';
@@ -2138,12 +2143,11 @@ barf:
         } else if (*slice=='/') {
           struct sh_arg wild = {0};
 
-          s = slashcopy(ss = slice+(xx = !!strchr("/#%", slice[1]))+1, "/}",
-            &wild);
+          xx = !!strchr("/#%", slice[1]);
+          s = slashcopy(ss = slice+xx+1, "/}", &wild);
           ss += (long)wild.v[wild.c];
           ss = (*ss == '/') ? slashcopy(ss+1, "}", 0) : 0;
           jj = ss ? strlen(ss) : 0;
-          ll = 0;
           for (ll = 0; ifs[ll];) {
             // TODO nocasematch option
             if (0<(dd = wildcard_match(ifs+ll, s, &wild, 0))) {
@@ -3042,6 +3046,7 @@ static int parse_line(char *line, struct sh_pipeline **ppl,
     // Do we need to request another line to finish word (find ending quote)?
     if (!end) {
       // Save unparsed bit of this line, we'll need to re-parse it.
+      if (*start=='\\' && (!start[1] || start[1]=='\n')) start++;
       arg_add(arg, xstrndup(start, strlen(start)));
       arg->c = -arg->c;
       free(delete);
@@ -4386,7 +4391,7 @@ void set_main(void)
     if (!cc || !dd) break;
     for (jj = 1; cc[jj]; jj++) {
       if (cc[jj] == 'o') oo++;
-      else if (-1 != (kk = stridx("BCx", cc[jj]))) {
+      else if (-1 != (kk = stridx("BCxu", cc[jj]))) {
         if (*cc == '-') TT.options |= OPT_B<<kk;
         else TT.options &= ~(OPT_B<<kk);
       } else error_exit("bad -%c", toys.optargs[ii][1]);
