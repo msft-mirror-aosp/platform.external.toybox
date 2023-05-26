@@ -320,8 +320,8 @@
 #define USE_LN(...) __VA_ARGS__
 #define CFG_LOAD_POLICY 1
 #define USE_LOAD_POLICY(...) __VA_ARGS__
-#define CFG_LOGGER 0
-#define USE_LOGGER(...)
+#define CFG_LOGGER 1
+#define USE_LOGGER(...) __VA_ARGS__
 #define CFG_LOGIN 0
 #define USE_LOGIN(...)
 #define CFG_LOGNAME 1
@@ -516,6 +516,8 @@
 #define USE_SH(...)
 #define CFG_SHRED 0
 #define USE_SHRED(...)
+#define CFG_SHUF 0
+#define USE_SHUF(...)
 #define CFG_SKELETON_ALIAS 0
 #define USE_SKELETON_ALIAS(...)
 #define CFG_SKELETON 0

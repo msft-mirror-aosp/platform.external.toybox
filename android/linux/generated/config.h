@@ -172,8 +172,8 @@
 #define USE_FDISK(...)
 #define CFG_FGREP 1
 #define USE_FGREP(...) __VA_ARGS__
-#define CFG_FILE 0
-#define USE_FILE(...)
+#define CFG_FILE 1
+#define USE_FILE(...) __VA_ARGS__
 #define CFG_FIND 1
 #define USE_FIND(...) __VA_ARGS__
 #define CFG_FLOCK 0
@@ -518,6 +518,8 @@
 #define USE_SH(...)
 #define CFG_SHRED 0
 #define USE_SHRED(...)
+#define CFG_SHUF 0
+#define USE_SHUF(...)
 #define CFG_SKELETON_ALIAS 0
 #define USE_SKELETON_ALIAS(...)
 #define CFG_SKELETON 0
