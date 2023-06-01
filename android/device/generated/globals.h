@@ -517,6 +517,7 @@ struct swapon_data {
 struct switch_root_data {
   char *c;
 
+  struct stat new;
   dev_t rootdev;
 };
 
