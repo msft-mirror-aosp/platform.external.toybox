@@ -51,6 +51,7 @@ USE_SH(NEWTOY(exec, "^cla:", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(exit, 0, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(export, "np", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(jobs, "lnprs", TOYFLAG_NOFORK))
+USE_SH(NEWTOY(local, 0, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(set, 0, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(shift, ">1", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(source, "<1", TOYFLAG_NOFORK))
@@ -1902,13 +1903,13 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
           for (kk = strlen(ifs); kk && ifs[kk-1]=='\n'; ifs[--kk] = 0);
         close(jj);
       }
-    } else if (cc=='\\' || !str[ii]) {
-      if (!(qq&1) || (str[ii] && strchr("\"\\$`", str[ii])))
-        new[oo++] = str[ii] ? str[ii++] : cc;
+    } else if (!str[ii]) new[oo++] = cc;
+    else if (cc=='\\')
+      new[oo++] = (!(qq&1) || strchr("\"\\$`", str[ii])) ? str[ii++] : cc;
 
     // $VARIABLE expansions
 
-    } else if (cc == '$' && str[ii]) {
+    else if (cc == '$') {
       cc = *(ss = str+ii++);
       if (cc=='\'') {
         for (s = str+ii; *s != '\''; oo += wcrtomb(new+oo, unescape2(&s, 0),0));
@@ -3861,9 +3862,11 @@ static void run_lines(void)
         }
 
       // Handle if/else/elif statement
-      } else if (!strcmp(s, "then"))
+      } else if (!strcmp(s, "then")) {
+do_then:
         TT.ff->blk->run = TT.ff->blk->run && !toys.exitval;
-      else if (!strcmp(s, "else") || !strcmp(s, "elif"))
+        toys.exitval = 0;
+      } else if (!strcmp(s, "else") || !strcmp(s, "elif"))
         TT.ff->blk->run = !TT.ff->blk->run;
 
       // Loop
@@ -3871,9 +3874,11 @@ static void run_lines(void)
         struct sh_blockstack *blk = TT.ff->blk;
 
         ss = *blk->start->arg->v;
-        if (!strcmp(ss, "while")) blk->run = blk->run && !toys.exitval;
-        else if (!strcmp(ss, "until")) blk->run = blk->run && toys.exitval;
-        else if (!strcmp(ss, "select")) {
+        if (!strcmp(ss, "while")) goto do_then;
+        else if (!strcmp(ss, "until")) {
+          blk->run = blk->run && toys.exitval;
+          toys.exitval = 0;
+        } else if (!strcmp(ss, "select")) {
           if (!(ss = get_next_line(0, 3)) || ss==(void *)1) {
             TT.ff->pl = pop_block();
             printf("\n");
@@ -3913,7 +3918,8 @@ static void run_lines(void)
 
       // repeating block?
       if (TT.ff->blk->run && !strcmp(s, "done")) {
-        TT.ff->pl = TT.ff->blk->middle;
+        TT.ff->pl = (**TT.ff->blk->start->arg->v == 'w')
+          ? TT.ff->blk->start->next : TT.ff->blk->middle;
         continue;
       }
 

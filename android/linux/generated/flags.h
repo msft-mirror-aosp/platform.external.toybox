@@ -1758,6 +1758,14 @@
 #undef FOR_load_policy
 #endif
 
+// local    
+#undef OPTSTR_local
+#define OPTSTR_local 0
+#ifdef CLEANUP_local
+#undef CLEANUP_local
+#undef FOR_local
+#endif
+
 // log   p:t:
 #undef OPTSTR_log
 #define OPTSTR_log "p:t:"
@@ -5463,6 +5471,13 @@
 #define CLEANUP_load_policy
 #ifndef TT
 #define TT this.load_policy
+#endif
+#endif
+
+#ifdef FOR_local
+#define CLEANUP_local
+#ifndef TT
+#define TT this.local
 #endif
 #endif
 
