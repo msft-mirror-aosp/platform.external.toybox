@@ -220,16 +220,16 @@
 #define USE_GITINIT(...)
 #define CFG_GITREMOTE 0
 #define USE_GITREMOTE(...)
-#define CFG_GPIODETECT 0
-#define USE_GPIODETECT(...)
-#define CFG_GPIOFIND 0
-#define USE_GPIOFIND(...)
-#define CFG_GPIOGET 0
-#define USE_GPIOGET(...)
-#define CFG_GPIOINFO 0
-#define USE_GPIOINFO(...)
-#define CFG_GPIOSET 0
-#define USE_GPIOSET(...)
+#define CFG_GPIODETECT 1
+#define USE_GPIODETECT(...) __VA_ARGS__
+#define CFG_GPIOFIND 1
+#define USE_GPIOFIND(...) __VA_ARGS__
+#define CFG_GPIOGET 1
+#define USE_GPIOGET(...) __VA_ARGS__
+#define CFG_GPIOINFO 1
+#define USE_GPIOINFO(...) __VA_ARGS__
+#define CFG_GPIOSET 1
+#define USE_GPIOSET(...) __VA_ARGS__
 #define CFG_GREP 1
 #define USE_GREP(...) __VA_ARGS__
 #define CFG_GROUPADD 0

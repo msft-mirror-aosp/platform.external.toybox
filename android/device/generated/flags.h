@@ -1178,7 +1178,7 @@
 #undef FOR_gitremote
 #endif
 
-// gpiodetect   >0
+// gpiodetect >0 >0
 #undef OPTSTR_gpiodetect
 #define OPTSTR_gpiodetect ">0"
 #ifdef CLEANUP_gpiodetect
@@ -1186,7 +1186,7 @@
 #undef FOR_gpiodetect
 #endif
 
-// gpiofind   <1>1
+// gpiofind <1>1 <1>1
 #undef OPTSTR_gpiofind
 #define OPTSTR_gpiofind "<1>1"
 #ifdef CLEANUP_gpiofind
@@ -1194,7 +1194,7 @@
 #undef FOR_gpiofind
 #endif
 
-// gpioget   <2l
+// gpioget <2l <2l
 #undef OPTSTR_gpioget
 #define OPTSTR_gpioget "<2l"
 #ifdef CLEANUP_gpioget
@@ -1211,7 +1211,7 @@
 #undef FOR_gpioinfo
 #endif
 
-// gpioset   <2l
+// gpioset <2l <2l
 #undef OPTSTR_gpioset
 #define OPTSTR_gpioset "<2l"
 #ifdef CLEANUP_gpioset
@@ -4961,7 +4961,7 @@
 #ifndef TT
 #define TT this.gpioget
 #endif
-#define FLAG_l (FORCED_FLAG<<0)
+#define FLAG_l (1LL<<0)
 #endif
 
 #ifdef FOR_gpioinfo
@@ -4976,7 +4976,7 @@
 #ifndef TT
 #define TT this.gpioset
 #endif
-#define FLAG_l (FORCED_FLAG<<0)
+#define FLAG_l (1LL<<0)
 #endif
 
 #ifdef FOR_grep
