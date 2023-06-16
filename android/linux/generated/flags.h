@@ -397,9 +397,9 @@
 #undef FLAG_preserve
 #endif
 
-// cpio (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
+// cpio (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
 #undef OPTSTR_cpio
-#define OPTSTR_cpio "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
+#define OPTSTR_cpio "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
 #ifdef CLEANUP_cpio
 #undef CLEANUP_cpio
 #undef FOR_cpio
@@ -410,6 +410,7 @@
 #undef FLAG_i
 #undef FLAG_p
 #undef FLAG_H
+#undef FLAG_L
 #undef FLAG_u
 #undef FLAG_d
 #undef FLAG_m
@@ -1756,6 +1757,14 @@
 #ifdef CLEANUP_load_policy
 #undef CLEANUP_load_policy
 #undef FOR_load_policy
+#endif
+
+// local    
+#undef OPTSTR_local
+#define OPTSTR_local 0
+#ifdef CLEANUP_local
+#undef CLEANUP_local
+#undef FOR_local
 #endif
 
 // log   p:t:
@@ -4225,14 +4234,15 @@
 #define FLAG_i (1LL<<4)
 #define FLAG_p (1LL<<5)
 #define FLAG_H (1LL<<6)
-#define FLAG_u (1LL<<7)
-#define FLAG_d (1LL<<8)
-#define FLAG_m (1LL<<9)
-#define FLAG_R (1LL<<10)
-#define FLAG_no_preserve_owner (1LL<<11)
-#define FLAG_quiet (1LL<<12)
-#define FLAG_renumber_inodes (1LL<<13)
-#define FLAG_ignore_devno (1LL<<14)
+#define FLAG_L (1LL<<7)
+#define FLAG_u (1LL<<8)
+#define FLAG_d (1LL<<9)
+#define FLAG_m (1LL<<10)
+#define FLAG_R (1LL<<11)
+#define FLAG_no_preserve_owner (1LL<<12)
+#define FLAG_quiet (1LL<<13)
+#define FLAG_renumber_inodes (1LL<<14)
+#define FLAG_ignore_devno (1LL<<15)
 #endif
 
 #ifdef FOR_crc32
@@ -5463,6 +5473,13 @@
 #define CLEANUP_load_policy
 #ifndef TT
 #define TT this.load_policy
+#endif
+#endif
+
+#ifdef FOR_local
+#define CLEANUP_local
+#ifndef TT
+#define TT this.local
 #endif
 #endif
 
