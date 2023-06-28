@@ -658,10 +658,10 @@ struct crontab_data {
 struct dd_data {
   int show_xfer, show_records;
   unsigned long long bytes, in_full, in_part, out_full, out_part, start;
+  char *buff;
   struct {
-    char *name;
+    char *name, *bp;
     int fd;
-    unsigned char *buff, *bp;
     long sz, count;
     unsigned long long offset;
   } in, out;
