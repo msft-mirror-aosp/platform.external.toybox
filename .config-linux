@@ -101,7 +101,7 @@ CONFIG_EXPR=y
 CONFIG_FGREP=y
 CONFIG_FILE=y
 CONFIG_FIND=y
-# CONFIG_FLOCK is not set
+CONFIG_FLOCK=y
 # CONFIG_FMT is not set
 # CONFIG_FOLD is not set
 # CONFIG_FREE is not set

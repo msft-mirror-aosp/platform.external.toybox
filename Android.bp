@@ -132,6 +132,7 @@ all_srcs = [
 
 linux_srcs = [
     "toys/posix/ps.c",
+    "toys/other/flock.c",
     "toys/other/taskset.c",
 ]
 
@@ -167,7 +168,6 @@ device_srcs = [
     "toys/other/clear.c",
     "toys/other/devmem.c",
     "toys/other/fallocate.c",
-    "toys/other/flock.c",
     "toys/other/fmt.c",
     "toys/other/free.c",
     "toys/other/freeramdisk.c",
