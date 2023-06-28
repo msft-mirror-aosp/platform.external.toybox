@@ -475,9 +475,9 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso-8601):;r:s:u(utc)[!dr]
+// date >1d:D:I(iso-8601):;r:s:u(utc)[!dr] >1d:D:I(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso-8601):;r:s:u(utc)[!dr]"
+#define OPTSTR_date ">1d:D:I(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
