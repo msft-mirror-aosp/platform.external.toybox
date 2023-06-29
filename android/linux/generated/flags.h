@@ -957,7 +957,7 @@
 #undef FLAG_H
 #endif
 
-// flock   <1>1nsux[-sux]
+// flock <1>1nsux[-sux] <1>1nsux[-sux]
 #undef OPTSTR_flock
 #define OPTSTR_flock "<1>1nsux[-sux]"
 #ifdef CLEANUP_flock
@@ -4747,10 +4747,10 @@
 #ifndef TT
 #define TT this.flock
 #endif
-#define FLAG_x (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_n (FORCED_FLAG<<3)
+#define FLAG_x (1LL<<0)
+#define FLAG_u (1LL<<1)
+#define FLAG_s (1LL<<2)
+#define FLAG_n (1LL<<3)
 #endif
 
 #ifdef FOR_fmt

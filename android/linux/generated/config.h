@@ -176,8 +176,8 @@
 #define USE_FILE(...) __VA_ARGS__
 #define CFG_FIND 1
 #define USE_FIND(...) __VA_ARGS__
-#define CFG_FLOCK 0
-#define USE_FLOCK(...)
+#define CFG_FLOCK 1
+#define USE_FLOCK(...) __VA_ARGS__
 #define CFG_FMT 0
 #define USE_FMT(...)
 #define CFG_FOLD 0
