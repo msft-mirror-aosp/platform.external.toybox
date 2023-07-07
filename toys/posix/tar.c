@@ -194,7 +194,7 @@ static struct double_list *filter(struct double_list *lst, char *name)
 {
   struct double_list *end = lst;
   long long flags = toys.optflags;
-  char *ss, *last;
+  char *ss;
 
   if (!lst || !*name) return 0;
 
@@ -211,13 +211,11 @@ static struct double_list *filter(struct double_list *lst, char *name)
 
   // The +1 instead of ++ is in case of conseutive slashes
   do {
-    for (ss = last = name; *ss; ss++) {
+    if (do_filter(lst->data, name, flags)) return lst;
+    if (!(flags & FLAG_anchored)) for (ss = name; *ss; ss++) {
       if (*ss!='/' || !ss[1]) continue;
-      if (!(flags & FLAG_anchored)) {
-        if (do_filter(lst->data, ss+1, flags)) return lst;
-      } else last = ss+1;
+      if (do_filter(lst->data, ss+1, flags)) return lst;
     }
-    if (do_filter(lst->data, last, flags)) return lst;
   } while (end != (lst = lst->next));
 
   return 0;
@@ -514,7 +512,7 @@ done:
   free(xfname);
   free(name);
 
-  return recurse*(DIRTREE_RECURSE|(FLAG(h)?DIRTREE_SYMFOLLOW:0));
+  return recurse*(DIRTREE_RECURSE|DIRTREE_SYMFOLLOW*FLAG(h));
 }
 
 static void wsettime(char *s, long long sec)
@@ -923,7 +921,7 @@ static void unpack_tar(char *first)
           xsetenv(xmprintf("TAR_GID=%o", TT.hdr.gid), 0);
 
           pid = xpopen((char *[]){"sh", "-c", TT.to_command, NULL}, &fd, 0);
-          // todo: short write exits tar here, other skips data.
+          // TODO: short write exits tar here, other skips data.
           sendfile_sparse(fd);
           fd = xpclose_both(pid, 0);
           if (fd) error_msg("%d: Child returned %d", pid, fd);
@@ -966,7 +964,7 @@ static void do_XT(char **pline, long len)
 
 static  char *get_archiver()
 {
-  return FLAG(I) ? TT.I : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
+  return TT.I ? : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
 }
 
 void tar_main(void)
@@ -1004,7 +1002,7 @@ void tar_main(void)
   for (args = toys.optargs; *args; args++) trim2list(&TT.incl, *args);
   // -T is always --verbatim-files-from: no quote removal or -arg handling
   for (;TT.T; TT.T = TT.T->next)
-    do_lines(xopenro(TT.T->arg), FLAG(null) ? '\0' : '\n', do_XT);
+    do_lines(xopenro(TT.T->arg), '\n'*!FLAG(null), do_XT);
 
   // If include file list empty, don't create empty archive
   if (FLAG(c)) {
@@ -1149,18 +1147,19 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){get_archiver(), 0}, pipefd);
+      TT.pid = xpopen_both((char *[]){get_archiver(), 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }
     do {
       TT.warn = 1;
-      ii = FLAG(h) ? DIRTREE_SYMFOLLOW : 0;
-      if (FLAG(sort)|FLAG(s)) ii |= DIRTREE_BREADTH;
-      dirtree_flagread(dl->data, FLAG(h) ? DIRTREE_SYMFOLLOW : 0, add_to_tar);
+      dirtree_flagread(dl->data,
+        DIRTREE_SYMFOLLOW*FLAG(h)|DIRTREE_BREADTH*(FLAG(sort)|FLAG(s)),
+        add_to_tar);
     } while (TT.incl != (dl = dl->next));
 
     writeall(TT.fd, toybuf, 1024);
+    close(TT.fd);
   }
   if (TT.pid) {
     TT.pid = xpclose_both(TT.pid, 0);

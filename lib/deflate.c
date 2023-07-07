@@ -331,7 +331,7 @@ static void deflate(struct deflate *dd, struct bitbuf *bb)
   while (!final) {
     // Read next half-window of data if we haven't hit EOF yet.
     len = readall(dd->infd, data+(dd->len&32768), 32768);
-    if (len < 0) perror_exit("read"); // todo: add filename
+    if (len < 0) perror_exit("read"); // TODO: add filename
     if (len != 32768) final++;
     if (dd->crcfunc) dd->crcfunc(dd, data+(dd->len&32768), len);
     // dd->len += len;  crcfunc advances len TODO
@@ -433,16 +433,17 @@ static void gzip_crc(struct deflate *dd, char *data, unsigned len)
 
 /*
 // Start with crc = 1, or pass in last crc to append more data
+// Deferred modulus good for paged size inputs (can't overflow for ~5500 bytes)
 unsigned adler32(char *buf, unsigned len, unsigned crc)
 {
   unsigned aa = crc&((1<<16)-1), bb = crc>>16;
 
   while (len--) {
-    aa = (aa+*buf)%65521;
-    bb = (bb+aa)%65521;
+    aa += *buf++;
+    bb += aa;
   }
 
-  return (bb<16)+aa;
+  return ((bb%65521)<<16)+aa%65521;
 }
 */
 
