@@ -21,16 +21,16 @@
  * Transfer Encoding [gzip|deflate]: https://jigsaw.w3.org/HTTP/TE/bar.txt
  *
  *
- * todo: Add support for configurable TLS versions
- * todo: Add support for ftp
- * todo: Add support for Transfer Encoding (gzip|deflate)
- * todo: Add support for RFC5987
+ * TODO: Add support for configurable TLS versions
+ * TODO: Add support for ftp
+ * TODO: Add support for Transfer Encoding (gzip|deflate)
+ * TODO: Add support for RFC5987
 
 USE_WGET(NEWTOY(wget, "<1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):", TOYFLAG_USR|TOYFLAG_BIN))
 
 config WGET
   bool "wget"
-  default n
+  default y
   help
     usage: wget [OPTIONS]... [URL]
         --max-redirect          maximum redirections allowed
@@ -44,17 +44,12 @@ config WGET
 config WGET_LIBTLS
   bool "Enable HTTPS support for wget via LibTLS"
   default n
-  depends on WGET && !WGET_OPENSSL
+  depends on WGET && !TOYBOX_LIBCRYPTO
   help
     Enable HTTPS support for wget by linking to LibTLS.
     Supports using libtls, libretls or libtls-bearssl.
 
-config WGET_OPENSSL
-  bool "Enable HTTPS support for wget via OpenSSL"
-  default n
-  depends on WGET && !WGET_LIBTLS
-  help
-    Enable HTTPS support for wget by linking to OpenSSL.
+    Use TOYBOX_LIBCRYPTO to enable HTTPS support via OpenSSL.
 */
 
 #define FOR_wget
@@ -63,7 +58,7 @@ config WGET_OPENSSL
 #if CFG_WGET_LIBTLS
 #define WGET_SSL 1
 #include <tls.h>
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
 #define WGET_SSL 1
 #include <openssl/crypto.h>
 #include <openssl/ssl.h>
@@ -82,7 +77,7 @@ GLOBALS(
   char *url;
 #if CFG_WGET_LIBTLS
   struct tls *tls;
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
   struct ssl_ctx_st *ctx;
   struct ssl_st *ssl;
 #endif
@@ -94,14 +89,13 @@ static void wget_info(char *url, char **host, char **port, char **path)
   char *ss = url;
 
   // Must start with case insensitive http:// or https://
-  if (strncmp(url, "http", 4)) url = 0;
+  if (strncasecmp(url, "http", 4)) url = 0;
   else {
     url += 4;
     if ((TT.https = WGET_SSL && toupper(*url=='s'))) url++;
     if (!strstart(&url, "://")) url = 0;
   }
   if (!url) error_exit("unsupported protocol: %s", ss);
-
   if ((*path = strchr(*host = url, '/'))) *((*path)++) = 0;
   else *path = "";
 
@@ -109,7 +103,7 @@ static void wget_info(char *url, char **host, char **port, char **path)
   if (**host=='[' && (ss = strchr(++*host, ']'))) {
     *ss++ = 0;
     *port = (*ss==':') ? ++ss : 0;
-  } else if ((*port = strchr(*host, ':'))) *(*port++) = 0;
+  } else if ((*port = strchr(*host, ':'))) *((*port)++) = 0;
   if (!*port) *port = HTTPS ? "443" : "80";
 }
 
@@ -135,7 +129,7 @@ static void wget_connect(char *host, char *port)
 
     if (tls_connect(TT.tls, host, port))
       error_exit("tls_connect: %s", tls_error(TT.tls));
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
     SSL_library_init();
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
@@ -172,7 +166,7 @@ static size_t wget_read(void *buf, size_t len)
 
 #if CFG_WGET_LIBTLS
     if ((ret = tls_read(TT.tls, buf, len))<0) err = tls_error(TT.tls);
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
     if ((ret = SSL_read(TT.ssl, buf, len))<0)
       err = ERR_error_string(ERR_get_error(), 0);
 #endif
@@ -190,7 +184,7 @@ static void wget_write(void *buf, size_t len)
 
 #if CFG_WGET_LIBTLS
     if (len != tls_write(TT.tls, buf, len)) err = tls_error(TT.tls);
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
     if (len != SSL_write(TT.ssl, buf, len))
       err = ERR_error_string(ERR_get_error(), 0);
 #endif
@@ -211,7 +205,7 @@ static void wget_close()
     tls_free(TT.tls);
     TT.tls = 0;
   }
-#elif CFG_WGET_OPENSSL
+#elif CFG_TOYBOX_LIBCRYPTO
   if (TT.ssl) {
     SSL_shutdown(TT.ssl);
     SSL_free(TT.ssl);
@@ -227,25 +221,21 @@ static void wget_close()
 
 static char *wget_find_header(char *header, char *val)
 {
-  char *result = strcasestr(header, val);
+  if (!(header = strcasestr(header, val))) return 0;
+  header += strlen(val);
 
-  if (result) {
-    result += strlen(val);
-    result[strcspn(result, "\r\n")] = 0;
-  }
-
-  return result;
+  return xstrndup(header, strcspn(header, "\r\n"));
 }
 
 void wget_main(void)
 {
   long status = 0;
   size_t len, c_len = 0;
-  int fd = 0;
-  char *body, *index, *host, *port, *path, *chunked, *ss;
+  int fd = 0, ii;
+  char *body, *index, *host, *port, *path = 0, *chunked, *ss;
   char agent[] = "toybox wget/" TOYBOX_VERSION;
 
-  TT.url = xstrdup(*toys.optargs);
+  TT.url = escape_url(*toys.optargs, 0);
 
   // Ask server for URL, following redirects until success
   while (status != 200) {
@@ -253,10 +243,10 @@ void wget_main(void)
 
     // Connect and write request
     wget_info(TT.url, &host, &port, &path);
-    if (TT.p) sprintf(toybuf, "Content-Length: %ld\r\n", strlen(TT.p));
+    if (TT.p) sprintf(toybuf, "Content-Length: %ld\r\n", (long)strlen(TT.p));
     ss = xmprintf("%s /%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\n"
                   "Connection: close\r\n%s\r\n%s", FLAG(p) ? "POST" : "GET",
-                  path, host, agent, FLAG(p) ? toybuf : "", FLAG(p)?TT.p:"");
+                  path, host, agent, TT.p ? toybuf : "", TT.p ? : "");
     if (FLAG(d)) printf("--- Request\n%s", ss);
     wget_connect(host, port);
     wget_write(ss, strlen(ss));
@@ -280,17 +270,34 @@ void wget_main(void)
       if (!(ss = wget_find_header(toybuf, "Location: ")))
         error_exit("bad redirect");
       free(TT.url);
-      TT.url = xstrdup(ss);
+      TT.url = ss;
       wget_close();
-    } else if (status != 200) error_exit("response: %ld", status);
+    } else if (status != 200) error_exit("response %ld", status);
   }
 
   // Open output file
   if (TT.O && !strcmp(TT.O, "-")) fd = 1;
   else if (!TT.O) {
     ss = wget_find_header(toybuf, "Content-Disposition: attachment; filename=");
-    if (!ss && strchr(path, '/')) ss = getbasename(path);
-    if (!ss || !*ss ) ss = "index.html";
+    if (ss) {
+      unescape_url(ss, 1);
+      for (ii = strlen(ss); ii; ii--) {
+        if (ss[ii]=='/') memmove(ss, ss+ii, strlen(ss+ii));
+        break;
+      }
+      if (!*ss) {
+        free(ss);
+        ss = 0;
+      }
+    }
+    if (!ss) {
+      path = 0;
+      for (ii = 0, ss = *toys.optargs; *ss && *ss!='?' && *ss!='#'; ss++)
+        if (*ss=='/' && ++ii>2) path = ss+1;
+      ss = (path && ss>path) ? xstrndup(path, ss-path) : 0;
+      // TODO: handle %20 style escapes
+    }
+    if (!ss) ss = "index.html";
     if (!access((TT.O = ss), F_OK)) error_exit("%s already exists", TT.O);
   }
   // TODO: don't allow header/basename to write to stdout
