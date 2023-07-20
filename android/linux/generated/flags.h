@@ -397,9 +397,9 @@
 #undef FLAG_preserve
 #endif
 
-// cpio (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
+// cpio (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF] (ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]
 #undef OPTSTR_cpio
-#define OPTSTR_cpio "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
+#define OPTSTR_cpio "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]"
 #ifdef CLEANUP_cpio
 #undef CLEANUP_cpio
 #undef FOR_cpio
@@ -410,6 +410,7 @@
 #undef FLAG_i
 #undef FLAG_p
 #undef FLAG_H
+#undef FLAG_L
 #undef FLAG_u
 #undef FLAG_d
 #undef FLAG_m
@@ -474,9 +475,9 @@
 #undef FLAG_b
 #endif
 
-// date d:D:I(iso-8601):;r:s:u(utc)[!dr] d:D:I(iso-8601):;r:s:u(utc)[!dr]
+// date >1d:D:I(iso-8601):;r:s:u(utc)[!dr] >1d:D:I(iso-8601):;r:s:u(utc)[!dr]
 #undef OPTSTR_date
-#define OPTSTR_date "d:D:I(iso-8601):;r:s:u(utc)[!dr]"
+#define OPTSTR_date ">1d:D:I(iso-8601):;r:s:u(utc)[!dr]"
 #ifdef CLEANUP_date
 #undef CLEANUP_date
 #undef FOR_date
@@ -956,7 +957,7 @@
 #undef FLAG_H
 #endif
 
-// flock   <1>1nsux[-sux]
+// flock <1>1nsux[-sux] <1>1nsux[-sux]
 #undef OPTSTR_flock
 #define OPTSTR_flock "<1>1nsux[-sux]"
 #ifdef CLEANUP_flock
@@ -4233,14 +4234,15 @@
 #define FLAG_i (1LL<<4)
 #define FLAG_p (1LL<<5)
 #define FLAG_H (1LL<<6)
-#define FLAG_u (1LL<<7)
-#define FLAG_d (1LL<<8)
-#define FLAG_m (1LL<<9)
-#define FLAG_R (1LL<<10)
-#define FLAG_no_preserve_owner (1LL<<11)
-#define FLAG_quiet (1LL<<12)
-#define FLAG_renumber_inodes (1LL<<13)
-#define FLAG_ignore_devno (1LL<<14)
+#define FLAG_L (1LL<<7)
+#define FLAG_u (1LL<<8)
+#define FLAG_d (1LL<<9)
+#define FLAG_m (1LL<<10)
+#define FLAG_R (1LL<<11)
+#define FLAG_no_preserve_owner (1LL<<12)
+#define FLAG_quiet (1LL<<13)
+#define FLAG_renumber_inodes (1LL<<14)
+#define FLAG_ignore_devno (1LL<<15)
 #endif
 
 #ifdef FOR_crc32
@@ -4745,10 +4747,10 @@
 #ifndef TT
 #define TT this.flock
 #endif
-#define FLAG_x (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_n (FORCED_FLAG<<3)
+#define FLAG_x (1LL<<0)
+#define FLAG_u (1LL<<1)
+#define FLAG_s (1LL<<2)
+#define FLAG_n (1LL<<3)
 #endif
 
 #ifdef FOR_fmt
