@@ -149,6 +149,7 @@ CONFIG_HOSTNAME=y
 # CONFIG_I2CDUMP is not set
 # CONFIG_I2CGET is not set
 # CONFIG_I2CSET is not set
+# CONFIG_I2CTRANSFER is not set
 # CONFIG_ICONV is not set
 CONFIG_ID=y
 # CONFIG_ID_Z is not set
