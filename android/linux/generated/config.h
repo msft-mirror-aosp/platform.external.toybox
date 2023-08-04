@@ -272,6 +272,8 @@
 #define USE_I2CGET(...)
 #define CFG_I2CSET 0
 #define USE_I2CSET(...)
+#define CFG_I2CTRANSFER 0
+#define USE_I2CTRANSFER(...)
 #define CFG_ICONV 0
 #define USE_ICONV(...)
 #define CFG_ID 1

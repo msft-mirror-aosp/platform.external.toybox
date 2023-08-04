@@ -322,6 +322,12 @@ struct hwclock_data {
   char *f;
 };
 
+// toys/other/i2ctools.c
+
+struct i2ctools_data {
+  long F;
+};
+
 // toys/other/ionice.c
 
 struct ionice_data {
@@ -414,7 +420,7 @@ struct nbd_client_data {
 // toys/other/nsenter.c
 
 struct nsenter_data {
-  char *UupnmiC[6];
+  char *UupnmiC[7];
   long t;
 };
 
@@ -651,21 +657,6 @@ struct crond_data {
 struct crontab_data {
   char *user;
   char *cdir;
-};
-
-// toys/pending/dd.c
-
-struct dd_data {
-  int show_xfer, show_records;
-  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
-  char *buff;
-  struct {
-    char *name, *bp;
-    int fd;
-    long sz, count;
-    unsigned long long offset;
-  } in, out;
-  unsigned conv, iflag, oflag;
 };
 
 // toys/pending/dhcp.c
@@ -1294,6 +1285,14 @@ struct date_data {
   unsigned nano;
 };
 
+// toys/posix/dd.c
+
+struct dd_data {
+  // Display fields
+  int show_xfer, show_records;
+  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
+};
+
 // toys/posix/df.c
 
 struct df_data {
@@ -1403,7 +1402,7 @@ struct logger_data {
 // toys/posix/ls.c
 
 struct ls_data {
-  long w, l;
+  long w, l, block_size;
   char *color, *sort;
 
   struct dirtree *files, *singledir;
@@ -1469,7 +1468,7 @@ struct paste_data {
 
 struct patch_data {
   char *i, *d;
-  long p, g, F;
+  long v, p, g, F;
 
   void *current_hunk;
   long oldline, oldlen, newline, newlen, linenum, outnum;
@@ -1704,6 +1703,7 @@ extern union global_union {
 	struct gpiod_data gpiod;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
+	struct i2ctools_data i2ctools;
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
@@ -1745,7 +1745,6 @@ extern union global_union {
 	struct chsh_data chsh;
 	struct crond_data crond;
 	struct crontab_data crontab;
-	struct dd_data dd;
 	struct dhcp_data dhcp;
 	struct dhcp6_data dhcp6;
 	struct dhcpd_data dhcpd;
@@ -1796,6 +1795,7 @@ extern union global_union {
 	struct cpio_data cpio;
 	struct cut_data cut;
 	struct date_data date;
+	struct dd_data dd;
 	struct df_data df;
 	struct du_data du;
 	struct env_data env;

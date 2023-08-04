@@ -1447,9 +1447,9 @@
 #undef FLAG_fast
 #endif
 
-// i2cdetect >3aFlqry[!qr] >3aFlqry[!qr]
+// i2cdetect >3aF#<0>63lqry[!qr][!Fl] >3aF#<0>63lqry[!qr][!Fl]
 #undef OPTSTR_i2cdetect
-#define OPTSTR_i2cdetect ">3aFlqry[!qr]"
+#define OPTSTR_i2cdetect ">3aF#<0>63lqry[!qr][!Fl]"
 #ifdef CLEANUP_i2cdetect
 #undef CLEANUP_i2cdetect
 #undef FOR_i2cdetect
@@ -1489,6 +1489,17 @@
 #undef FOR_i2cset
 #undef FLAG_y
 #undef FLAG_f
+#endif
+
+// i2ctransfer <2vfy <2vfy
+#undef OPTSTR_i2ctransfer
+#define OPTSTR_i2ctransfer "<2vfy"
+#ifdef CLEANUP_i2ctransfer
+#undef CLEANUP_i2ctransfer
+#undef FOR_i2ctransfer
+#undef FLAG_y
+#undef FLAG_f
+#undef FLAG_v
 #endif
 
 // iconv cst:f: cst:f:
@@ -1833,9 +1844,9 @@
 #undef FLAG_S
 #endif
 
-// ls (sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb] (sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]
+// ls (sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb] (sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]
 #undef OPTSTR_ls
-#define OPTSTR_ls "(sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]"
+#define OPTSTR_ls "(sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]"
 #ifdef CLEANUP_ls
 #undef CLEANUP_ls
 #undef FOR_ls
@@ -1875,6 +1886,7 @@
 #undef FLAG_X7E
 #undef FLAG_X21
 #undef FLAG_show_control_chars
+#undef FLAG_block_size
 #undef FLAG_full_time
 #undef FLAG_color
 #undef FLAG_sort
@@ -2364,9 +2376,9 @@
 #undef FLAG_d
 #endif
 
-// patch >2(no-backup-if-mismatch)(dry-run)F#g#fulp#d:i:Rs(quiet) >2(no-backup-if-mismatch)(dry-run)xF#g#fulp#d:i:Rs(quiet)
+// patch >2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv] >2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv]
 #undef OPTSTR_patch
-#define OPTSTR_patch ">2(no-backup-if-mismatch)(dry-run)F#g#fulp#d:i:Rs(quiet)"
+#define OPTSTR_patch ">2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv]"
 #ifdef CLEANUP_patch
 #undef CLEANUP_patch
 #undef FOR_patch
@@ -2374,13 +2386,13 @@
 #undef FLAG_R
 #undef FLAG_i
 #undef FLAG_d
+#undef FLAG_v
 #undef FLAG_p
 #undef FLAG_l
 #undef FLAG_u
 #undef FLAG_f
 #undef FLAG_g
 #undef FLAG_F
-#undef FLAG_x
 #undef FLAG_dry_run
 #undef FLAG_no_backup_if_mismatch
 #endif
@@ -5231,6 +5243,16 @@
 #define FLAG_f (1LL<<1)
 #endif
 
+#ifdef FOR_i2ctransfer
+#define CLEANUP_i2ctransfer
+#ifndef TT
+#define TT this.i2ctransfer
+#endif
+#define FLAG_y (1LL<<0)
+#define FLAG_f (1LL<<1)
+#define FLAG_v (1LL<<2)
+#endif
+
 #ifdef FOR_iconv
 #define CLEANUP_iconv
 #ifndef TT
@@ -5584,9 +5606,10 @@
 #define FLAG_X7E (1LL<<33)
 #define FLAG_X21 (1LL<<34)
 #define FLAG_show_control_chars (1LL<<35)
-#define FLAG_full_time (1LL<<36)
-#define FLAG_color (1LL<<37)
-#define FLAG_sort (1LL<<38)
+#define FLAG_block_size (1LL<<36)
+#define FLAG_full_time (1LL<<37)
+#define FLAG_color (1LL<<38)
+#define FLAG_sort (1LL<<39)
 #endif
 
 #ifdef FOR_lsattr
@@ -6042,13 +6065,13 @@
 #define FLAG_R (1LL<<1)
 #define FLAG_i (1LL<<2)
 #define FLAG_d (1LL<<3)
-#define FLAG_p (1LL<<4)
-#define FLAG_l (1LL<<5)
-#define FLAG_u (1LL<<6)
-#define FLAG_f (1LL<<7)
-#define FLAG_g (1LL<<8)
-#define FLAG_F (1LL<<9)
-#define FLAG_x (FORCED_FLAG<<10)
+#define FLAG_v (1LL<<4)
+#define FLAG_p (1LL<<5)
+#define FLAG_l (1LL<<6)
+#define FLAG_u (1LL<<7)
+#define FLAG_f (1LL<<8)
+#define FLAG_g (1LL<<9)
+#define FLAG_F (1LL<<10)
 #define FLAG_dry_run (1LL<<11)
 #define FLAG_no_backup_if_mismatch (1LL<<12)
 #endif

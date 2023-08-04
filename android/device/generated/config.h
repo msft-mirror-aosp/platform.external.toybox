@@ -272,6 +272,8 @@
 #define USE_I2CGET(...) __VA_ARGS__
 #define CFG_I2CSET 1
 #define USE_I2CSET(...) __VA_ARGS__
+#define CFG_I2CTRANSFER 1
+#define USE_I2CTRANSFER(...) __VA_ARGS__
 #define CFG_ICONV 1
 #define USE_ICONV(...) __VA_ARGS__
 #define CFG_ID 1
