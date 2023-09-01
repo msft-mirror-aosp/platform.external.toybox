@@ -723,9 +723,7 @@ struct dumpleases_data {
 // toys/pending/expr.c
 
 struct expr_data {
-  char **tok; // current token, not on the stack since recursive calls mutate it
-
-  char *refree;
+  char **tok, *delete;
 };
 
 // toys/pending/fdisk.c

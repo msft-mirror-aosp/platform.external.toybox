@@ -1844,9 +1844,9 @@
 #undef FLAG_S
 #endif
 
-// ls (sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb] (sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]
+// ls (sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ] (sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ]
 #undef OPTSTR_ls
-#define OPTSTR_ls "(sort):(color):;(full-time)(block-size)#=1024<1(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]"
+#define OPTSTR_ls "(sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ]"
 #ifdef CLEANUP_ls
 #undef CLEANUP_ls
 #undef FOR_ls
@@ -1885,8 +1885,8 @@
 #undef FLAG_Z
 #undef FLAG_X7E
 #undef FLAG_X21
+#undef FLAG_X7F
 #undef FLAG_show_control_chars
-#undef FLAG_block_size
 #undef FLAG_full_time
 #undef FLAG_color
 #undef FLAG_sort
@@ -5605,8 +5605,8 @@
 #define FLAG_Z (1LL<<32)
 #define FLAG_X7E (1LL<<33)
 #define FLAG_X21 (1LL<<34)
-#define FLAG_show_control_chars (1LL<<35)
-#define FLAG_block_size (1LL<<36)
+#define FLAG_X7F (1LL<<35)
+#define FLAG_show_control_chars (1LL<<36)
 #define FLAG_full_time (1LL<<37)
 #define FLAG_color (1LL<<38)
 #define FLAG_sort (1LL<<39)
