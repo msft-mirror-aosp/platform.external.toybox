@@ -637,7 +637,7 @@ struct brctl_data {
 // toys/pending/chsh.c
 
 struct chsh_data {
-  char *s;
+  char *s, *R;
 };
 
 // toys/pending/crond.c
@@ -791,7 +791,8 @@ struct git_data {
 // toys/pending/groupadd.c
 
 struct groupadd_data {
-  long gid;
+  long g;
+  char *R;
 };
 
 // toys/pending/hexdump.c
@@ -1097,7 +1098,7 @@ struct tftpd_data {
 // toys/pending/tr.c
 
 struct tr_data {
-  short map[256]; //map of chars
+  short *map;
   int len1, len2;
 };
 
@@ -1219,12 +1220,6 @@ struct chgrp_data {
 
 struct chmod_data {
   char *mode;
-};
-
-// toys/posix/cksum.c
-
-struct cksum_data {
-  unsigned crc_table[256];
 };
 
 // toys/posix/cmp.c
@@ -1351,7 +1346,7 @@ struct grep_data {
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
   int found, tried, delim;
-  struct arg_list *fixed[256];
+  struct arg_list **fixed;
 };
 
 // toys/posix/head.c
@@ -1787,7 +1782,6 @@ extern union global_union {
 	struct cal_data cal;
 	struct chgrp_data chgrp;
 	struct chmod_data chmod;
-	struct cksum_data cksum;
 	struct cmp_data cmp;
 	struct cp_data cp;
 	struct cpio_data cpio;

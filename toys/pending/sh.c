@@ -1132,7 +1132,7 @@ static char *parse_word(char *start, int early)
       } else if (*end=='(' && strchr("?*+@!", ii)) toybuf[quote++] = ')';
       else {
         if (ii!='\\') end--;
-        else if (!end[*end=='\n']) return *end ? 0 : end;
+        else if (!end[*end=='\n']) return (*end && !early) ? 0 : end;
         if (early && !quote) return end;
       }
       end++;
@@ -1884,6 +1884,7 @@ static int expand_arg_nobrace(struct sh_arg *arg, char *str, unsigned flags,
         if (*ss != '<') ss = 0;
         else {
           while (isspace(*++ss));
+          // Can't return NULL because guaranteed ) context end
           if (!(ll = parse_word(ss, 0)-ss)) ss = 0;
           else {
             jj = ll+(ss-s);

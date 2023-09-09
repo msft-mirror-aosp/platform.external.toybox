@@ -301,13 +301,15 @@
 #undef FLAG_m
 #endif
 
-// chsh   s:
+// chsh   >1R:s:a
 #undef OPTSTR_chsh
-#define OPTSTR_chsh "s:"
+#define OPTSTR_chsh ">1R:s:a"
 #ifdef CLEANUP_chsh
 #undef CLEANUP_chsh
 #undef FOR_chsh
+#undef FLAG_a
 #undef FLAG_s
+#undef FLAG_R
 #endif
 
 // chvt   <1>1
@@ -1262,19 +1264,20 @@
 #undef FLAG_line_buffered
 #endif
 
-// groupadd   <1>2g#<0S
+// groupadd   <1>2R:g#<0>2147483647S
 #undef OPTSTR_groupadd
-#define OPTSTR_groupadd "<1>2g#<0S"
+#define OPTSTR_groupadd "<1>2R:g#<0>2147483647S"
 #ifdef CLEANUP_groupadd
 #undef CLEANUP_groupadd
 #undef FOR_groupadd
 #undef FLAG_S
 #undef FLAG_g
+#undef FLAG_R
 #endif
 
-// groupdel   <1>2
+// groupdel   <1>2?
 #undef OPTSTR_groupdel
-#define OPTSTR_groupdel "<1>2"
+#define OPTSTR_groupdel "<1>2?"
 #ifdef CLEANUP_groupdel
 #undef CLEANUP_groupdel
 #undef FOR_groupdel
@@ -4151,7 +4154,9 @@
 #ifndef TT
 #define TT this.chsh
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_a (FORCED_FLAG<<0)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_chvt
@@ -5040,6 +5045,7 @@
 #endif
 #define FLAG_S (FORCED_FLAG<<0)
 #define FLAG_g (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_groupdel
