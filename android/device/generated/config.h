@@ -106,6 +106,8 @@
 #define USE_CROND(...)
 #define CFG_CRONTAB 0
 #define USE_CRONTAB(...)
+#define CFG_CSPLIT 0
+#define USE_CSPLIT(...)
 #define CFG_CUT 1
 #define USE_CUT(...) __VA_ARGS__
 #define CFG_DATE 1
@@ -598,6 +600,10 @@
 #define USE_TRUNCATE(...) __VA_ARGS__
 #define CFG_TR 1
 #define USE_TR(...) __VA_ARGS__
+#define CFG_TS 0
+#define USE_TS(...)
+#define CFG_TSORT 0
+#define USE_TSORT(...)
 #define CFG_TTY 1
 #define USE_TTY(...) __VA_ARGS__
 #define CFG_TUNCTL 1

@@ -659,6 +659,13 @@ struct crontab_data {
   char *cdir;
 };
 
+// toys/pending/csplit.c
+
+struct csplit_data {
+  long n;
+  char *f;
+};
+
 // toys/pending/dhcp.c
 
 struct dhcp_data {
@@ -1738,6 +1745,7 @@ extern union global_union {
 	struct chsh_data chsh;
 	struct crond_data crond;
 	struct crontab_data crontab;
+	struct csplit_data csplit;
 	struct dhcp_data dhcp;
 	struct dhcp6_data dhcp6;
 	struct dhcpd_data dhcpd;
