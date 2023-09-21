@@ -664,6 +664,12 @@ struct crontab_data {
 struct csplit_data {
   long n;
   char *f;
+
+  size_t indx, findx, lineno;
+  char *filefmt, *prefix;
+  // Variables the context checker need to track between lines
+  size_t btc, tmp;
+  int offset, withld, inf;
 };
 
 // toys/pending/dhcp.c
