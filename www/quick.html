@@ -1,0 +1,76 @@
+<html><head><title>Toybox quick start</title>
+<!--#include file="header.html" -->
+
+<h2>Current release <a href=https://landley.net/toybox/news.html>0.8.10</a> (July 30, 2023)</a></h2>
+
+<p>Toybox is a single executable that can act like many different Linux command
+line utilities, currently implementing:</p>
+
+<blockquote><p>
+<!--#include file="commands.html" -->
+</p></blockquote>
+
+<p>Toybox uses its filename to determine which command to run, so
+it's usually installed with symlinks like "<b>ln -s toybox sed</b>"
+to put all the commands into the search $PATH.
+The name "<b>toybox</b>" uses its first argument as the command to run, ala
+"<b>toybox df -a</b>", so you can use it without installing it. Running
+"<b>toybox</b>" with no arguments lists the available commands.</p>
+
+<p>Each command has built-in <a href=help.html>documentation</a>,
+which you can get in three different ways:</p>
+<ol>
+<li>most commands accept a --help argument (ala <b>sed --help</b>)</li>
+<li>toybox has a "<b>help</b>" command (ala <b>help sed</b> or
+<b>toybox help sed</b>)</li>
+<li><b>toybox --help command</b> lets you and ask toybox
+for --help about commands. Run "<b>toybox --help</b>" with no other arguments
+to see general help about toybox.</li>
+</ol>
+
+<p>You can download a <a href=https://landley.net/bin/toybox/latest>toybox
+binary</a> and try it out like so:</p>
+
+<blockquote><p>
+$ wget http://landley.net/bin/toybox/latest/toybox-x86_64 -O toybox<br />
+$ chmod +x toybox<br />
+$ ./toybox echo hello<br />
+$ ./toybox ls -l --color
+</p></blockquote>
+
+<p>Installing toybox into the $PATH looks something like:</p>
+
+<blockquote><p>
+$ mkdir newdir<br />
+$ mv toybox newdir/<br />
+$ for i in $(newdir/toybox); do ln -s toybox newdir/$i; done<br />
+$ export PATH="$PWD/newdir:$PATH"<br />
+ls --help
+</p></blockquote>
+
+<p>To compile toybox from source:</p>
+
+<blockquote><p>
+$ git clone https://github.com/landley/toybox<br />
+$ cd toybox<br />
+$ make defconfig toybox<br />
+$ ./toybox<br />
+$ make tests<br />
+</p></blockquote>
+
+<p>Toybox's build has "<b>make menuconfig</b>" like the kernel (and clean, distclean,
+allnoconfig, etc), see "<b>make help</b>" for more options.
+The binaries distributed on the website are statically linked against musl-libc
+to provide a portable executable without external userspace dependencies.
+To reproduce that:</p>
+
+<blockquote><p>
+$ git clone https://github.com/landley/toybox<br />
+$ cd toybox<br />
+$ wget https://landley.net/bin/toolchains/latest/x86_64-linux-musl-cross.tar.xz<br />
+$ tar xvf x86_64-linux-musl-cross.tar.xz<br />
+$ LDFLAGS=--static CROSS_COMPILE=x86_64-linux-musl-cross/bin/x86_64-linux-musl- make defconfig toybox<br />
+$ ./toybox
+</p></blockquote>
+
+<!--#include file="footer.html" -->

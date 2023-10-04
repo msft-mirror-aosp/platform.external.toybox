@@ -301,13 +301,15 @@
 #undef FLAG_m
 #endif
 
-// chsh   s:
+// chsh   >1R:s:a
 #undef OPTSTR_chsh
-#define OPTSTR_chsh "s:"
+#define OPTSTR_chsh ">1R:s:a"
 #ifdef CLEANUP_chsh
 #undef CLEANUP_chsh
 #undef FOR_chsh
+#undef FLAG_a
 #undef FLAG_s
+#undef FLAG_R
 #endif
 
 // chvt   <1>1
@@ -455,6 +457,18 @@
 #undef FLAG_e
 #undef FLAG_u
 #undef FLAG_c
+#endif
+
+// csplit   <2skf:n#
+#undef OPTSTR_csplit
+#define OPTSTR_csplit "<2skf:n#"
+#ifdef CLEANUP_csplit
+#undef CLEANUP_csplit
+#undef FOR_csplit
+#undef FLAG_n
+#undef FLAG_f
+#undef FLAG_k
+#undef FLAG_s
 #endif
 
 // cut b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF] b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF]
@@ -978,14 +992,13 @@
 #undef FLAG_w
 #endif
 
-// fold   bsuw#<1
+// fold   bsw#<1=80
 #undef OPTSTR_fold
-#define OPTSTR_fold "bsuw#<1"
+#define OPTSTR_fold "bsw#<1=80"
 #ifdef CLEANUP_fold
 #undef CLEANUP_fold
 #undef FOR_fold
 #undef FLAG_w
-#undef FLAG_u
 #undef FLAG_s
 #undef FLAG_b
 #endif
@@ -1262,19 +1275,20 @@
 #undef FLAG_line_buffered
 #endif
 
-// groupadd   <1>2g#<0S
+// groupadd   <1>2R:g#<0>2147483647S
 #undef OPTSTR_groupadd
-#define OPTSTR_groupadd "<1>2g#<0S"
+#define OPTSTR_groupadd "<1>2R:g#<0>2147483647S"
 #ifdef CLEANUP_groupadd
 #undef CLEANUP_groupadd
 #undef FOR_groupadd
 #undef FLAG_S
 #undef FLAG_g
+#undef FLAG_R
 #endif
 
-// groupdel   <1>2
+// groupdel   <1>2?
 #undef OPTSTR_groupdel
-#define OPTSTR_groupdel "<1>2"
+#define OPTSTR_groupdel "<1>2?"
 #ifdef CLEANUP_groupdel
 #undef CLEANUP_groupdel
 #undef FOR_groupdel
@@ -1447,9 +1461,9 @@
 #undef FLAG_fast
 #endif
 
-// i2cdetect   >3aFlqry[!qr]
+// i2cdetect   >3aF#<0>63lqry[!qr][!Fl]
 #undef OPTSTR_i2cdetect
-#define OPTSTR_i2cdetect ">3aFlqry[!qr]"
+#define OPTSTR_i2cdetect ">3aF#<0>63lqry[!qr][!Fl]"
 #ifdef CLEANUP_i2cdetect
 #undef CLEANUP_i2cdetect
 #undef FOR_i2cdetect
@@ -1489,6 +1503,17 @@
 #undef FOR_i2cset
 #undef FLAG_y
 #undef FLAG_f
+#endif
+
+// i2ctransfer   <2vfy
+#undef OPTSTR_i2ctransfer
+#define OPTSTR_i2ctransfer "<2vfy"
+#ifdef CLEANUP_i2ctransfer
+#undef CLEANUP_i2ctransfer
+#undef FOR_i2ctransfer
+#undef FLAG_y
+#undef FLAG_f
+#undef FLAG_v
 #endif
 
 // iconv   cst:f:
@@ -1833,9 +1858,9 @@
 #undef FLAG_S
 #endif
 
-// ls (sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb] (sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]
+// ls (sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ] (sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ]
 #undef OPTSTR_ls
-#define OPTSTR_ls "(sort):(color):;(full-time)(show-control-chars)¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]"
+#define OPTSTR_ls "(sort):(color):;(full-time)(show-control-chars)ÿ(block-size)#=1024<1¡(group-directories-first)þZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-kÿ]"
 #ifdef CLEANUP_ls
 #undef CLEANUP_ls
 #undef FOR_ls
@@ -1874,6 +1899,7 @@
 #undef FLAG_Z
 #undef FLAG_X7E
 #undef FLAG_X21
+#undef FLAG_X7F
 #undef FLAG_show_control_chars
 #undef FLAG_full_time
 #undef FLAG_color
@@ -2364,9 +2390,9 @@
 #undef FLAG_d
 #endif
 
-// patch >2(no-backup-if-mismatch)(dry-run)F#g#fulp#d:i:Rs(quiet) >2(no-backup-if-mismatch)(dry-run)xF#g#fulp#d:i:Rs(quiet)
+// patch >2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv] >2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv]
 #undef OPTSTR_patch
-#define OPTSTR_patch ">2(no-backup-if-mismatch)(dry-run)F#g#fulp#d:i:Rs(quiet)"
+#define OPTSTR_patch ">2(no-backup-if-mismatch)(dry-run)F#g#fulp#v(verbose)@d:i:Rs(quiet)[!sv]"
 #ifdef CLEANUP_patch
 #undef CLEANUP_patch
 #undef FOR_patch
@@ -2374,13 +2400,13 @@
 #undef FLAG_R
 #undef FLAG_i
 #undef FLAG_d
+#undef FLAG_v
 #undef FLAG_p
 #undef FLAG_l
 #undef FLAG_u
 #undef FLAG_f
 #undef FLAG_g
 #undef FLAG_F
-#undef FLAG_x
 #undef FLAG_dry_run
 #undef FLAG_no_backup_if_mismatch
 #endif
@@ -3447,6 +3473,25 @@
 #undef FLAG_s
 #endif
 
+// ts   ims
+#undef OPTSTR_ts
+#define OPTSTR_ts "ims"
+#ifdef CLEANUP_ts
+#undef CLEANUP_ts
+#undef FOR_ts
+#undef FLAG_s
+#undef FLAG_m
+#undef FLAG_i
+#endif
+
+// tsort   >1
+#undef OPTSTR_tsort
+#define OPTSTR_tsort ">1"
+#ifdef CLEANUP_tsort
+#undef CLEANUP_tsort
+#undef FOR_tsort
+#endif
+
 // tty   s
 #undef OPTSTR_tty
 #define OPTSTR_tty "s"
@@ -4139,7 +4184,9 @@
 #ifndef TT
 #define TT this.chsh
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_a (FORCED_FLAG<<0)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_chvt
@@ -4276,6 +4323,17 @@
 #define FLAG_e (FORCED_FLAG<<2)
 #define FLAG_u (FORCED_FLAG<<3)
 #define FLAG_c (FORCED_FLAG<<4)
+#endif
+
+#ifdef FOR_csplit
+#define CLEANUP_csplit
+#ifndef TT
+#define TT this.csplit
+#endif
+#define FLAG_n (FORCED_FLAG<<0)
+#define FLAG_f (FORCED_FLAG<<1)
+#define FLAG_k (FORCED_FLAG<<2)
+#define FLAG_s (FORCED_FLAG<<3)
 #endif
 
 #ifdef FOR_cut
@@ -4767,9 +4825,8 @@
 #define TT this.fold
 #endif
 #define FLAG_w (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_b (FORCED_FLAG<<3)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_b (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_free
@@ -5028,6 +5085,7 @@
 #endif
 #define FLAG_S (FORCED_FLAG<<0)
 #define FLAG_g (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_groupdel
@@ -5229,6 +5287,16 @@
 #endif
 #define FLAG_y (FORCED_FLAG<<0)
 #define FLAG_f (FORCED_FLAG<<1)
+#endif
+
+#ifdef FOR_i2ctransfer
+#define CLEANUP_i2ctransfer
+#ifndef TT
+#define TT this.i2ctransfer
+#endif
+#define FLAG_y (FORCED_FLAG<<0)
+#define FLAG_f (FORCED_FLAG<<1)
+#define FLAG_v (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_iconv
@@ -5583,10 +5651,11 @@
 #define FLAG_Z (1LL<<32)
 #define FLAG_X7E (1LL<<33)
 #define FLAG_X21 (1LL<<34)
-#define FLAG_show_control_chars (1LL<<35)
-#define FLAG_full_time (1LL<<36)
-#define FLAG_color (1LL<<37)
-#define FLAG_sort (1LL<<38)
+#define FLAG_X7F (1LL<<35)
+#define FLAG_show_control_chars (1LL<<36)
+#define FLAG_full_time (1LL<<37)
+#define FLAG_color (1LL<<38)
+#define FLAG_sort (1LL<<39)
 #endif
 
 #ifdef FOR_lsattr
@@ -6042,13 +6111,13 @@
 #define FLAG_R (1LL<<1)
 #define FLAG_i (1LL<<2)
 #define FLAG_d (1LL<<3)
-#define FLAG_p (1LL<<4)
-#define FLAG_l (1LL<<5)
-#define FLAG_u (1LL<<6)
-#define FLAG_f (1LL<<7)
-#define FLAG_g (1LL<<8)
-#define FLAG_F (1LL<<9)
-#define FLAG_x (FORCED_FLAG<<10)
+#define FLAG_v (1LL<<4)
+#define FLAG_p (1LL<<5)
+#define FLAG_l (1LL<<6)
+#define FLAG_u (1LL<<7)
+#define FLAG_f (1LL<<8)
+#define FLAG_g (1LL<<9)
+#define FLAG_F (1LL<<10)
 #define FLAG_dry_run (1LL<<11)
 #define FLAG_no_backup_if_mismatch (1LL<<12)
 #endif
@@ -7034,6 +7103,23 @@
 #endif
 #define FLAG_c (1LL<<0)
 #define FLAG_s (1LL<<1)
+#endif
+
+#ifdef FOR_ts
+#define CLEANUP_ts
+#ifndef TT
+#define TT this.ts
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_m (FORCED_FLAG<<1)
+#define FLAG_i (FORCED_FLAG<<2)
+#endif
+
+#ifdef FOR_tsort
+#define CLEANUP_tsort
+#ifndef TT
+#define TT this.tsort
+#endif
 #endif
 
 #ifdef FOR_tty

@@ -52,6 +52,7 @@ test_toy() {
   adb shell $dash_t "\
       export C=\"\$(which $toy)\"; \
       export CMDNAME=$toy; \
+      export TESTDIR=$tmp_dir; \
       export FILES=/data/local/tmp/toybox-tests/tests/files/ ; \
       export LANG=en_US.UTF-8; \
       export VERBOSE=1 ; \

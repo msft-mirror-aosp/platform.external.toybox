@@ -92,6 +92,7 @@ void show_help(FILE *out, int full);
 void check_help(char **arg);
 void toy_singleinit(struct toy_list *which, char *argv[]);
 void toy_init(struct toy_list *which, char *argv[]);
+void toy_exec_which(struct toy_list *which, char *argv[]);
 void toy_exec(char *argv[]);
 
 // Array of available commands
@@ -139,5 +140,5 @@ extern char **environ, *toybox_version, toybuf[4096], libbuf[4096];
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.9"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.10"TOYBOX_VENDOR
 #endif

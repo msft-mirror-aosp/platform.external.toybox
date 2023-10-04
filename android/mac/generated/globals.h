@@ -322,6 +322,12 @@ struct hwclock_data {
   char *f;
 };
 
+// toys/other/i2ctools.c
+
+struct i2ctools_data {
+  long F;
+};
+
 // toys/other/ionice.c
 
 struct ionice_data {
@@ -414,7 +420,7 @@ struct nbd_client_data {
 // toys/other/nsenter.c
 
 struct nsenter_data {
-  char *UupnmiC[6];
+  char *UupnmiC[7];
   long t;
 };
 
@@ -631,7 +637,7 @@ struct brctl_data {
 // toys/pending/chsh.c
 
 struct chsh_data {
-  char *s;
+  char *s, *R;
 };
 
 // toys/pending/crond.c
@@ -653,19 +659,17 @@ struct crontab_data {
   char *cdir;
 };
 
-// toys/pending/dd.c
+// toys/pending/csplit.c
 
-struct dd_data {
-  int show_xfer, show_records;
-  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
-  char *buff;
-  struct {
-    char *name, *bp;
-    int fd;
-    long sz, count;
-    unsigned long long offset;
-  } in, out;
-  unsigned conv, iflag, oflag;
+struct csplit_data {
+  long n;
+  char *f;
+
+  size_t indx, findx, lineno;
+  char *filefmt, *prefix;
+  // Variables the context checker need to track between lines
+  size_t btc, tmp;
+  int offset, withld, inf;
 };
 
 // toys/pending/dhcp.c
@@ -732,9 +736,7 @@ struct dumpleases_data {
 // toys/pending/expr.c
 
 struct expr_data {
-  char **tok; // current token, not on the stack since recursive calls mutate it
-
-  char *refree;
+  char **tok, *delete;
 };
 
 // toys/pending/fdisk.c
@@ -744,12 +746,6 @@ struct fdisk_data {
   long sectors;
   long heads;
   long cylinders;
-};
-
-// toys/pending/fold.c
-
-struct fold_data {
-  int width;
 };
 
 // toys/pending/fsck.c
@@ -802,7 +798,8 @@ struct git_data {
 // toys/pending/groupadd.c
 
 struct groupadd_data {
-  long gid;
+  long g;
+  char *R;
 };
 
 // toys/pending/hexdump.c
@@ -1108,7 +1105,7 @@ struct tftpd_data {
 // toys/pending/tr.c
 
 struct tr_data {
-  short map[256]; //map of chars
+  short *map;
   int len1, len2;
 };
 
@@ -1232,12 +1229,6 @@ struct chmod_data {
   char *mode;
 };
 
-// toys/posix/cksum.c
-
-struct cksum_data {
-  unsigned crc_table[256];
-};
-
 // toys/posix/cmp.c
 
 struct cmp_data {
@@ -1294,6 +1285,14 @@ struct date_data {
   unsigned nano;
 };
 
+// toys/posix/dd.c
+
+struct dd_data {
+  // Display fields
+  int show_xfer, show_records;
+  unsigned long long bytes, in_full, in_part, out_full, out_part, start;
+};
+
 // toys/posix/df.c
 
 struct df_data {
@@ -1344,6 +1343,12 @@ struct find_data {
   char *start;
 };
 
+// toys/posix/fold.c
+
+struct fold_data {
+  long w;
+};
+
 // toys/posix/grep.c
 
 struct grep_data {
@@ -1354,7 +1359,7 @@ struct grep_data {
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
   int found, tried, delim;
-  struct arg_list *fixed[256];
+  struct arg_list **fixed;
 };
 
 // toys/posix/head.c
@@ -1403,7 +1408,7 @@ struct logger_data {
 // toys/posix/ls.c
 
 struct ls_data {
-  long w, l;
+  long w, l, block_size;
   char *color, *sort;
 
   struct dirtree *files, *singledir;
@@ -1469,7 +1474,7 @@ struct paste_data {
 
 struct patch_data {
   char *i, *d;
-  long p, g, F;
+  long v, p, g, F;
 
   void *current_hunk;
   long oldline, oldlen, newline, newlen, linenum, outnum;
@@ -1704,6 +1709,7 @@ extern union global_union {
 	struct gpiod_data gpiod;
 	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
+	struct i2ctools_data i2ctools;
 	struct ionice_data ionice;
 	struct login_data login;
 	struct losetup_data losetup;
@@ -1745,7 +1751,7 @@ extern union global_union {
 	struct chsh_data chsh;
 	struct crond_data crond;
 	struct crontab_data crontab;
-	struct dd_data dd;
+	struct csplit_data csplit;
 	struct dhcp_data dhcp;
 	struct dhcp6_data dhcp6;
 	struct dhcpd_data dhcpd;
@@ -1753,7 +1759,6 @@ extern union global_union {
 	struct dumpleases_data dumpleases;
 	struct expr_data expr;
 	struct fdisk_data fdisk;
-	struct fold_data fold;
 	struct fsck_data fsck;
 	struct getfattr_data getfattr;
 	struct getopt_data getopt;
@@ -1790,18 +1795,19 @@ extern union global_union {
 	struct cal_data cal;
 	struct chgrp_data chgrp;
 	struct chmod_data chmod;
-	struct cksum_data cksum;
 	struct cmp_data cmp;
 	struct cp_data cp;
 	struct cpio_data cpio;
 	struct cut_data cut;
 	struct date_data date;
+	struct dd_data dd;
 	struct df_data df;
 	struct du_data du;
 	struct env_data env;
 	struct expand_data expand;
 	struct file_data file;
 	struct find_data find;
+	struct fold_data fold;
 	struct grep_data grep;
 	struct head_data head;
 	struct iconv_data iconv;
