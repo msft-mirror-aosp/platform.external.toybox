@@ -748,12 +748,6 @@ struct fdisk_data {
   long cylinders;
 };
 
-// toys/pending/fold.c
-
-struct fold_data {
-  int width;
-};
-
 // toys/pending/fsck.c
 
 struct fsck_data {
@@ -1349,6 +1343,12 @@ struct find_data {
   char *start;
 };
 
+// toys/posix/fold.c
+
+struct fold_data {
+  long w;
+};
+
 // toys/posix/grep.c
 
 struct grep_data {
@@ -1759,7 +1759,6 @@ extern union global_union {
 	struct dumpleases_data dumpleases;
 	struct expr_data expr;
 	struct fdisk_data fdisk;
-	struct fold_data fold;
 	struct fsck_data fsck;
 	struct getfattr_data getfattr;
 	struct getopt_data getopt;
@@ -1808,6 +1807,7 @@ extern union global_union {
 	struct expand_data expand;
 	struct file_data file;
 	struct find_data find;
+	struct fold_data fold;
 	struct grep_data grep;
 	struct head_data head;
 	struct iconv_data iconv;

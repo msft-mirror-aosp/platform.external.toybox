@@ -992,14 +992,13 @@
 #undef FLAG_w
 #endif
 
-// fold   bsuw#<1
+// fold   bsw#<1=80
 #undef OPTSTR_fold
-#define OPTSTR_fold "bsuw#<1"
+#define OPTSTR_fold "bsw#<1=80"
 #ifdef CLEANUP_fold
 #undef CLEANUP_fold
 #undef FOR_fold
 #undef FLAG_w
-#undef FLAG_u
 #undef FLAG_s
 #undef FLAG_b
 #endif
@@ -4826,9 +4825,8 @@
 #define TT this.fold
 #endif
 #define FLAG_w (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_b (FORCED_FLAG<<3)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_b (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_free
