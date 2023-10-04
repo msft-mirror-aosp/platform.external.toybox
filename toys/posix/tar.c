@@ -284,7 +284,8 @@ static int add_to_tar(struct dirtree *node)
     if (S_ISDIR(st->st_mode) && !node->again) {
       free(name);
 
-      return DIRTREE_BREADTH;
+      return DIRTREE_BREADTH|DIRTREE_SYMFOLLOW*FLAG(h);
+
     } else if ((node->again&DIRTREE_BREADTH) && node->child) {
       struct dirtree *dt, **sort = xmalloc(sizeof(void *)*node->extra);
 
@@ -343,7 +344,7 @@ static int add_to_tar(struct dirtree *node)
 
   // Are there hardlinks to a non-directory entry?
   lnk = 0;
-  if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
+  if ((st->st_nlink>1 || FLAG(h)) && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
     for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
     if (i != TT.hlc) lnk = TT.hlx[i].arg;
