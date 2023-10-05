@@ -1,27 +1,26 @@
 <html><head><title>Toybox quick start</title>
 <!--#include file="header.html" -->
 
-<h2>Current release <a href=https://landley.net/toybox/news.html>0.8.10</a> (July 30, 2023)</a></h2>
+<p>Toybox is a single executable implementing <a href=help.html>over
+two hundred</a> different Linux command line utilities. By default it
+uses its filename to determine which command to run, so it can be installed
+with symlinks like "<b>ln -s toybox sed</b>" to put all the commands into
+the search $PATH. The special name "<b>toybox</b>" uses its first argument
+as the command to run, ala "<b>toybox df -a</b>", so you can use it without
+installing it. Running "<b>toybox</b>" with no arguments lists the available
+commands.</p>
 
-<p>Toybox combines many common Linux command line utilities together into
-a single <a href=license.html>BSD-licensed</a> executable. It's simple, small, fast, and reasonably
-standards-compliant (<a href=http://opengroup.org/onlinepubs/9699919799>POSIX-2008</a> and <a href=http://refspecs.linuxfoundation.org/LSB_4.1.0>LSB 4.1</a>).</p>
-
-<p>The filename tells toybox which command to run, so
-it's commonly installed with sylinks like "<b>ln -s toybox sed</b>".
-The name "<b>toybox</b>" uses its first argument as the command to run, ala
-"<b>./toybox df -a</b>", and running "<b>toybox</b>" with no arguments lists
-the available commands, currently:</p>
-
-<blockquote><p>
-<!--#include file="commands.html" -->
-</p></blockquote>
-
-<p>You can get --help for most commands (ala <b>sed --help</b>), and ask toybox
-for --help about commands (even ones like <b>true</b> or <b>test</b>
-that don't take a --help argument) with either the "<b>help</b>" command
-or "<b>toybox --help test</b>". Run "<b>toybox --help</b>" to see general help
-about toybox.</p>
+<p>Each toybox command has built-in <a href=help.html>documentation</a>,
+which you can read in three different ways:</p>
+<ol>
+<li>most commands accept --help and --version arguments (ala <b>sed --help</b>),
+although some (such as <b>true</b> and <b>false</b>) ignore all arguments.</li>
+<li>toybox has a "<b>help</b>" command (ala <b>help sed</b> or
+<b>toybox help sed</b>).</li>
+<li><b>toybox --help command</b> lets you and ask toybox
+for --help about commands. Run "<b>toybox --help</b>" with no other arguments
+to see <a href=help.html#toybox>general help</a> about toybox.</li>
+</ol>
 
 <p>You can download a <a href=https://landley.net/bin/toybox/latest>toybox
 binary</a> and try it out like so:</p>
@@ -37,10 +36,10 @@ $ ./toybox ls -l --color
 
 <blockquote><p>
 $ mkdir newdir<br />
-$ mv toybox newdir<br />
-$ for i in $(newdir/toybox); do ln -s toybox $i; done<br />
+$ mv toybox newdir/<br />
+$ for i in $(newdir/toybox); do ln -s toybox newdir/$i; done<br />
 $ export PATH="$PWD/newdir:$PATH"<br />
-ls --help
+$ ls --help
 </p></blockquote>
 
 <p>To compile toybox from source:</p>
@@ -53,10 +52,12 @@ $ ./toybox<br />
 $ make tests<br />
 </p></blockquote>
 
-<p>It has "<b>make menuconfig</b>" like the kernel (and clean, distclean,
-allnoconfig, etc), see "<b>make help</b>" for more options.
-The distribited binaries are statically linked against musl-libc to
-provide a portable executable without external userspace dependencies.
+<p>Toybox's build has "<b>make menuconfig</b>" like the kernel (and the
+usual targets: clean, distclean, allnoconfig...), run "<b>make help</b>"
+to list more options.</p>
+
+<p>The binaries distributed on the website are statically linked against musl-libc
+to provide a portable executable without external userspace dependencies.
 To reproduce that:</p>
 
 <blockquote><p>
@@ -64,8 +65,14 @@ $ git clone https://github.com/landley/toybox<br />
 $ cd toybox<br />
 $ wget https://landley.net/bin/toolchains/latest/x86_64-linux-musl-cross.tar.xz<br />
 $ tar xvf x86_64-linux-musl-cross.tar.xz<br />
-$ LDFLAGS=--static CROSS_COMPILE=CROSS_COMPILE=x86_64-linux-musl-cross/bin/x86_64-linux-musl- make defconfig toybox<br />
+$ LDFLAGS=--static CROSS_COMPILE=x86_64-linux-musl-cross/bin/x86_64-linux-musl- make defconfig toybox<br />
 $ ./toybox
 </p></blockquote>
+
+<p>You can also build individual toybox commands as standalone executables,
+either by name ("<b>make sed</b>") or using the "<b>make change</b>" target (as in change
+for a $20) to build all of them at once. This is much less efficient than
+the default build, the individual commands add up to around ten times the
+size of the equivalent all-in-one toybox binary.</p>
 
 <!--#include file="footer.html" -->

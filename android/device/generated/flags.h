@@ -301,13 +301,15 @@
 #undef FLAG_m
 #endif
 
-// chsh   s:
+// chsh   >1R:s:a
 #undef OPTSTR_chsh
-#define OPTSTR_chsh "s:"
+#define OPTSTR_chsh ">1R:s:a"
 #ifdef CLEANUP_chsh
 #undef CLEANUP_chsh
 #undef FOR_chsh
+#undef FLAG_a
 #undef FLAG_s
+#undef FLAG_R
 #endif
 
 // chvt   <1>1
@@ -455,6 +457,18 @@
 #undef FLAG_e
 #undef FLAG_u
 #undef FLAG_c
+#endif
+
+// csplit   <2skf:n#
+#undef OPTSTR_csplit
+#define OPTSTR_csplit "<2skf:n#"
+#ifdef CLEANUP_csplit
+#undef CLEANUP_csplit
+#undef FOR_csplit
+#undef FLAG_n
+#undef FLAG_f
+#undef FLAG_k
+#undef FLAG_s
 #endif
 
 // cut b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF] b*|c*|f*|F(regex-fields)*|C*|O(output-delimiter):d:sD(allow-duplicates)n[!cbfF]
@@ -978,14 +992,13 @@
 #undef FLAG_w
 #endif
 
-// fold   bsuw#<1
+// fold   bsw#<1=80
 #undef OPTSTR_fold
-#define OPTSTR_fold "bsuw#<1"
+#define OPTSTR_fold "bsw#<1=80"
 #ifdef CLEANUP_fold
 #undef CLEANUP_fold
 #undef FOR_fold
 #undef FLAG_w
-#undef FLAG_u
 #undef FLAG_s
 #undef FLAG_b
 #endif
@@ -1262,19 +1275,20 @@
 #undef FLAG_line_buffered
 #endif
 
-// groupadd   <1>2g#<0S
+// groupadd   <1>2R:g#<0>2147483647S
 #undef OPTSTR_groupadd
-#define OPTSTR_groupadd "<1>2g#<0S"
+#define OPTSTR_groupadd "<1>2R:g#<0>2147483647S"
 #ifdef CLEANUP_groupadd
 #undef CLEANUP_groupadd
 #undef FOR_groupadd
 #undef FLAG_S
 #undef FLAG_g
+#undef FLAG_R
 #endif
 
-// groupdel   <1>2
+// groupdel   <1>2?
 #undef OPTSTR_groupdel
-#define OPTSTR_groupdel "<1>2"
+#define OPTSTR_groupdel "<1>2?"
 #ifdef CLEANUP_groupdel
 #undef CLEANUP_groupdel
 #undef FOR_groupdel
@@ -3459,6 +3473,25 @@
 #undef FLAG_s
 #endif
 
+// ts   ims
+#undef OPTSTR_ts
+#define OPTSTR_ts "ims"
+#ifdef CLEANUP_ts
+#undef CLEANUP_ts
+#undef FOR_ts
+#undef FLAG_s
+#undef FLAG_m
+#undef FLAG_i
+#endif
+
+// tsort   >1
+#undef OPTSTR_tsort
+#define OPTSTR_tsort ">1"
+#ifdef CLEANUP_tsort
+#undef CLEANUP_tsort
+#undef FOR_tsort
+#endif
+
 // tty s s
 #undef OPTSTR_tty
 #define OPTSTR_tty "s"
@@ -4151,7 +4184,9 @@
 #ifndef TT
 #define TT this.chsh
 #endif
-#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_a (FORCED_FLAG<<0)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_chvt
@@ -4288,6 +4323,17 @@
 #define FLAG_e (FORCED_FLAG<<2)
 #define FLAG_u (FORCED_FLAG<<3)
 #define FLAG_c (FORCED_FLAG<<4)
+#endif
+
+#ifdef FOR_csplit
+#define CLEANUP_csplit
+#ifndef TT
+#define TT this.csplit
+#endif
+#define FLAG_n (FORCED_FLAG<<0)
+#define FLAG_f (FORCED_FLAG<<1)
+#define FLAG_k (FORCED_FLAG<<2)
+#define FLAG_s (FORCED_FLAG<<3)
 #endif
 
 #ifdef FOR_cut
@@ -4779,9 +4825,8 @@
 #define TT this.fold
 #endif
 #define FLAG_w (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_s (FORCED_FLAG<<2)
-#define FLAG_b (FORCED_FLAG<<3)
+#define FLAG_s (FORCED_FLAG<<1)
+#define FLAG_b (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_free
@@ -5040,6 +5085,7 @@
 #endif
 #define FLAG_S (FORCED_FLAG<<0)
 #define FLAG_g (FORCED_FLAG<<1)
+#define FLAG_R (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_groupdel
@@ -7057,6 +7103,23 @@
 #endif
 #define FLAG_c (1LL<<0)
 #define FLAG_s (1LL<<1)
+#endif
+
+#ifdef FOR_ts
+#define CLEANUP_ts
+#ifndef TT
+#define TT this.ts
+#endif
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_m (FORCED_FLAG<<1)
+#define FLAG_i (FORCED_FLAG<<2)
+#endif
+
+#ifdef FOR_tsort
+#define CLEANUP_tsort
+#ifndef TT
+#define TT this.tsort
+#endif
 #endif
 
 #ifdef FOR_tty
