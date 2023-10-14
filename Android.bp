@@ -580,3 +580,21 @@ sh_test {
         "scripts/runtest.sh",
     ],
 }
+
+cc_test {
+    name: "toybox-gtests",
+    compile_multilib: "first",
+    srcs: [
+        "toybox-gtests.cpp",
+    ],
+    static_libs: [
+        "libbase",
+        "liblog",
+    ],
+    test_suites: ["device-tests"],
+    require_root: true,
+    data: [
+        "tests/**/*",
+        "scripts/runtest.sh",
+    ],
+}
