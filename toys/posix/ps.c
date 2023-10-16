@@ -45,12 +45,12 @@
  * TODO: pgrep -f only searches the amount of cmdline that fits in toybuf.
  * TODO: pgrep qemu-system-i386 never matches because one char too long
 
-USE_PS(NEWTOY(ps, "k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]", TOYFLAG_BIN|TOYFLAG_LOCALE))
+USE_PS(NEWTOY(ps, "k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]", TOYFLAG_BIN))
 // stayroot because iotop needs root to read other process' proc/$$/io
 // TOP and IOTOP have a large common option block used for common processing,
 // the default values are different but the flags are in the same order.
-USE_TOP(NEWTOY(top, ">0O*h" "Hk*o*p*u*s#<1d%<100=3000m#n#<1bq[!oO]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LOCALE))
-USE_IOTOP(NEWTOY(iotop, ">0AaKO" "Hk*o*p*u*s#<1=7d%<100=3000m#n#<1bq", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_STAYROOT|TOYFLAG_LOCALE))
+USE_TOP(NEWTOY(top, ">0O*h" "Hk*o*p*u*s#<1d%<100=3000m#n#<1bq[!oO]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_IOTOP(NEWTOY(iotop, ">0AaKO" "Hk*o*p*u*s#<1=7d%<100=3000m#n#<1bq", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_STAYROOT))
 USE_PGREP(NEWTOY(pgrep, "?cld:u*U*t*s*P*g*G*fnovxL:[-no]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_PKILL(NEWTOY(pkill,    "?Vu*U*t*s*P*g*G*fnovxl:[-no]", TOYFLAG_USR|TOYFLAG_BIN))
 
@@ -981,7 +981,7 @@ static int get_ps(struct dirtree *new)
 
       // Store end of argv[0] so ARGS and CMDLINE can differ.
       // We do it for each file string slot but last is cmdline, which sticks.
-      slot[SLOT_argv0len] = temp ? temp : len;  // Position of _first_ NUL
+      slot[SLOT_argv0len] = temp ? : len;  // Position of _first_ NUL
     }
 
     // Each case above calculated/retained len, so we don't need to re-strlen.
@@ -1166,8 +1166,9 @@ static char *parse_rest(void *data, char *str, int len)
     if (pl==&TT.ss && ll[pl->len]==0) ll[pl->len] = getsid(0);
   }
 
+  // PID can't be zero but SID can be 0 before the init task calls setsid().
   if (pl==&TT.pp || pl==&TT.ss) {
-    if (num && ll[pl->len]>0) {
+    if (num && ll[pl->len]>-(pl==&TT.ss)) {
       pl->len++;
 
       return 0;

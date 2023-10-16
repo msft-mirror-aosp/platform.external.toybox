@@ -540,7 +540,7 @@ struct timeout_data {
 
   struct pollfd pfd;
   sigjmp_buf sj;
-  int fds[2], pid;
+  int fds[2], pid, rc;
 };
 
 // toys/other/truncate.c
@@ -637,7 +637,7 @@ struct brctl_data {
 // toys/pending/chsh.c
 
 struct chsh_data {
-  char *s;
+  char *s, *R;
 };
 
 // toys/pending/crond.c
@@ -657,6 +657,19 @@ struct crond_data {
 struct crontab_data {
   char *user;
   char *cdir;
+};
+
+// toys/pending/csplit.c
+
+struct csplit_data {
+  long n;
+  char *f;
+
+  size_t indx, findx, lineno;
+  char *filefmt, *prefix;
+  // Variables the context checker need to track between lines
+  size_t btc, tmp;
+  int offset, withld, inf;
 };
 
 // toys/pending/dhcp.c
@@ -723,9 +736,7 @@ struct dumpleases_data {
 // toys/pending/expr.c
 
 struct expr_data {
-  char **tok; // current token, not on the stack since recursive calls mutate it
-
-  char *refree;
+  char **tok, *delete;
 };
 
 // toys/pending/fdisk.c
@@ -735,12 +746,6 @@ struct fdisk_data {
   long sectors;
   long heads;
   long cylinders;
-};
-
-// toys/pending/fold.c
-
-struct fold_data {
-  int width;
 };
 
 // toys/pending/fsck.c
@@ -793,7 +798,8 @@ struct git_data {
 // toys/pending/groupadd.c
 
 struct groupadd_data {
-  long gid;
+  long g;
+  char *R;
 };
 
 // toys/pending/hexdump.c
@@ -1099,7 +1105,7 @@ struct tftpd_data {
 // toys/pending/tr.c
 
 struct tr_data {
-  short map[256]; //map of chars
+  short *map;
   int len1, len2;
 };
 
@@ -1223,12 +1229,6 @@ struct chmod_data {
   char *mode;
 };
 
-// toys/posix/cksum.c
-
-struct cksum_data {
-  unsigned crc_table[256];
-};
-
 // toys/posix/cmp.c
 
 struct cmp_data {
@@ -1343,6 +1343,12 @@ struct find_data {
   char *start;
 };
 
+// toys/posix/fold.c
+
+struct fold_data {
+  long w;
+};
+
 // toys/posix/grep.c
 
 struct grep_data {
@@ -1353,7 +1359,7 @@ struct grep_data {
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
   int found, tried, delim;
-  struct arg_list *fixed[256];
+  struct arg_list **fixed;
 };
 
 // toys/posix/head.c
@@ -1745,6 +1751,7 @@ extern union global_union {
 	struct chsh_data chsh;
 	struct crond_data crond;
 	struct crontab_data crontab;
+	struct csplit_data csplit;
 	struct dhcp_data dhcp;
 	struct dhcp6_data dhcp6;
 	struct dhcpd_data dhcpd;
@@ -1752,7 +1759,6 @@ extern union global_union {
 	struct dumpleases_data dumpleases;
 	struct expr_data expr;
 	struct fdisk_data fdisk;
-	struct fold_data fold;
 	struct fsck_data fsck;
 	struct getfattr_data getfattr;
 	struct getopt_data getopt;
@@ -1789,7 +1795,6 @@ extern union global_union {
 	struct cal_data cal;
 	struct chgrp_data chgrp;
 	struct chmod_data chmod;
-	struct cksum_data cksum;
 	struct cmp_data cmp;
 	struct cp_data cp;
 	struct cpio_data cpio;
@@ -1802,6 +1807,7 @@ extern union global_union {
 	struct expand_data expand;
 	struct file_data file;
 	struct find_data find;
+	struct fold_data fold;
 	struct grep_data grep;
 	struct head_data head;
 	struct iconv_data iconv;

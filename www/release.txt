@@ -27,6 +27,8 @@ binaries
 
   scp www/{news,help,status}.html landley.net:landley.net/toybox/
 
+Edit version in header.html
+
 roadmap.html
 code.html
 Inform mailing list (with link to https://landley.net/toybox)
