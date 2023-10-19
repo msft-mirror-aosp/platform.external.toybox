@@ -4,6 +4,7 @@
  */
 
 #include <dirent.h>
+#include <paths.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -25,7 +26,13 @@
 #include <android-base/strings.h>
 #include <android-base/test_utils.h>
 
-const std::string kShell = "/bin/bash";
+const std::string kShell =
+#ifdef __ANDROID__
+  _PATH_BSHELL;
+#else
+  // /bin/sh doesn't work when running on the host, the tests require /bin/bash
+  "/bin/bash";
+#endif
 
 static void MkdirOrFatal(std::string dir) {
   int ret = mkdir(dir.c_str(), 0777);
@@ -41,12 +48,12 @@ static std::string SystemStdoutOrFatal(std::string cmd) {
   return android::base::Trim(stdout_str.str());
 }
 
-// RunTest sets up the environemnt and then execs the toybox test scripts for a single toy.
+// ExecTest sets up the environemnt and then execs the toybox test scripts for a single toy.
 // It is run in a subprocess as a gtest death test.
-static void RunTest(std::string toy,
-                    std::string toy_path,
-                    std::string test_file,
-                    std::string temp_dir)  {
+static void ExecTest(std::string toy,
+                     std::string toy_path,
+                     std::string test_file,
+                     std::string temp_dir)  {
   std::string test_binary_dir = android::base::GetExecutableDirectory();
 
   std::string working_dir = temp_dir + "/" + toy;
@@ -88,7 +95,7 @@ static void RunTest(std::string toy,
   sigprocmask(SIG_UNBLOCK, &signal_set, nullptr);
 
   execv(args[0], const_cast<char**>(args.data()));
-  FAIL() << "Failed to exec " << kShell << " -c '" << test_cmd << "'";
+  FAIL() << "Failed to exec " << kShell << " -c '" << test_cmd << "'" << strerror(errno);
 }
 
 class ToyboxTest : public testing::Test {
@@ -162,7 +169,8 @@ void ToyboxTest::TestBody() {
     }
   } else {
     // child
-    RunTest(toy_, toy_path, test_file_, temp_dir.path);
+    ExecTest(toy_, toy_path, test_file_, temp_dir.path);
+    _exit(1);
   }
 }
 
