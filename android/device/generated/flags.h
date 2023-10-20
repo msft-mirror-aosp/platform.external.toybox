@@ -363,12 +363,13 @@
 #undef FLAG_3
 #endif
 
-// count    
+// count   <0>0l
 #undef OPTSTR_count
-#define OPTSTR_count 0
+#define OPTSTR_count "<0>0l"
 #ifdef CLEANUP_count
 #undef CLEANUP_count
 #undef FOR_count
+#undef FLAG_l
 #endif
 
 // cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]
@@ -4240,6 +4241,7 @@
 #ifndef TT
 #define TT this.count
 #endif
+#define FLAG_l (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_cp
