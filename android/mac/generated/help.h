@@ -326,7 +326,7 @@
 
 #define HELP_devmem "usage: devmem ADDR [WIDTH [DATA]]\n\nRead/write physical address. WIDTH is 1, 2, 4, or 8 bytes (default 4).\nPrefix ADDR with 0x for hexadecimal, output is in same base as address."
 
-#define HELP_count "usage: count\n\nCopy stdin to stdout, displaying simple progress indicator to stderr."
+#define HELP_count "usage: count [-l]\n\n-l	Long output (total bytes, human readable, transfer rate, elapsed time)\n\nCopy stdin to stdout, displaying simple progress indicator to stderr."
 
 #define HELP_clear "Clear the screen."
 
@@ -360,7 +360,7 @@
 
 #define HELP_xzcat "usage: xzcat [filename...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
 
-#define HELP_vi "usage: vi [-s SCRIPT] FILE\n\nVisual text editor. Predates keyboards with standardized cursor keys.\nIf you don't know how to use it, hit the ESC key, type :q! and press ENTER.\n\n-s	run SCRIPT of commands on FILE\n\nvi mode commands:\n\n  [count][cmd][motion]\n  cmd: c d y\n  motion: 0 b e G H h j k L l M w $ f F\n\n  [count][cmd]\n  cmd: D I J O n o p x dd yy\n\n  [cmd]\n  cmd: / ? : A a i CTRL_D CTRL_B CTRL_E CTRL_F CTRL_Y \\e \\b\n\nex mode commands:\n\n  [cmd]\n  \\b \\e \\n w wq q! 'set list' 'set nolist' d $ %"
+#define HELP_vi "usage: vi [-s SCRIPT] FILE\n\nVisual text editor. Predates keyboards with standardized cursor keys.\nIf you don't know how to use it, hit the ESC key, type :q! and press ENTER.\n\n-s	run SCRIPT of commands on FILE\n\nvi mode commands:\n\n  [count][cmd][motion]\n  cmd: c d y\n  motion: 0 b e G H h j k L l M w $ f F\n\n  [count][cmd]\n  cmd: D I J O n o p x dd yy\n\n  [cmd]\n  cmd: / ? : A a i CTRL_D CTRL_B CTRL_E CTRL_F CTRL_Y \\e \\b\n\nex mode commands:\n\n  [cmd]\n  \\b \\e \\n w wq q! 'set list' 'set nolist' d $ % g v"
 
 #define HELP_userdel "usage: userdel [-r] USER\nusage: deluser [-r] USER\n\nDelete USER from the SYSTEM\n\n-r	remove home directory"
 
@@ -628,7 +628,7 @@
 
 #define HELP_head "usage: head [-n NUM] [FILE...]\n\nCopy first lines from files to stdout. If no files listed, copy from\nstdin. Filename \"-\" is a synonym for stdin.\n\n-n	Number of lines to copy\n-c	Number of bytes to copy\n-q	Never print headers\n-v	Always print headers"
 
-#define HELP_grep "usage: grep [-EFrivwcloqsHbhn] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE] [FILE]...\n\nShow lines matching regular expressions. If no -e, first argument is\nregular expression to match. With no files (or \"-\" filename) read stdin.\nReturns 0 if matched, 1 if no match found, 2 for command errors.\n\n-e  Regex to match. (May be repeated.)\n-f  File listing regular expressions to match.\n\nfile search:\n-r  Recurse into subdirectories (defaults FILE to \".\")\n-R  Recurse into subdirectories and symlinks to directories\n-M  Match filename pattern (--include)\n-S  Skip filename pattern (--exclude)\n--exclude-dir=PATTERN  Skip directory pattern\n-I  Ignore binary files\n\nmatch type:\n-A  Show NUM lines after     -B  Show NUM lines before match\n-C  NUM lines context (A+B)  -E  extended regex syntax\n-F  fixed (literal match)    -a  always text (not binary)\n-i  case insensitive         -m  match MAX many lines\n-v  invert match             -w  whole word (implies -E)\n-x  whole line               -z  input NUL terminated\n\ndisplay modes: (default: matched line)\n-L  filenames with no match  -Z  output is NUL terminated\n-c  count of matching lines  -l  filenames with a match\n-o  only matching part       -q  quiet (errors only)\n-s  silent (no error msg)\n\noutput prefix (default: filename if checking more than 1 file)\n-H  force filename           -b  byte offset of match\n-h  hide filename            -n  line number of match"
+#define HELP_grep "usage: grep [-EFrivwcloqsHbhn] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE]... [FILE]...\n\nShow lines matching regular expressions. If no -e, first argument is\nregular expression to match. With no files (or \"-\" filename) read stdin.\nReturns 0 if matched, 1 if no match found, 2 for command errors.\n\n-e  Regex(es) to match.       -f  File(s) of regexes to match (1 per line).\n\nfile search:\n-r  Recurse into subdirs     -R  Recurse following symlinks\n-M  Match files (--include)  -S  Skip files (--exclude)\n-I  Ignore binary files      --exclude-dir=PATTERN  Skip directories\n\nmatch type:\n-A  Show NUM lines after     -B  Show NUM lines before match\n-C  NUM lines context (A+B)  -E  extended regex syntax\n-F  fixed (literal match)    -a  always text (not binary)\n-i  case insensitive         -m  match MAX many lines\n-v  invert match             -w  whole word (implies -E)\n-x  whole line               -z  input NUL terminated\n\ndisplay modes: (default: matched line)\n-L  filenames with no match  -Z  output is NUL terminated\n-c  count of matching lines  -l  filenames with a match\n-o  only matching part       -q  quiet (errors only)\n-s  silent (no error msg)\n\noutput prefix (default: filename if checking more than 1 file)\n-H  force filename           -b  byte offset of match\n-h  hide filename            -n  line number of match"
 
 #define HELP_getconf "usage: getconf -a [PATH] | -l | NAME [PATH]\n\nGet system configuration values. Values from pathconf(3) require a path.\n\n-a	Show all (defaults to \"/\" if no path given)\n-l	List available value names (grouped by source)"
 

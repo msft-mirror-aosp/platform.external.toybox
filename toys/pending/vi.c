@@ -33,7 +33,7 @@ config VI
     ex mode commands:
 
       [cmd]
-      \b \e \n w wq q! 'set list' 'set nolist' d $ %
+      \b \e \n w wq q! 'set list' 'set nolist' d $ % g v
 */
 #define FOR_vi
 #include "toys.h"
@@ -510,17 +510,20 @@ static size_t text_getline(char *dest, size_t offset, size_t max_len)
 // check big slices directly and just copy edge cases.
 // Also this is only line based search multiline
 // and regexec should be done instead.
-static size_t text_strstr(size_t offset, char *str)
+static size_t text_strstr(size_t offset, char *str, int dir)
 {
   size_t bytes, pos = offset;
   char *s = 0;
 
   do {
     bytes = text_getline(toybuf, pos, ARRAY_LEN(toybuf));
-    if (!bytes) pos++; //empty line
+    if (!bytes) pos += (dir ? 1 : -1); //empty line
     else if ((s = strstr(toybuf, str))) return pos+(s-toybuf);
-    else pos += bytes;
-  } while (pos < TT.filesize);
+    else {
+      if (!dir) pos -= bytes;
+      else pos += bytes;
+    }
+  } while (pos < (dir ? 0 : TT.filesize));
 
   return SIZE_MAX;
 }
@@ -839,9 +842,9 @@ static int vi_M(int count0, int count1, char *unused)
   return 1;
 }
 
-static int search_str(char *s)
+static int search_str(char *s, int direction)
 {
-  size_t pos = text_strstr(TT.cursor+1, s);
+  size_t pos = text_strstr(TT.cursor+1, s, direction);
 
   if (TT.last_search != s) {
     free(TT.last_search);
@@ -1197,7 +1200,13 @@ static int vi_join(char reg, int count0, int count1)
 
 static int vi_find_next(char reg, int count0, int count1)
 {
-  if (TT.last_search) search_str(TT.last_search);
+  if (TT.last_search) search_str(TT.last_search, 1);
+  return 1;
+}
+
+static int vi_find_prev(char reg, int count0, int count1)
+{
+  if (TT.last_search) search_str(TT.last_search, 0);
   return 1;
 }
 
@@ -1225,6 +1234,7 @@ struct vi_special_param {
   {"I", &vi_I},
   {"J", &vi_join},
   {"O", &vi_O},
+  {"N", &vi_find_prev},
   {"n", &vi_find_next},
   {"o", &vi_o},
   {"p", &vi_push},
@@ -1324,7 +1334,7 @@ static int run_vi_cmd(char *cmd)
   return 0;
 }
 
-// Page breaks while doing things like ":2,3d" unless we can call this
+
 static void draw_page();
 
 static int get_endline(void)
@@ -1346,10 +1356,8 @@ static int run_ex_cmd(char *cmd)
 {
   int startline = 1, ofst = 0, endline;
 
-  if (cmd[0] == '/') search_str(cmd+1);
-  else if (cmd[0] == '?') {
-    // TODO: backwards search.
-  } else if (cmd[0] == ':') {
+  if (*cmd == '/' || *cmd == '\?') search_str(cmd+1, *cmd == '/' ? 0 : 1);
+  else if (*cmd == ':') {
     if (cmd[1] == 'q') {
       if (cmd[2] != '!' && modified())
         show_error("Unsaved changes (\"q!\" to ignore)");
@@ -1368,61 +1376,55 @@ static int run_ex_cmd(char *cmd)
       TT.vi_mov_flag |= 0x30000000;
     }
 
-    else if (*(cmd+1) == 'd') {
+    else if (cmd[1] == 'd') {
       run_vi_cmd("dd");
-      run_vi_cmd("k");
-    } else if (*(cmd+1) == 'g') {
-      char *rgx = malloc(strlen(cmd));
-      int el = get_endline(), ln = 0;
+      cur_up(1, 1, 0);
+    } else if (cmd[1] == 'j') run_vi_cmd("J");
+    else if (cmd[1] == 'g' || cmd[1] == 'v') {
+      char *rgx = xmalloc(strlen(cmd));
+      int el = get_endline(), ln = 0, vorg = (cmd[1] == 'v' ? REG_NOMATCH : 0);
       regex_t rgxc;
-      if (!sscanf(cmd, ":g/%[^/]/%[^\ng]", rgx, cmd+1)) return 0;
-      if (regcomp(&rgxc, rgx, 0)) return 0;
+
+      if (!sscanf(cmd+2, "/%[^/]/%[^\ng]", rgx, cmd+1) ||
+          regcomp(&rgxc, rgx, 0)) goto gcleanup;
+
       cmd[0] = ':';
-      
+
       for (; ln < el; ln++) {
         run_vi_cmd("yy");
-        if (!regexec(&rgxc, TT.yank.data, 0, 0, 0)) run_ex_cmd(cmd);
-        run_vi_cmd("j");
+        if (regexec(&rgxc, TT.yank.data, 0, 0, 0) == vorg) run_ex_cmd(cmd);
+        cur_down(1, 1, 0);
       }
 
       // Reset Frame
-      ctrl_f();
-      draw_page();
-      ctrl_b();
+      TT.vi_mov_flag |= 0x30000000;
+gcleanup:
+      regfree(&rgxc); free(rgx);
     }
 
     // Line Ranges
-    else if (*(cmd+1) >= '0' && *(cmd+1) <= '9') {
+    else if (cmd[1] >= '0' && cmd[1] <= '9') {
       if (strstr(cmd, ",")) {
-        char *tcmd = xmalloc(strlen(cmd));
-
-        sscanf(cmd, ":%d,%d%[^\n]", &startline, &endline, tcmd+2);
-        cmd = tcmd;
+        sscanf(cmd, ":%d,%d%[^\n]", &startline, &endline, cmd+2);
         ofst = 1;
       } else run_vi_cmd(xmprintf("%dG", atoi(cmd+1)));
-    } else if (*(cmd+1) == '$') run_vi_cmd("G");
-    else if (*(cmd+1) == '%') {
-      startline = 1;
+    } else if (cmd[1] == '$') run_vi_cmd("G");
+    else if (cmd[1] == '%') {
       endline = get_endline();
       ofst = 1;
     } else show_error("unknown command '%s'",cmd+1);
 
     if (ofst) {
-      int cline;
+      int cline = TT.cur_row+1;
 
-      draw_page();
-      cline = TT.cur_row+1;
-      *(cmd+ofst) = ':';
-      run_vi_cmd(xmprintf("%dG", startline));
+      cmd[ofst] = ':';
       for (; startline <= endline; startline++) {
         run_ex_cmd(cmd+ofst);
-        run_vi_cmd("j");
+        cur_down(1, 1, 0);
       }
       run_vi_cmd(xmprintf("%dG", cline));
       // Screen Reset
-      ctrl_f();
-      draw_page();
-      ctrl_b();
+      TT.vi_mov_flag |= 0x30000000;
     }
   }
   return 0;

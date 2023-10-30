@@ -272,6 +272,13 @@ struct chrt_data {
   long p;
 };
 
+// toys/other/count.c
+
+struct count_data {
+  unsigned long long size, start;
+  unsigned tick, *slice;
+};
+
 // toys/other/dos2unix.c
 
 struct dos2unix_data {
@@ -1702,6 +1709,7 @@ extern union global_union {
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
+	struct count_data count;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
