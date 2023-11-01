@@ -500,18 +500,23 @@ cc_defaults {
     stl: "none",
 
     shared_libs: [
-        "libcrypto",
         "libz",
     ],
 
     target: {
         android: {
             shared_libs: [
+                "libcrypto",
                 "liblog",
                 "libprocessgroup",
                 "libselinux",
             ],
             symlinks: toybox_symlinks,
+        },
+        host: {
+            static_libs: [
+                "libcrypto",
+            ],
         },
     },
 }
@@ -575,6 +580,24 @@ sh_test {
     host_supported: true,
     device_supported: false,
     require_root:true,
+    data: [
+        "tests/**/*",
+        "scripts/runtest.sh",
+    ],
+}
+
+cc_test {
+    name: "toybox-gtests",
+    compile_multilib: "first",
+    srcs: [
+        "toybox-gtests.cpp",
+    ],
+    static_libs: [
+        "libbase",
+        "liblog",
+    ],
+    test_suites: ["device-tests"],
+    require_root: true,
     data: [
         "tests/**/*",
         "scripts/runtest.sh",

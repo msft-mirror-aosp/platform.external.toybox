@@ -17,36 +17,40 @@ config DEVMEM
 #define FOR_devmem
 #include "toys.h"
 
-unsigned long long atollu(char *str)
+unsigned long xatolu(char *str, int bytes)
 {
   char *end = str;
-  unsigned long long llu;
+  unsigned long lu;
 
   errno = 0;
-  llu = strtoull(str, &end, 0);
+  lu = strtoul(str, &end, 0);
+  // Report out of range values as errors rather than truncating.
+  if (errno == ERANGE || lu > (~0UL)>>(sizeof(long)-bytes)*8)
+    error_exit("%s>%d bytes", str, bytes);
   if (*end || errno) perror_exit("bad %s", str);
 
-  return llu;
+  return lu;
 }
 
 void devmem_main(void)
 {
   int writing = toys.optc == 3, page_size = sysconf(_SC_PAGESIZE), bytes = 4,fd;
-  unsigned long long data = 0, map_off, map_len, addr = atollu(*toys.optargs);
+  unsigned long data = 0, map_off, map_len,
+    addr = xatolu(*toys.optargs, sizeof(long));
+  char *sizes = sizeof(long)==8 ? "1248" : "124";
   void *map, *p;
 
   // WIDTH?
   if (toys.optc>1) {
     int i;
 
-    if ((i=stridx("1248", *toys.optargs[1]))==-1 || toys.optargs[1][1])
+    if ((i=stridx(sizes, *toys.optargs[1]))==-1 || toys.optargs[1][1])
       error_exit("bad width: %s", toys.optargs[1]);
     bytes = 1<<i;
   }
 
-  // DATA? Report out of range values as errors rather than truncating.
-  if (writing && (data = atollu(toys.optargs[2]))>(~0ULL)>>(64-8*bytes))
-    error_exit("%llx>%d bytes", data, bytes);
+  // DATA?
+  if (writing) data = xatolu(toys.optargs[2], bytes);
 
   // Map in just enough.
   if (CFG_TOYBOX_FORK) {
@@ -62,16 +66,16 @@ void devmem_main(void)
 
   // Not using peek()/poke() because registers care about size of read/write
   if (writing) {
-    if (bytes == 1) *(unsigned char *)p = data;
-    else if (bytes == 2) *(unsigned short *)p = data;
-    else if (bytes == 4) *(unsigned int *)p = data;
-    else if (bytes == 8) *(unsigned long long *)p = data;
+    if (bytes==1) *(char *)p = data;
+    else if (bytes==2) *(unsigned short *)p = data;
+    else if (bytes==4) *(unsigned int *)p = data;
+    else if (sizeof(long)==8 && bytes==8) *(unsigned long *)p = data;
   } else {
-    if (bytes == 1) data = *(unsigned char *)p;
-    else if (bytes == 2) data = *(unsigned short *)p;
-    else if (bytes == 4) data = *(unsigned int *)p;
-    else if (bytes == 8) data = *(unsigned long long *)p;
-    printf((!strchr(*toys.optargs, 'x')) ? "%0*lld\n" : "0x%0*llx\n",
+    if (bytes==1) data = *(char *)p;
+    else if (bytes==2) data = *(unsigned short *)p;
+    else if (bytes==4) data = *(unsigned int *)p;
+    else if (sizeof(long)==8 && bytes==8) data = *(unsigned long *)p;
+    printf((!strchr(*toys.optargs, 'x')) ? "%0*ld\n" : "0x%0*lx\n",
       bytes*2, data);
   }
 
