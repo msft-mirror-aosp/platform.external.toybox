@@ -500,18 +500,23 @@ cc_defaults {
     stl: "none",
 
     shared_libs: [
-        "libcrypto",
         "libz",
     ],
 
     target: {
         android: {
             shared_libs: [
+                "libcrypto",
                 "liblog",
                 "libprocessgroup",
                 "libselinux",
             ],
             symlinks: toybox_symlinks,
+        },
+        host: {
+            static_libs: [
+                "libcrypto",
+            ],
         },
     },
 }

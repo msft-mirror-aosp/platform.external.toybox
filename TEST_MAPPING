@@ -4,12 +4,10 @@
       "name": "toybox-tests"
     },
     {
-      "name": "aidl_integration_test"
-    }
-  ],
-  "postsubmit": [
-    {
       "name": "toybox-gtests"
+    },
+    {
+      "name": "aidl_integration_test"
     }
   ],
   "hwasan-postsubmit": [
