@@ -271,7 +271,6 @@ char *format_iso_time(char *buf, size_t len, struct timespec *ts);
 void loggit(int priority, char *format, ...);
 unsigned tar_cksum(void *data);
 int is_tar_header(void *pkt);
-char *elf_arch_name(int type);
 void octal_deslash(char *s);
 int smemcmp(char *one, char *two, unsigned long len);
 
@@ -282,6 +281,15 @@ int smemcmp(char *one, char *two, unsigned long len);
 int human_readable_long(char *buf, unsigned long long num, int dgt, int unit,
   int style);
 int human_readable(char *buf, unsigned long long num, int style);
+
+// elf.c
+
+char *elf_arch_name(int type);
+void elf_print_flags(int arch, int flags);
+
+// hash.c
+
+void hash_by_name(int fd, char *name, char *result);
 
 // env.c
 
@@ -359,6 +367,7 @@ char *unescape_url(char *str, int do_cut);
 // password.c
 int get_salt(char *salt, char *algo, int rand);
 int read_password(char *buff, int buflen, char *mesg);
+char **get_userline(char *filename, char *username);
 int update_password(char *filename, char *username, char *entry, int pos);
 
 // commas.c
