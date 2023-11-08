@@ -208,7 +208,7 @@
 
 #define HELP_readlink "usage: readlink FILE...\n\nWith no options, show what symlink points to, return error if not symlink.\n\nOptions for producing canonical paths (all symlinks/./.. resolved):\n\n-e	Canonical path to existing entry (fail if missing)\n-f	Full path (fail if directory missing)\n-m	Ignore missing entries, show where it would be\n-n	No trailing newline\n-q	Quiet (no error messages)\n-z	NUL instead of newline"
 
-#define HELP_readelf "usage: readelf [-adehlnSs] [-p SECTION] [-x SECTION] [file...]\n\nDisplays information about ELF files.\n\n-a	Equivalent to -dhlnSs\n-d	Show dynamic section\n-e	Headers (equivalent to -hlS)\n-h	Show ELF header\n-l	Show program headers\n-n	Show notes\n-p S	Dump strings found in named/numbered section\n-S	Show section headers\n-s	Show symbol tables (.dynsym and .symtab)\n-x S	Hex dump of named/numbered section\n\n--dyn-syms	Show just .dynsym symbol table"
+#define HELP_readelf "usage: readelf [-AadehlnSs] [-p SECTION] [-x SECTION] [file...]\n\nDisplays information about ELF files.\n\n-A	Show architecture-specific info\n-a	Equivalent to -AdhlnSs\n-d	Show dynamic section\n-e	Headers (equivalent to -hlS)\n-h	Show ELF header\n-l	Show program headers\n-n	Show notes\n-p S	Dump strings found in named/numbered section\n-S	Show section headers\n-s	Show symbol tables (.dynsym and .symtab)\n-x S	Hex dump of named/numbered section\n\n--dyn-syms	Show just .dynsym symbol table"
 
 #define HELP_readahead "usage: readahead FILE...\n\nPreload files into disk cache."
 
