@@ -462,10 +462,6 @@ cc_defaults {
         darwin: {
             local_include_dirs: ["android/mac"],
             cflags: [
-                // You can't have toybox cp(1) on macOS before 10.13.
-                "-mmacosx-version-min=10.13",
-                "-UMACOSX_DEPLOYMENT_TARGET",
-                "-DMACOSX_DEPLOYMENT_TARGET=10.13",
                 // macOS' getgroups(3) signature differs.
                 "-Wno-pointer-sign",
                 // diff.c defines MIN and MAX which (only on macOS) we're
