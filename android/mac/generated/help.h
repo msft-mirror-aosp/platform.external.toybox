@@ -268,6 +268,8 @@
 
 #define HELP_login "usage: login [-p] [-h host] [-f USERNAME] [USERNAME]\n\nLog in as a user, prompting for username and password if necessary.\n\n-p	Preserve environment\n-h	The name of the remote host for this login\n-f	login as USERNAME without authentication"
 
+#define HELP_linux32 "usage: linux32 [COMMAND...]\n\nTell uname -m to lie to autoconf (to build 32 bit binaries on 64 bit kernel)."
+
 #define HELP_iorenice "usage: iorenice PID [CLASS] [PRIORITY]\n\nDisplay or change I/O priority of existing process. CLASS can be\n\"rt\" for realtime, \"be\" for best effort, \"idle\" for only when idle, or\n\"none\" to leave it alone. PRIORITY can be 0-7 (0 is highest, default 4)."
 
 #define HELP_ionice "usage: ionice [-t] [-c CLASS] [-n LEVEL] [COMMAND...|-p PID]\n\nChange the I/O scheduling priority of a process. With no arguments\n(or just -p), display process' existing I/O class/priority.\n\n-c	CLASS = 1-3: 1(realtime), 2(best-effort, default), 3(when-idle)\n-n	LEVEL = 0-7: (0 is highest priority, default = 5)\n-p	Affect existing PID instead of spawning new child\n-t	Ignore failure to set I/O priority\n\nSystem default iopriority is generally -c 2 -n 4."
@@ -527,8 +529,6 @@
 #define HELP_uniq "usage: uniq [-cduiz] [-w MAXCHARS] [-f FIELDS] [-s CHAR] [INFILE [OUTFILE]]\n\nReport or filter out repeated lines in a file\n\n-c	Show counts before each line\n-d	Show only lines that are repeated\n-u	Show only lines that are unique\n-i	Ignore case when comparing lines\n-z	Lines end with \\0 not \\n\n-w	Compare maximum X chars per line\n-f	Ignore first X fields\n-s	Ignore first X chars"
 
 #define HELP_uname "usage: uname [-asnrvm]\n\nPrint system information.\n\n-s	System name\n-n	Network (domain) name\n-r	Kernel Release number\n-v	Kernel Version\n-m	Machine (hardware) name\n-o	Userspace type\n-a	All of the above (in order)"
-
-#define HELP_linux32 "usage: linux32 [COMMAND...]\n\nTell uname -m to line to autoconf (to build 32 bit binaries on 64 bit kernel)."
 
 #define HELP_arch "usage: arch\n\nPrint machine (hardware) name, same as uname -m."
 
