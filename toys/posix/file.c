@@ -33,7 +33,7 @@ GLOBALS(
 static void do_elf_file(int fd)
 {
   unsigned endian = toybuf[5], bits = toybuf[4]-1, i, j, dynamic = 0,
-           stripped = 1, phentsize, phnum, shsize, shnum, bail = 0;
+           stripped = 1, phentsize, phnum, shsize, shnum, bail = 0, arch;
   int64_t (*elf_int)(void *ptr, unsigned size) = (endian==2)?peek_be:peek_le;
   char *map = MAP_FAILED;
   unsigned long phoff, shoff;
@@ -68,7 +68,8 @@ static void do_elf_file(int fd)
   }
 
   // "x86".
-  printf("%s", elf_arch_name(elf_int(toybuf+18, 2)));
+  printf("%s", elf_arch_name(arch = elf_int(toybuf+18, 2)));
+  elf_print_flags(arch, elf_int(toybuf+36+12*bits, 4));
 
   // If what we've seen so far doesn't seem consistent, bail.
   if (bail) goto bad;
@@ -443,6 +444,10 @@ static void do_regular_file(int fd, char *name)
     // frameworks/base/core/java/com/android/internal/util/BinaryXmlSerializer.java
   } else if (len>4 && !smemcmp(s, "ABX", 3)) {
     xprintf("Android Binary XML v%d\n", s[3]);
+
+    // https://webassembly.github.io/spec/core/binary/modules.html#binary-module
+  } else if (len>8 && !smemcmp(s, "\0asm", 4)) {
+    xprintf("wasm binary module version %d\n", (int)peek_le(s+4, 4));
 
     // Text files, including shell scripts.
   } else {

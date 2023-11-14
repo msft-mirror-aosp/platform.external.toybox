@@ -74,16 +74,6 @@ struct killall_data {
 
 struct md5sum_data {
   int sawline;
-  unsigned *rconsttable32;
-  unsigned long long *rconsttable64; // for sha384,sha512
-
-  // Crypto variables blanked after summing
-  unsigned long long count, overflow;
-  union {
-    char c[128]; // bytes, 1024 bits
-    unsigned i32[16]; // 512 bits for md5,sha1,sha224,sha256
-    unsigned long long i64[16]; // 1024 bits for sha384,sha512
-  } state, buffer;
 };
 
 // toys/lsb/mknod.c
@@ -132,8 +122,7 @@ struct seq_data {
 // toys/lsb/su.c
 
 struct su_data {
-  char *s;
-  char *c;
+  char *s, *c;
 };
 
 // toys/lsb/umount.c
