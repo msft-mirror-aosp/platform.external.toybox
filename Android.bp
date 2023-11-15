@@ -308,6 +308,7 @@ toybox_symlinks = [
     "i2cdump",
     "i2cget",
     "i2cset",
+    "i2ctransfer",
     "iconv",
     "id",
     "ifconfig",
