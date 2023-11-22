@@ -56,7 +56,9 @@ all_srcs = [
     "lib/args.c",
     "lib/commas.c",
     "lib/dirtree.c",
+    "lib/elf.c",
     "lib/env.c",
+    "lib/hash.c",
     "lib/lib.c",
     "lib/llist.c",
     "lib/net.c",
@@ -306,6 +308,7 @@ toybox_symlinks = [
     "i2cdump",
     "i2cget",
     "i2cset",
+    "i2ctransfer",
     "iconv",
     "id",
     "ifconfig",
@@ -460,10 +463,6 @@ cc_defaults {
         darwin: {
             local_include_dirs: ["android/mac"],
             cflags: [
-                // You can't have toybox cp(1) on macOS before 10.13.
-                "-mmacosx-version-min=10.13",
-                "-UMACOSX_DEPLOYMENT_TARGET",
-                "-DMACOSX_DEPLOYMENT_TARGET=10.13",
                 // macOS' getgroups(3) signature differs.
                 "-Wno-pointer-sign",
                 // diff.c defines MIN and MAX which (only on macOS) we're
@@ -499,19 +498,22 @@ cc_defaults {
     // startup time.
     stl: "none",
 
-    shared_libs: [
-        "libcrypto",
-        "libz",
-    ],
-
     target: {
         android: {
             shared_libs: [
+                "libcrypto",
                 "liblog",
                 "libprocessgroup",
                 "libselinux",
+                "libz",
             ],
             symlinks: toybox_symlinks,
+        },
+        host: {
+            static_libs: [
+                "libcrypto",
+                "libz",
+            ],
         },
     },
 }

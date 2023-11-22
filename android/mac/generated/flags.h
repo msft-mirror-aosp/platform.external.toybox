@@ -2603,9 +2603,9 @@
 #undef FOR_readahead
 #endif
 
-// readelf   <1(dyn-syms)adehlnp:SsWx:
+// readelf   <1(dyn-syms)Aadehlnp:SsWx:
 #undef OPTSTR_readelf
-#define OPTSTR_readelf "<1(dyn-syms)adehlnp:SsWx:"
+#define OPTSTR_readelf "<1(dyn-syms)Aadehlnp:SsWx:"
 #ifdef CLEANUP_readelf
 #undef CLEANUP_readelf
 #undef FOR_readelf
@@ -2620,6 +2620,7 @@
 #undef FLAG_e
 #undef FLAG_d
 #undef FLAG_a
+#undef FLAG_A
 #undef FLAG_dyn_syms
 #endif
 
@@ -3416,13 +3417,14 @@
 #undef FOR_toybox
 #endif
 
-// tr ^>2<1Ccsd[+cC] ^>2<1Ccsd[+cC]
+// tr ^<1>2Ccstd[+cC] ^<1>2Ccstd[+cC]
 #undef OPTSTR_tr
-#define OPTSTR_tr "^>2<1Ccsd[+cC]"
+#define OPTSTR_tr "^<1>2Ccstd[+cC]"
 #ifdef CLEANUP_tr
 #undef CLEANUP_tr
 #undef FOR_tr
 #undef FLAG_d
+#undef FLAG_t
 #undef FLAG_s
 #undef FLAG_c
 #undef FLAG_C
@@ -6318,7 +6320,8 @@
 #define FLAG_e (FORCED_FLAG<<8)
 #define FLAG_d (FORCED_FLAG<<9)
 #define FLAG_a (FORCED_FLAG<<10)
-#define FLAG_dyn_syms (FORCED_FLAG<<11)
+#define FLAG_A (FORCED_FLAG<<11)
+#define FLAG_dyn_syms (FORCED_FLAG<<12)
 #endif
 
 #ifdef FOR_readlink
@@ -7059,9 +7062,10 @@
 #define TT this.tr
 #endif
 #define FLAG_d (1LL<<0)
-#define FLAG_s (1LL<<1)
-#define FLAG_c (1LL<<2)
-#define FLAG_C (1LL<<3)
+#define FLAG_t (1LL<<1)
+#define FLAG_s (1LL<<2)
+#define FLAG_c (1LL<<3)
+#define FLAG_C (1LL<<4)
 #endif
 
 #ifdef FOR_traceroute
