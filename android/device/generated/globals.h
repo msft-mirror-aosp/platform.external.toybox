@@ -700,8 +700,8 @@ struct dhcp6_data {
 // toys/pending/dhcpd.c
 
 struct dhcpd_data {
-    char *iface;
-    long port;
+  char *i;
+  long p;
 };
 
 // toys/pending/diff.c

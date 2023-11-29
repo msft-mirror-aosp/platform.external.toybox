@@ -72,7 +72,7 @@ static const int NEED_OPTIONS =
 #endif
 
 #include "generated/help.h"
-static char *help_data =
+static const char help_data[] =
 #include "generated/newtoys.h"
 ;
 
@@ -88,7 +88,7 @@ void show_help(FILE *out, int flags)
         : " (see https://landley.net/toybox)");
 
     for (;;) {
-      s = help_data;
+      s = (void *)help_data;
       while (i--) s += strlen(s) + 1;
       // If it's an alias, restart search for real name
       if (*s != 255) break;
@@ -195,9 +195,6 @@ void toy_init(struct toy_list *which, char *argv[])
     }
   }
 
-  // Free old toys contents (to be reentrant), but leave rebound if any
-  // don't blank old optargs if our new argc lives in the old optargs.
-  if (argv<toys.optargs || argv>toys.optargs+toys.optc) free(toys.optargs);
   memset(&toys, 0, offsetof(struct toy_context, rebound));
   if (oldwhich) memset(&this, 0, sizeof(this));
 
