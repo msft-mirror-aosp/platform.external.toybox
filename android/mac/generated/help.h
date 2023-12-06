@@ -212,7 +212,7 @@
 
 #define HELP_readahead "usage: readahead FILE...\n\nPreload files into disk cache."
 
-#define HELP_pwgen "usage: pwgen [-cAn0yrsBhC1v] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. When output is to tty produces\na screenfull to defeat shoulder surfing (pick one and clear the screen).\n\n-c  --capitalize                  Permit capital letters.\n-A  --no-capitalize               Don't include capital letters.\n-n  --numerals                    Permit numbers.\n-0  --no-numerals                 Don't include numbers.\n-y  --symbols                     Permit special characters ($#%...).\n-r <chars>  --remove=<chars>      Don't include the given characters.\n-s  --secure                      Generate more random passwords.\n-B  --ambiguous                   Avoid ambiguous characters (e.g. 0, O).\n-h  --help                        Print this help message.\n-C                                Print the output in columns.\n-1                                Print the output one line each.\n-v                                Don't include vowels."
+#define HELP_pwgen "usage: pwgen [-cAn0yrsBC1v] [-r CHARS] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. Default output to tty fills screen\nwith passwords to defeat shoulder surfing (pick one and clear the screen).\n\n-0	No numbers (--no-numerals)\n-1	Output one per line\n-A	No capital letters (--no-capitalize)\n-B	Avoid ambiguous characters like 0O and 1lI (--ambiguous)\n-C	Output in columns\n-c	Add capital letters (--capitalize)\n-n	Add numbers (--numerals)\n-r	Don't include the given CHARS (--remove)\n-v	No vowels.\n-y	Add punctuation (--symbols)"
 
 #define HELP_pwdx "usage: pwdx PID...\n\nPrint working directory of processes listed on command line."
 
