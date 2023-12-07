@@ -219,13 +219,6 @@ struct wget_data {
 #endif
 };
 
-// toys/other/acpi.c
-
-struct acpi_data {
-  int ac, bat, therm, cool;
-  char *cpath;
-};
-
 // toys/other/base64.c
 
 struct base64_data {
@@ -544,7 +537,7 @@ struct timeout_data {
 struct truncate_data {
   char *s;
 
-  long size;
+  long long size;
   int type;
 };
 
@@ -1692,7 +1685,6 @@ extern union global_union {
 	struct sntp_data sntp;
 	struct tunctl_data tunctl;
 	struct wget_data wget;
-	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
 	struct blkid_data blkid;
