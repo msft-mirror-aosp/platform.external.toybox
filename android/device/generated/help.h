@@ -346,7 +346,7 @@
 
 #define HELP_blkid "usage: blkid [-o TYPE] [-s TAG] [-UL] DEV...\n\nPrint type, label and UUID of filesystem on a block device or image.\n\n-U	Show UUID only (or device with that UUID)\n-L	Show LABEL only (or device with that LABEL)\n-o TYPE	Output format (full, value, export)\n-s TAG	Only show matching tags (default all)"
 
-#define HELP_blkdiscard "usage: blkdiscard [-olszf] DEVICE\n\nDiscard device sectors.\n\n-o, --offset OFF	Byte offset to start discarding at (default 0)\n-l, --length LEN	Bytes to discard (default all)\n-s, --secure		Perform secure discard\n-z, --zeroout		Zero-fill rather than discard\n-f, --force		Disable check for mounted filesystem\n\nOFF and LEN must be aligned to the device sector size.\nBy default entire device is discarded.\nWARNING: All discarded data is permanently lost!"
+#define HELP_blkdiscard "usage: blkdiscard [-szf] [-o OFFSET] [-l LENGTH] DEVICE\n\nDiscard device sectors (permanetly deleting data). Free space can improve\nflash performance and lifetime by wear leveling and collating data.\n(Some filesystem/driver combinations can do this automatically.)\n\n-o	Start at OFFSET (--offset, default 0)\n-l	LENGTH to discard (--length, default all)\n-s	Overwrite discarded data (--secure)\n-z	Zero-fill rather than discard (--zeroout)\n-f	Disable check for mounted filesystem (--force)\n\nOFFSET and LENGTH must be aligned to the device sector size. Default\nwithout -o/-l discards the entire device. (You have been warned.)"
 
 #define HELP_base32 "usage: base32 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base32.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
 
