@@ -156,14 +156,16 @@ for i in ${PKG:+plumbing $PKG}; do
 done
 
 # Build static toybox with existing .config if there is one, else defconfig+sh
-announce toybox
-[ -n "$PENDING" ] && rm -f .config
-grep -q CONFIG_SH=y .config 2>/dev/null && CONF=silentoldconfig || unset CONF
-for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
-[ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
-PREFIX="$ROOT" make clean \
-  ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
-unset LDFLAGS
+if [ -z "$NOTOYBOX" ]; then
+  announce toybox
+  [ -n "$PENDING" ] && rm -f .config
+  grep -q CONFIG_SH=y .config 2>/dev/null && CONF=silentoldconfig || unset CONF
+  for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
+  [ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
+  PREFIX="$ROOT" make clean \
+    ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
+  unset LDFLAGS
+fi
 
 # ------------------ Part 3: Build + package bootable system ------------------
 
@@ -221,6 +223,9 @@ else
     KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
     [ "$CROSS" == mipsel ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN &&
       QEMU="mipsel -M malta"
+  elif [ "$CROSS" == or1k ]; then
+    KARCH=openrisc QEMU="or1k -M or1k-sim" KARGS=FIXME VMLINUX=vmlinux BUILTIN=1
+    KCONF=OPENRISC_BUILTIN_DTB=\"or1ksim\",ETHOC,SERIO,SERIAL_8250,SERIAL_8250_CONSOLE,SERIAL_OF_PLATFORM
   elif [ "$CROSS" == powerpc ]; then
     KARCH=powerpc QEMU="ppc -M g3beige" KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,ATA,ATA_SFF,ATA_BMDMA,PATA_MACIO,BLK_DEV_SD,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
@@ -251,7 +256,7 @@ else
     { echo DIR='"$(dirname $0)";' qemu-system-"$QEMU" -m 256 '"$@"' $QEMU_MORE \
         -nographic -no-reboot -kernel '"$DIR"'/linux-kernel $INITRD \
         ${DTB:+-dtb '"$DIR"'/linux.dtb} \
-        "-append \"panic=1 HOST=$CROSS console=$KARGS \$KARGS\"" &&
+        "-append \"HOST=$CROSS console=$KARGS \$KARGS\"" &&
       echo "echo -e '\\e[?7h'"
     } > "$OUTPUT"/run-qemu.sh &&
     chmod +x "$OUTPUT"/run-qemu.sh || exit 1
@@ -267,7 +272,7 @@ else
     echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
 
     # Expand list of =y symbols, first generic then architecture-specific
-    for i in BINFMT_ELF,BINFMT_SCRIPT,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,NLS_CODEPAGE_437,NLS_ISO8859_1,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC "$KCONF" "$KEXTRA" ; do
+    for i in BINFMT_ELF,BINFMT_SCRIPT,PANIC_TIMEOUT=1,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,NLS_CODEPAGE_437,NLS_ISO8859_1,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC "$KCONF" ${MODULES+MODULES,MODULE_UNLOAD} "$KEXTRA" ; do
       echo "$i" >> "$OUTDOC"/linux-microconfig
       echo "# architecture ${X:-independent}"
       csv2cfg "$i" y
@@ -293,7 +298,7 @@ else
   if [ -n "$MODULES" ]; then
     make ARCH=$KARCH INSTALL_MOD_PATH=modz modules_install &&
       (cd modz && find lib/modules | cpio -o -H newc -R +0:+0 ) | gzip \
-       > "$OUTPUT/modules.cpio.gz" || exit 1
+       > "$OUTDOC/modules.cpio.gz" || exit 1
   fi
   cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
 fi
@@ -302,7 +307,7 @@ fi
 if [ -z "$BUILTIN" ]; then
   announce initramfs
   { (cd "$ROOT" && find . -printf '%P\n' | cpio -o -H newc -R +0:+0 ) || exit 1
-    ! test -e "$OUTPUT/modules.cpio.gz" || zcat $_;} | gzip \
+    ! test -e "$OUTDOC/modules.cpio.gz" || zcat $_;} | gzip \
     > "$OUTPUT"/initramfs.cpio.gz || exit 1
 fi
 

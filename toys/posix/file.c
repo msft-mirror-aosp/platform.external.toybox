@@ -34,7 +34,7 @@ static void do_elf_file(int fd)
 {
   unsigned endian = toybuf[5], bits = toybuf[4]-1, i, j, dynamic = 0,
            stripped = 1, phentsize, phnum, shsize, shnum, bail = 0, arch;
-  int64_t (*elf_int)(void *ptr, unsigned size) = (endian==2)?peek_be:peek_le;
+  long long (*elf_int)(void *ptr, unsigned size) = (endian==2)?peek_be:peek_le;
   char *map = MAP_FAILED;
   unsigned long phoff, shoff;
 
@@ -305,7 +305,7 @@ static void do_regular_file(int fd, char *name)
     xputc('\n');
   } else if (len>4 && strstart(&s, "BZh") && isdigit(*s))
     xprintf("bzip2 compressed data, block size = %c00k\n", *s);
-  else if (len>31 && peek_be(s, 7) == 0xfd377a585a0000UL)
+  else if (len>31 && peek_be(s, 7) == 0xfd377a585a0000ULL)
     xputs("xz compressed data");
   else if (len>10 && strstart(&s, "\x1f\x8b")) xputs("gzip compressed data");
   else if (len>32 && !smemcmp(s+1, "\xfa\xed\xfe", 3)) {
