@@ -10,6 +10,8 @@
 
 #define HELP_toybox_free "When a program exits, the operating system will clean up after it\n(free memory, close files, etc). To save size, toybox usually relies\non this behavior. If you're running toybox under a debugger or\nwithout a real OS (ala newlib+libgloss), enable this to make toybox\nclean up after itself."
 
+#define HELP_toybox_zhelp "Compress help with gzip -9, deflating when displayed. This makes the\nbinary smaller but can increase runtime memory usage."
+
 #define HELP_toybox_help_dashdash "Support --help argument in all commands, even ones with a NULL\noptstring. (Use TOYFLAG_NOHELP to disable.) Produces the same output\nas \"help command\". --version shows toybox version."
 
 #define HELP_toybox_help "Include help text for each command."
