@@ -10,6 +10,8 @@
 
 #define HELP_toybox_free "When a program exits, the operating system will clean up after it\n(free memory, close files, etc). To save size, toybox usually relies\non this behavior. If you're running toybox under a debugger or\nwithout a real OS (ala newlib+libgloss), enable this to make toybox\nclean up after itself."
 
+#define HELP_toybox_zhelp "Compress help with gzip -9, deflating when displayed. This makes the\nbinary smaller but can increase runtime memory usage."
+
 #define HELP_toybox_help_dashdash "Support --help argument in all commands, even ones with a NULL\noptstring. (Use TOYFLAG_NOHELP to disable.) Produces the same output\nas \"help command\". --version shows toybox version."
 
 #define HELP_toybox_help "Include help text for each command."
@@ -212,7 +214,7 @@
 
 #define HELP_readahead "usage: readahead FILE...\n\nPreload files into disk cache."
 
-#define HELP_pwgen "usage: pwgen [-cAn0yrsBhC1v] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. When output is to tty produces\na screenfull to defeat shoulder surfing (pick one and clear the screen).\n\n-c  --capitalize                  Permit capital letters.\n-A  --no-capitalize               Don't include capital letters.\n-n  --numerals                    Permit numbers.\n-0  --no-numerals                 Don't include numbers.\n-y  --symbols                     Permit special characters ($#%...).\n-r <chars>  --remove=<chars>      Don't include the given characters.\n-s  --secure                      Generate more random passwords.\n-B  --ambiguous                   Avoid ambiguous characters (e.g. 0, O).\n-h  --help                        Print this help message.\n-C                                Print the output in columns.\n-1                                Print the output one line each.\n-v                                Don't include vowels."
+#define HELP_pwgen "usage: pwgen [-cAn0yrsBC1v] [-r CHARS] [LENGTH] [COUNT]\n\nGenerate human-readable random passwords. Default output to tty fills screen\nwith passwords to defeat shoulder surfing (pick one and clear the screen).\n\n-0	No numbers (--no-numerals)\n-1	Output one per line\n-A	No capital letters (--no-capitalize)\n-B	Avoid ambiguous characters like 0O and 1lI (--ambiguous)\n-C	Output in columns\n-c	Add capital letters (--capitalize)\n-n	Add numbers (--numerals)\n-r	Don't include the given CHARS (--remove)\n-v	No vowels.\n-y	Add punctuation (--symbols)"
 
 #define HELP_pwdx "usage: pwdx PID...\n\nPrint working directory of processes listed on command line."
 
@@ -348,7 +350,7 @@
 
 #define HELP_blkid "usage: blkid [-o TYPE] [-s TAG] [-UL] DEV...\n\nPrint type, label and UUID of filesystem on a block device or image.\n\n-U	Show UUID only (or device with that UUID)\n-L	Show LABEL only (or device with that LABEL)\n-o TYPE	Output format (full, value, export)\n-s TAG	Only show matching tags (default all)"
 
-#define HELP_blkdiscard "usage: blkdiscard [-olszf] DEVICE\n\nDiscard device sectors.\n\n-o, --offset OFF	Byte offset to start discarding at (default 0)\n-l, --length LEN	Bytes to discard (default all)\n-s, --secure		Perform secure discard\n-z, --zeroout		Zero-fill rather than discard\n-f, --force		Disable check for mounted filesystem\n\nOFF and LEN must be aligned to the device sector size.\nBy default entire device is discarded.\nWARNING: All discarded data is permanently lost!"
+#define HELP_blkdiscard "usage: blkdiscard [-szf] [-o OFFSET] [-l LENGTH] DEVICE\n\nDiscard device sectors (permanetly deleting data). Free space can improve\nflash performance and lifetime by wear leveling and collating data.\n(Some filesystem/driver combinations can do this automatically.)\n\n-o	Start at OFFSET (--offset, default 0)\n-l	LENGTH to discard (--length, default all)\n-s	Overwrite discarded data (--secure)\n-z	Zero-fill rather than discard (--zeroout)\n-f	Disable check for mounted filesystem (--force)\n\nOFFSET and LENGTH must be aligned to the device sector size. Default\nwithout -o/-l discards the entire device. (You have been warned.)"
 
 #define HELP_base32 "usage: base32 [-di] [-w COLUMNS] [FILE...]\n\nEncode or decode in base32.\n\n-d	Decode\n-i	Ignore non-alphabetic characters\n-w	Wrap output at COLUMNS (default 76 or 0 for no wrap)"
 

@@ -72,41 +72,53 @@ static const int NEED_OPTIONS =
 #endif
 
 #include "generated/help.h"
-static char *help_data =
+static const char help_data[] =
 #include "generated/newtoys.h"
 ;
+
+#if CFG_TOYBOX_ZHELP
+#include "generated/zhelp.h"
+#else
+static char *zhelp_data = 0;
+#define ZHELP_LEN 0
+#endif
 
 void show_help(FILE *out, int flags)
 {
   int i = toys.which-toy_list;
-  char *s, *ss;
+  char *s, *ss, *hd;
 
-  if (CFG_TOYBOX_HELP) {
-    if (flags & HELP_HEADER)
-      fprintf(out, "Toybox %s"USE_TOYBOX(" multicall binary")"%s\n\n",
-        toybox_version, (CFG_TOYBOX && i) ? " (see toybox --help)"
-        : " (see https://landley.net/toybox)");
+  if (!CFG_TOYBOX_HELP) return;
 
-    for (;;) {
-      s = help_data;
-      while (i--) s += strlen(s) + 1;
-      // If it's an alias, restart search for real name
-      if (*s != 255) break;
-      i = toy_find(++s)-toy_list;
-      if ((flags & HELP_SEE) && toy_list[i].flags) {
-        if (flags & HELP_HTML) fprintf(out, "See <a href=#%s>%s</a>\n", s, s);
-        else fprintf(out, "%s see %s\n", toys.which->name, s);
+  if (CFG_TOYBOX_ZHELP)
+    gunzip_mem(zhelp_data, sizeof(zhelp_data), hd = xmalloc(ZHELP_LEN),
+      ZHELP_LEN);
+  else hd = (void *)help_data;
 
-        return;
-      }
+  if (flags & HELP_HEADER)
+    fprintf(out, "Toybox %s"USE_TOYBOX(" multicall binary")"%s\n\n",
+      toybox_version, (CFG_TOYBOX && i) ? " (see toybox --help)"
+      : " (see https://landley.net/toybox)");
+
+  for (;;) {
+    s = (void *)help_data;
+    while (i--) s += strlen(s) + 1;
+    // If it's an alias, restart search for real name
+    if (*s != 255) break;
+    i = toy_find(++s)-toy_list;
+    if ((flags & HELP_SEE) && toy_list[i].flags) {
+      if (flags & HELP_HTML) fprintf(out, "See <a href=#%s>%s</a>\n", s, s);
+      else fprintf(out, "%s see %s\n", toys.which->name, s);
+
+      return;
     }
+  }
 
-    if (!(flags & HELP_USAGE)) fprintf(out, "%s\n", s);
-    else {
-      strstart(&s, "usage: ");
-      for (ss = s; *ss && *ss!='\n'; ss++);
-      fprintf(out, "%.*s\n", (int)(ss-s), s);
-    }
+  if (!(flags & HELP_USAGE)) fprintf(out, "%s\n", s);
+  else {
+    strstart(&s, "usage: ");
+    for (ss = s; *ss && *ss!='\n'; ss++);
+    fprintf(out, "%.*s\n", (int)(ss-s), s);
   }
 }
 
@@ -195,9 +207,6 @@ void toy_init(struct toy_list *which, char *argv[])
     }
   }
 
-  // Free old toys contents (to be reentrant), but leave rebound if any
-  // don't blank old optargs if our new argc lives in the old optargs.
-  if (argv<toys.optargs || argv>toys.optargs+toys.optc) free(toys.optargs);
   memset(&toys, 0, offsetof(struct toy_context, rebound));
   if (oldwhich) memset(&this, 0, sizeof(this));
 
