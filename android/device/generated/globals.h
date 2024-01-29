@@ -466,6 +466,12 @@ struct setfattr_data {
   char *x, *v, *n;
 };
 
+// toys/other/setsid.c
+
+struct setsid_data {
+  long c;
+};
+
 // toys/other/sha3sum.c
 
 struct sha3sum_data {
@@ -930,7 +936,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion, recfile[50+200*CFG_TOYBOX_FORK];
 
   // Callable function array
   struct sh_function {
@@ -1719,6 +1725,7 @@ extern union global_union {
 	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
+	struct setsid_data setsid;
 	struct sha3sum_data sha3sum;
 	struct shred_data shred;
 	struct shuf_data shuf;
