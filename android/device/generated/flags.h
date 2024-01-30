@@ -2012,6 +2012,15 @@
 #undef FLAG_s
 #endif
 
+// memeater <1>1M <1>1M
+#undef OPTSTR_memeater
+#define OPTSTR_memeater "<1>1M"
+#ifdef CLEANUP_memeater
+#undef CLEANUP_memeater
+#undef FOR_memeater
+#undef FLAG_M
+#endif
+
 // microcom <1>1s#=115200X <1>1s#=115200X
 #undef OPTSTR_microcom
 #define OPTSTR_microcom "<1>1s#=115200X"
@@ -2853,9 +2862,9 @@
 #undef FLAG_h
 #endif
 
-// setsid ^<1wcd[!dc] ^<1wcd[!dc]
+// setsid ^<1wc@d[!dc] ^<1wc@d[!dc]
 #undef OPTSTR_setsid
-#define OPTSTR_setsid "^<1wcd[!dc]"
+#define OPTSTR_setsid "^<1wc@d[!dc]"
 #ifdef CLEANUP_setsid
 #undef CLEANUP_setsid
 #undef FOR_setsid
@@ -5755,6 +5764,14 @@
 #define TT this.mdev
 #endif
 #define FLAG_s (FORCED_FLAG<<0)
+#endif
+
+#ifdef FOR_memeater
+#define CLEANUP_memeater
+#ifndef TT
+#define TT this.memeater
+#endif
+#define FLAG_M (1LL<<0)
 #endif
 
 #ifdef FOR_microcom

@@ -187,6 +187,7 @@ device_srcs = [
     "toys/other/lsmod.c",
     "toys/other/lsusb.c",
     "toys/other/makedevs.c",
+    "toys/other/memeater.c",
     "toys/other/mkswap.c",
     "toys/other/modinfo.c",
     "toys/other/mountpoint.c",
