@@ -134,8 +134,8 @@ if [ $$ -eq 1 ]; then
   [ -z "$HANDOFF" ] && [ -e /mnt/init ] && HANDOFF=/mnt/init
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo -e '\e[?7hType exit when done.'
 
-  exec <>/dev/$(sed '$s@.*/@@' /sys/class/tty/console/active) 2>&1 &&
-  $HANDOFF &&
+  setsid -c <>/dev/$(sed '$s@.*/@@' /sys/class/tty/console/active) >&0 2>&1 \
+    $HANDOFF
   reboot -f &
   sleep 5
 else # for chroot
@@ -197,7 +197,7 @@ get_target_config()
     QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
     KARCH=arm KARGS=ttyAMA0 VMLINUX=arch/arm/boot/zImage
     KCONF=CPU_ARM926T,MMU,VFP,ARM_THUMB,AEABI,ARCH_VERSATILE,ATAGS,DEPRECATED_PARAM_STRUCT,ARM_ATAG_DTB_COMPAT,ARM_ATAG_DTB_COMPAT_CMDLINE_EXTEND,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_DRV_PL031,RTC_HCTOSYS,PCI,PCI_VERSATILE,BLK_DEV_SD,SCSI,SCSI_LOWLEVEL,SCSI_SYM53C8XX_2,SCSI_SYM53C8XX_MMIO,NET_VENDOR_REALTEK,8139CP,SCSI_SYM53C8XX_DMA_ADDRESSING_MODE=0
-    DTB=arch/arm/boot/dts/versatile-pb.dtb
+    DTB=versatile-pb.dtb
   elif [ "$CROSS" == armv7l ] || [ "$CROSS" == aarch64 ]; then
     if [ "$CROSS" == aarch64 ]; then
       QEMU="aarch64 -M virt -cpu cortex-a57"
@@ -312,7 +312,7 @@ else
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
   make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) all || exit 1
-  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT/linux.dtb" || exit 1 ;}
+  [ -n "$DTB" ] && { cp "$(find -name $DTB)" "$OUTPUT/linux.dtb" || exit 1 ;}
   if [ -n "$MODULES" ]; then
     make ARCH=$KARCH INSTALL_MOD_PATH=modz modules_install &&
       (cd modz && find lib/modules | cpio -o -H newc -R +0:+0 ) | gzip \
