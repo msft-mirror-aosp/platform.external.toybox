@@ -103,7 +103,7 @@ CONFIG_EXPR=y
 CONFIG_FGREP=y
 CONFIG_FILE=y
 CONFIG_FIND=y
-CONFIG_FLOCK=y
+# CONFIG_FLOCK is not set
 # CONFIG_FMT is not set
 # CONFIG_FOLD is not set
 # CONFIG_FREE is not set
@@ -194,6 +194,7 @@ CONFIG_LS=y
 CONFIG_MD5SUM=y
 # CONFIG_MDEV_CONF is not set
 # CONFIG_MDEV is not set
+# CONFIG_MEMEATER is not set
 CONFIG_MICROCOM=y
 # CONFIG_MIX is not set
 CONFIG_MKDIR=y
@@ -223,7 +224,7 @@ CONFIG_MV=y
 # CONFIG_NICE is not set
 CONFIG_NL=y
 # CONFIG_NOHUP is not set
-CONFIG_NPROC=y
+# CONFIG_NPROC is not set
 # CONFIG_NSENTER is not set
 CONFIG_OD=y
 # CONFIG_ONEIT is not set
@@ -233,15 +234,15 @@ CONFIG_OD=y
 # CONFIG_PASSWD_SAD is not set
 CONFIG_PASTE=y
 CONFIG_PATCH=y
-CONFIG_PGREP=y
+# CONFIG_PGREP is not set
 # CONFIG_PIDOF is not set
 # CONFIG_PING is not set
 # CONFIG_PIVOT_ROOT is not set
-CONFIG_PKILL=y
+# CONFIG_PKILL is not set
 # CONFIG_PMAP is not set
 # CONFIG_PRINTENV is not set
 CONFIG_PRINTF=y
-CONFIG_PS=y
+# CONFIG_PS is not set
 # CONFIG_PWDX is not set
 CONFIG_PWD=y
 # CONFIG_PWGEN is not set
