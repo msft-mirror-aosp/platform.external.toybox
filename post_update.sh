@@ -16,14 +16,14 @@ function generate() {
   # These are the only generated files we actually need.
   files="config.h flags.h globals.h help.h newtoys.h tags.h"
 
-  cp .config-$which .config
+  cp config-$which .config
   NOBUILD=1 scripts/make.sh
   out=android/$which/generated/
   mkdir -p $out
   for f in $files; do cp generated/$f $out/$f ; done
   rm -rf .config generated/
 
-  make allnoconfig KCONFIG_ALLCONFIG=.config-$which
+  make allnoconfig KCONFIG_ALLCONFIG=config-$which
 }
 
 generate "device"

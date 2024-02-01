@@ -1,5 +1,5 @@
 syntax: glob
-/.config.old
+.config*
 .single*
 change/
 generated/
