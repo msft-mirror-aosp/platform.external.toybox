@@ -117,8 +117,10 @@ mountpoint -q proc || mount -t proc proc proc
 mountpoint -q sys || mount -t sysfs sys sys
 echo 0 99999 > /proc/sys/net/ipv4/ping_group_range
 
-if [ $$ -eq 1 ]; then # Setup networking for QEMU (needs /proc)
+if [ $$ -eq 1 ]; then
   mountpoint -q mnt || [ -e /dev/?da ] && mount /dev/?da /mnt
+
+  # Setup networking for QEMU (needs /proc)
   ifconfig lo 127.0.0.1
   ifconfig eth0 10.0.2.15
   route add default gw 10.0.2.2
@@ -127,11 +129,15 @@ if [ $$ -eq 1 ]; then # Setup networking for QEMU (needs /proc)
 
   # Run package scripts (if any)
   for i in $(ls -1 /etc/rc 2>/dev/null | sort); do . /etc/rc/"$i"; done
+  echo 3 > /proc/sys/kernel/printk
 
   [ -z "$HANDOFF" ] && [ -e /mnt/init ] && HANDOFF=/mnt/init
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo -e '\e[?7hType exit when done.'
-  echo 3 > /proc/sys/kernel/printk
-  exec oneit $HANDOFF
+
+  setsid -c <>/dev/$(sed '$s@.*/@@' /sys/class/tty/console/active) >&0 2>&1 \
+    $HANDOFF
+  reboot -f &
+  sleep 5
 else # for chroot
   /bin/sh
   umount /dev/pts /dev /sys /proc
@@ -156,29 +162,32 @@ for i in ${PKG:+plumbing $PKG}; do
 done
 
 # Build static toybox with existing .config if there is one, else defconfig+sh
-announce toybox
-[ -n "$PENDING" ] && rm -f .config
-grep -q CONFIG_SH=y .config 2>/dev/null && CONF=silentoldconfig || unset CONF
-for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
-[ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
-PREFIX="$ROOT" make clean \
-  ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
-unset LDFLAGS
+if [ -z "$NOTOYBOX" ]; then
+  announce toybox
+  [ -n "$PENDING" ] && rm -f .config
+  grep -q CONFIG_SH=y .config 2>/dev/null && CONF=silentoldconfig || unset CONF
+  for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
+  [ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
+  PREFIX="$ROOT" make clean \
+    ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
+  unset LDFLAGS
+fi
 
 # ------------------ Part 3: Build + package bootable system ------------------
 
 # Convert comma separated values in $1 to CONFIG=$2 lines
 csv2cfg() { sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1\n/g' <<< "$1" | sed '/^$/!{/=/!s/.*/&='"$2/}";}
 
-# ----- Build kernel for target
-
-if [ -z "$LINUX" ] || [ ! -d "$LINUX/kernel" ]; then
-  echo 'No $LINUX directory, kernel build skipped.'
-else
-  # Which architecture are we building a kernel for?
-  LINUX="$(realpath "$LINUX")"
-  [ "$CROSS" == host ] && CROSS="$(uname -m)"
-
+# Set variables from $CROSS, die on unrecognized target:
+# BUILTIN - if set, statically link initramfs into kernel image
+# DTB     - device tree binary file in build dir (qemu -dtb $DTB)
+# KARCH   - linux ARCH= build argument (selects arch/$ARCH directory in source)
+# KARGS   - linux kernel command line arguments (qemu -append "console=$KARGS")
+# KCONF   - kernel config options for target (expanded by csv2cfg above)
+# VMLINUX - linux bootable kernel file in build dir (qemu -kernel $VMLINUX)
+# QEMU    - emulator name (qemu-system-$QEMU) and arguments
+get_target_config()
+{
   # Target-specific info in an (alphabetical order) if/else staircase
   # Each target needs board config, serial console, RTC, ethernet, block device.
 
@@ -188,7 +197,7 @@ else
     QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
     KARCH=arm KARGS=ttyAMA0 VMLINUX=arch/arm/boot/zImage
     KCONF=CPU_ARM926T,MMU,VFP,ARM_THUMB,AEABI,ARCH_VERSATILE,ATAGS,DEPRECATED_PARAM_STRUCT,ARM_ATAG_DTB_COMPAT,ARM_ATAG_DTB_COMPAT_CMDLINE_EXTEND,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_DRV_PL031,RTC_HCTOSYS,PCI,PCI_VERSATILE,BLK_DEV_SD,SCSI,SCSI_LOWLEVEL,SCSI_SYM53C8XX_2,SCSI_SYM53C8XX_MMIO,NET_VENDOR_REALTEK,8139CP,SCSI_SYM53C8XX_DMA_ADDRESSING_MODE=0
-    DTB=arch/arm/boot/dts/versatile-pb.dtb
+    DTB=versatile-pb.dtb
   elif [ "$CROSS" == armv7l ] || [ "$CROSS" == aarch64 ]; then
     if [ "$CROSS" == aarch64 ]; then
       QEMU="aarch64 -M virt -cpu cortex-a57"
@@ -221,6 +230,9 @@ else
     KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
     [ "$CROSS" == mipsel ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN &&
       QEMU="mipsel -M malta"
+  elif [ "$CROSS" == or1k ]; then
+    KARCH=openrisc QEMU="or1k -M or1k-sim" KARGS=FIXME VMLINUX=vmlinux BUILTIN=1
+    KCONF=OPENRISC_BUILTIN_DTB=\"or1ksim\",ETHOC,SERIO,SERIAL_8250,SERIAL_8250_CONSOLE,SERIAL_OF_PLATFORM
   elif [ "$CROSS" == powerpc ]; then
     KARCH=powerpc QEMU="ppc -M g3beige" KARGS=ttyS0 VMLINUX=vmlinux
     KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,ATA,ATA_SFF,ATA_BMDMA,PATA_MACIO,BLK_DEV_SD,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
@@ -244,13 +256,25 @@ else
 #see also SPI SPI_SH_SCI MFD_SM501 RTC_CLASS RTC_DRV_R9701 RTC_DRV_SH RTC_HCTOSYS
   else die "Unknown \$CROSS=$CROSS"
   fi
+}
+
+# ----- Build kernel for target
+
+if [ -z "$LINUX" ] || [ ! -d "$LINUX/kernel" ]; then
+  echo 'No $LINUX directory, kernel build skipped.'
+else
+  # Which architecture are we building a kernel for?
+  LINUX="$(realpath "$LINUX")"
+  [ "$CROSS" == host ] && CROSS="$(uname -m)"
+  get_target_config
 
   # Write the qemu launch script
   if [ -n "$QEMU" ]; then
-    [ -z "$BUILTIN" ] && INITRD="-initrd initramfs.cpio.gz"
-    { echo qemu-system-"$QEMU" -m 256 '"$@"' $QEMU_MORE -nographic -no-reboot \
-        -kernel linux-kernel $INITRD ${DTB:+-dtb linux.dtb} \
-        "-append \"panic=1 HOST=$CROSS console=$KARGS \$KARGS\"" &&
+    [ -z "$BUILTIN" ] && INITRD='-initrd "$DIR"/initramfs.cpio.gz'
+    { echo DIR='"$(dirname $0)";' qemu-system-"$QEMU" -m 256 '"$@"' $QEMU_MORE \
+        -nographic -no-reboot -kernel '"$DIR"'/linux-kernel $INITRD \
+        ${DTB:+-dtb '"$DIR"'/linux.dtb} \
+        "-append \"HOST=$CROSS console=$KARGS \$KARGS\"" &&
       echo "echo -e '\\e[?7h'"
     } > "$OUTPUT"/run-qemu.sh &&
     chmod +x "$OUTPUT"/run-qemu.sh || exit 1
@@ -261,12 +285,12 @@ else
   cp -sfR "$LINUX" "$TEMP/linux" && pushd "$TEMP/linux" &&
 
   # Write linux-miniconfig
-  mkdir "$OUTDOC" &&
+  mkdir -p "$OUTDOC" &&
   { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
     echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
 
     # Expand list of =y symbols, first generic then architecture-specific
-    for i in BINFMT_ELF,BINFMT_SCRIPT,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,NLS_CODEPAGE_437,NLS_ISO8859_1,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC "$KCONF" "$KEXTRA" ; do
+    for i in BINFMT_ELF,BINFMT_SCRIPT,PANIC_TIMEOUT=1,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,NLS_CODEPAGE_437,NLS_ISO8859_1,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC "$KCONF" ${MODULES+MODULES,MODULE_UNLOAD} "$KEXTRA" ; do
       echo "$i" >> "$OUTDOC"/linux-microconfig
       echo "# architecture ${X:-independent}"
       csv2cfg "$i" y
@@ -288,11 +312,11 @@ else
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
   make ARCH=$KARCH CROSS_COMPILE="$CROSS_COMPILE" -j $(nproc) all || exit 1
-  [ -n "$DTB" ] && { cp "$DTB" "$OUTPUT/linux.dtb" || exit 1 ;}
+  [ -n "$DTB" ] && { cp "$(find -name $DTB)" "$OUTPUT/linux.dtb" || exit 1 ;}
   if [ -n "$MODULES" ]; then
     make ARCH=$KARCH INSTALL_MOD_PATH=modz modules_install &&
       (cd modz && find lib/modules | cpio -o -H newc -R +0:+0 ) | gzip \
-       > "$OUTPUT/modules.cpio.gz" || exit 1
+       > "$OUTDOC/modules.cpio.gz" || exit 1
   fi
   cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
 fi
@@ -301,7 +325,7 @@ fi
 if [ -z "$BUILTIN" ]; then
   announce initramfs
   { (cd "$ROOT" && find . -printf '%P\n' | cpio -o -H newc -R +0:+0 ) || exit 1
-    ! test -e "$OUTPUT/modules.cpio.gz" || zcat $_;} | gzip \
+    ! test -e "$OUTDOC/modules.cpio.gz" || zcat $_;} | gzip \
     > "$OUTPUT"/initramfs.cpio.gz || exit 1
 fi
 

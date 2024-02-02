@@ -219,13 +219,6 @@ struct wget_data {
 #endif
 };
 
-// toys/other/acpi.c
-
-struct acpi_data {
-  int ac, bat, therm, cool;
-  char *cpath;
-};
-
 // toys/other/base64.c
 
 struct base64_data {
@@ -473,6 +466,12 @@ struct setfattr_data {
   char *x, *v, *n;
 };
 
+// toys/other/setsid.c
+
+struct setsid_data {
+  long c;
+};
+
 // toys/other/sha3sum.c
 
 struct sha3sum_data {
@@ -544,7 +543,7 @@ struct timeout_data {
 struct truncate_data {
   char *s;
 
-  long size;
+  long long size;
   int type;
 };
 
@@ -700,8 +699,8 @@ struct dhcp6_data {
 // toys/pending/dhcpd.c
 
 struct dhcpd_data {
-    char *iface;
-    long port;
+  char *i;
+  long p;
 };
 
 // toys/pending/diff.c
@@ -937,7 +936,7 @@ struct sh_data {
   long long SECONDS;
   char *isexec, *wcpat;
   unsigned options, jobcnt, LINENO;
-  int hfd, pid, bangpid, srclvl, recursion;
+  int hfd, pid, bangpid, srclvl, recursion, recfile[50+200*CFG_TOYBOX_FORK];
 
   // Callable function array
   struct sh_function {
@@ -1692,7 +1691,6 @@ extern union global_union {
 	struct sntp_data sntp;
 	struct tunctl_data tunctl;
 	struct wget_data wget;
-	struct acpi_data acpi;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
 	struct blkid_data blkid;
@@ -1727,6 +1725,7 @@ extern union global_union {
 	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
+	struct setsid_data setsid;
 	struct sha3sum_data sha3sum;
 	struct shred_data shred;
 	struct shuf_data shuf;

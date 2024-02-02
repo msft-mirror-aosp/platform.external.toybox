@@ -5,8 +5,8 @@
  * See ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.24/libblkid-docs/api-index-full.html
  * TODO: -U and -L should require arguments
 
-USE_BLKID(NEWTOY(blkid, "ULo:s*[!LU]", TOYFLAG_BIN))
-USE_FSTYPE(NEWTOY(fstype, "<1", TOYFLAG_BIN))
+USE_BLKID(NEWTOY(blkid, "ULo:s*[!LU]", TOYFLAG_BIN|TOYFLAG_LINEBUF))
+USE_FSTYPE(NEWTOY(fstype, "<1", TOYFLAG_BIN|TOYFLAG_LINEBUF))
 
 config BLKID
   bool "blkid"
@@ -197,17 +197,14 @@ static void do_blkid(int fd, char *name)
     if (!strcmp(type, "ntfs")) {
       for (j = 7; j >= 0; --j) s += sprintf(s, "%02X", toybuf[uoff+j]);
     } else if (!strcmp(type, "vfat")) {
-        s += sprintf(s, "%02X%02X-%02X%02X", toybuf[uoff+3], toybuf[uoff+2],
-                     toybuf[uoff+1], toybuf[uoff]);
+      s += sprintf(s, "%02X%02X-%02X%02X", toybuf[uoff+3], toybuf[uoff+2],
+                   toybuf[uoff+1], toybuf[uoff]);
     } else if (!strcmp(type, "iso9660")) {
-        s += sprintf(s, "%c%c%c%c-", toybuf[uoff], toybuf[uoff+1],
-                     toybuf[uoff+2], toybuf[uoff+3]);
-        s += sprintf(s, "%c%c-", toybuf[uoff+4], toybuf[uoff+5]);
-        s += sprintf(s, "%c%c-", toybuf[uoff+6], toybuf[uoff+7]);
-        s += sprintf(s, "%c%c-", toybuf[uoff+8], toybuf[uoff+9]);
-        s += sprintf(s, "%c%c-", toybuf[uoff+10], toybuf[uoff+11]);
-        s += sprintf(s, "%c%c-", toybuf[uoff+12], toybuf[uoff+13]);
-        s += sprintf(s, "%c%c", toybuf[uoff+14], toybuf[uoff+15]);
+      s = stpncpy(s, toybuf+uoff, 4);
+      for (i = 0, uoff += 4; i<12; i++) {
+        if (!(i&1)) *s++ = '-';
+        *s++ = toybuf[uoff++];
+      }
     } else {
       for (j = 0; j < 16; j++)
         s += sprintf(s, "-%02x"+!(0x550 & (1<<j)), toybuf[uoff+j]);

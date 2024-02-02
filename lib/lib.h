@@ -115,7 +115,7 @@ char *xstrndup(char *s, size_t n);
 char *xstrdup(char *s);
 void *xmemdup(void *s, long len);
 char *xmprintf(char *format, ...) printf_format;
-void xflush(int flush);
+void xferror(FILE *fp);
 void xprintf(char *format, ...) printf_format;
 void xputsl(char *s, int len);
 void xputsn(char *s);
@@ -210,9 +210,9 @@ void msleep(long milliseconds);
 void nanomove(struct timespec *ts, long long offset);
 long long nanodiff(struct timespec *old, struct timespec *new);
 int highest_bit(unsigned long l);
-int64_t peek_le(void *ptr, unsigned size);
-int64_t peek_be(void *ptr, unsigned size);
-int64_t peek(void *ptr, unsigned size);
+long long peek_le(void *ptr, unsigned size);
+long long peek_be(void *ptr, unsigned size);
+long long peek(void *ptr, unsigned size);
 void poke_le(void *ptr, long long val, unsigned size);
 void poke_be(void *ptr, long long val, unsigned size);
 void poke(void *ptr, long long val, unsigned size);
@@ -383,8 +383,7 @@ int comma_remove(char *optlist, char *opt);
 
 long long gzip_fd(int infd, int outfd);
 long long gunzip_fd(int infd, int outfd);
-long long gunzip_fd_preload(int infd, int outfd, char *buf, unsigned len);
-
+long long gunzip_mem(char *inbuf, int inlen, char *outbuf, int outlen);
 
 // getmountlist.c
 struct mtab_list {
