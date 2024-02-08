@@ -333,6 +333,7 @@ toybox_symlinks = [
     "lspci",
     "lsusb",
     "md5sum",
+    "memeater",
     "mkdir",
     "mkfifo",
     "mknod",
