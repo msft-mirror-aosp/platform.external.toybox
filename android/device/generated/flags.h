@@ -2226,12 +2226,14 @@
 #undef FLAG_r
 #endif
 
-// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]
+// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
+#undef FLAG_z
+#undef FLAG_v
 #undef FLAG_n
 #undef FLAG_U
 #undef FLAG_u
@@ -5967,21 +5969,23 @@
 #ifndef TT
 #define TT this.netcat
 #endif
-#define FLAG_n (1LL<<0)
-#define FLAG_U (1LL<<1)
-#define FLAG_u (1LL<<2)
-#define FLAG_6 (1LL<<3)
-#define FLAG_4 (1LL<<4)
-#define FLAG_f (1LL<<5)
-#define FLAG_s (1LL<<6)
-#define FLAG_q (1LL<<7)
-#define FLAG_p (1LL<<8)
-#define FLAG_W (1LL<<9)
-#define FLAG_w (1LL<<10)
-#define FLAG_L (1LL<<11)
-#define FLAG_l (1LL<<12)
-#define FLAG_E (1LL<<13)
-#define FLAG_t (1LL<<14)
+#define FLAG_z (1LL<<0)
+#define FLAG_v (1LL<<1)
+#define FLAG_n (1LL<<2)
+#define FLAG_U (1LL<<3)
+#define FLAG_u (1LL<<4)
+#define FLAG_6 (1LL<<5)
+#define FLAG_4 (1LL<<6)
+#define FLAG_f (1LL<<7)
+#define FLAG_s (1LL<<8)
+#define FLAG_q (1LL<<9)
+#define FLAG_p (1LL<<10)
+#define FLAG_W (1LL<<11)
+#define FLAG_w (1LL<<12)
+#define FLAG_L (1LL<<13)
+#define FLAG_l (1LL<<14)
+#define FLAG_E (1LL<<15)
+#define FLAG_t (1LL<<16)
 #endif
 
 #ifdef FOR_netstat
