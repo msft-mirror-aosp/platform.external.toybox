@@ -63,7 +63,6 @@ config GITCHECKOUT
     A minimal git checkout.
 */
 
-#define TT  this.git
 #define FOR_gitclone
 #include "toys.h"
 #include "openssl/sha.h" //ToDo: borrowed from OpenSSL to not pipe or refactor the SHA1SUM in toybox
@@ -221,7 +220,7 @@ int inf(FILE *source, char *dest) //modified signature to ease use
             }
 
             have = CHUNK - strm.avail_out;
-	    memcpy(position, out, have); //added to original
+            memcpy(position, out, have); //added to original
             position += have; //added to original
             //if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
             //    (void)inflateEnd(&strm);
