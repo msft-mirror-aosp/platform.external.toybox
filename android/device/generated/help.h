@@ -520,7 +520,7 @@
 
 #define HELP_who "usage: who\n\nPrint information about logged in users."
 
-#define HELP_wc "usage: wc [-lwcm] [FILE...]\n\nCount lines, words, and characters in input.\n\n-l	Show lines\n-w	Show words\n-c	Show bytes\n-m	Show characters\n\nBy default outputs lines, words, bytes, and filename for each\nargument (or from stdin if none). Displays only either bytes\nor characters."
+#define HELP_wc "usage: wc [-Llwcm] [FILE...]\n\nCount lines, words, and characters in input.\n\n-L	Show max line length\n-l	Show lines\n-w	Show words\n-c	Show bytes\n-m	Show characters\n\nBy default outputs lines, words, bytes, and filename for each\nargument (or from stdin if none). Displays only either bytes\nor characters."
 
 #define HELP_uuencode "usage: uuencode [-m] [INFILE] ENCODE_FILENAME\n\nUuencode stdin (or INFILE) to stdout, with ENCODE_FILENAME in the output.\n\n-m	Base64"
 
