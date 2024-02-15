@@ -14,26 +14,26 @@ config DU
   bool "du"
   default y
   help
-    usage: du [-d N] [-askxHLlmc] [FILE...]
+    usage: du [-d N] [-abcHKkLlmsx] [FILE...]
 
     Show disk usage, space consumed by files and directories.
 
     Size in:
     -b	Apparent bytes (directory listing size, not space used)
+    -h	Human readable (e.g., 1K 243M 2G)
     -k	1024 byte blocks (default)
     -K	512 byte blocks (posix)
     -m	Megabytes
-    -h	Human readable (e.g., 1K 243M 2G)
 
     What to show:
     -a	All files, not just directories
-    -H	Follow symlinks on cmdline
-    -L	Follow all symlinks
-    -s	Only total size of each argument
-    -x	Don't leave this filesystem
     -c	Cumulative total
     -d N	Only depth < N
+    -H	Follow symlinks on cmdline
+    -L	Follow all symlinks
     -l	Disable hardlink filter
+    -s	Only total size of each argument
+    -x	Don't leave this filesystem
 */
 
 #define FOR_du
@@ -108,7 +108,7 @@ static int seen_inode(void **list, struct stat *st)
 // dirtree callback, compute/display size of node
 static int do_du(struct dirtree *node)
 {
-  unsigned long blocks;
+  unsigned long blocks, again = node->again&DIRTREE_COMEAGAIN;
 
   if (!node->parent) TT.st_dev = node->st.st_dev;
   else if (!dirtree_notdotdot(node)) return 0;
@@ -124,12 +124,12 @@ static int do_du(struct dirtree *node)
   }
 
   // Don't count hard links twice
-  if (!FLAG(l) && !node->again)
+  if (!FLAG(l) && !again)
     if (seen_inode(&TT.inodes, &node->st)) return 0;
 
   // Collect child info before printing directory size
   if (S_ISDIR(node->st.st_mode)) {
-    if (!node->again) {
+    if (!again) {
       TT.depth++;
       return DIRTREE_COMEAGAIN|DIRTREE_SYMFOLLOW*FLAG(L);
     } else TT.depth--;

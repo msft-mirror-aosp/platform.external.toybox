@@ -115,7 +115,7 @@ char *xstrndup(char *s, size_t n);
 char *xstrdup(char *s);
 void *xmemdup(void *s, long len);
 char *xmprintf(char *format, ...) printf_format;
-void xflush(int flush);
+void xferror(FILE *fp);
 void xprintf(char *format, ...) printf_format;
 void xputsl(char *s, int len);
 void xputsn(char *s);
@@ -179,6 +179,7 @@ void xsignal_flags(int signal, void *handler, int flags);
 void xsignal(int signal, void *handler);
 time_t xvali_date(struct tm *tm, char *str);
 void xparsedate(char *str, time_t *t, unsigned *nano, int endian);
+char *xgetdelim(FILE *fp, int delim);
 char *xgetline(FILE *fp);
 time_t xmktime(struct tm *tm, int utc);
 
@@ -209,9 +210,9 @@ void msleep(long milliseconds);
 void nanomove(struct timespec *ts, long long offset);
 long long nanodiff(struct timespec *old, struct timespec *new);
 int highest_bit(unsigned long l);
-int64_t peek_le(void *ptr, unsigned size);
-int64_t peek_be(void *ptr, unsigned size);
-int64_t peek(void *ptr, unsigned size);
+long long peek_le(void *ptr, unsigned size);
+long long peek_be(void *ptr, unsigned size);
+long long peek(void *ptr, unsigned size);
 void poke_le(void *ptr, long long val, unsigned size);
 void poke_be(void *ptr, long long val, unsigned size);
 void poke(void *ptr, long long val, unsigned size);
@@ -270,7 +271,6 @@ char *format_iso_time(char *buf, size_t len, struct timespec *ts);
 void loggit(int priority, char *format, ...);
 unsigned tar_cksum(void *data);
 int is_tar_header(void *pkt);
-char *elf_arch_name(int type);
 void octal_deslash(char *s);
 int smemcmp(char *one, char *two, unsigned long len);
 
@@ -281,6 +281,15 @@ int smemcmp(char *one, char *two, unsigned long len);
 int human_readable_long(char *buf, unsigned long long num, int dgt, int unit,
   int style);
 int human_readable(char *buf, unsigned long long num, int style);
+
+// elf.c
+
+char *elf_arch_name(int type);
+void elf_print_flags(int arch, int flags);
+
+// hash.c
+
+void hash_by_name(int fd, char *name, char *result);
 
 // env.c
 
@@ -356,7 +365,10 @@ char *escape_url(char *str, char *and);
 char *unescape_url(char *str, int do_cut);
 
 // password.c
-int get_salt(char *salt, char * algo);
+int get_salt(char *salt, char *algo, int rand);
+int read_password(char *buff, int buflen, char *mesg);
+char **get_userline(char *filename, char *username);
+int update_password(char *filename, char *username, char *entry, int pos);
 
 // commas.c
 void comma_args(struct arg_list *al, void *data, char *err,
@@ -371,8 +383,7 @@ int comma_remove(char *optlist, char *opt);
 
 long long gzip_fd(int infd, int outfd);
 long long gunzip_fd(int infd, int outfd);
-long long gunzip_fd_preload(int infd, int outfd, char *buf, unsigned len);
-
+long long gunzip_mem(char *inbuf, int inlen, char *outbuf, int outlen);
 
 // getmountlist.c
 struct mtab_list {
@@ -423,6 +434,3 @@ pid_t __attribute__((returns_twice)) xvforkwrap(pid_t pid);
 
 #define minof(a, b) ({typeof(a) aa = (a); typeof(b) bb = (b); aa<bb ? aa : bb;})
 #define maxof(a, b) ({typeof(a) aa = (a); typeof(b) bb = (b); aa>bb ? aa : bb;})
-
-// Functions in need of further review/cleanup
-#include "lib/pending.h"

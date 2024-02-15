@@ -151,34 +151,11 @@ then
   [ $? -ne 0 ] && exit 1
 fi
 
-#TODO: "make $SED && make" doesn't regenerate config.h because diff .config
-if true #isnewer config.h "$KCONFIG_CONFIG"
-then
-  # This long and roundabout sed invocation is to make old versions of sed
-  # happy. New ones have '\n' so can replace one line with two without all
-  # the branches and tedious mucking about with hyperspace.
-  # TODO: clean this up to use modern stuff.
-
-  $SED -n \
-    -e 's/^# CONFIG_\(.*\) is not set.*/\1/' \
-    -e 't notset' \
-    -e 's/^CONFIG_\(.*\)=y.*/\1/' \
-    -e 't isset' \
-    -e 's/^CONFIG_\([^=]*\)=\(.*\)/#define CFG_\1 \2/p' \
-    -e 'd' \
-    -e ':notset' \
-    -e 'h' \
-    -e 's/.*/#define CFG_& 0/p' \
-    -e 'g' \
-    -e 's/.*/#define USE_&(...)/p' \
-    -e 'd' \
-    -e ':isset' \
-    -e 'h' \
-    -e 's/.*/#define CFG_& 1/p' \
-    -e 'g' \
-    -e 's/.*/#define USE_&(...) __VA_ARGS__/p' \
-    $KCONFIG_CONFIG > "$GENDIR"/config.h || exit 1
-fi
+# Rebuild config.h from .config
+$SED -En $KCONFIG_CONFIG > "$GENDIR"/config.h \
+  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)/p' \
+  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__/p'\
+  || exit 1
 
 # Process config.h and newtoys.h to generate FLAG_x macros. Note we must
 # always #define the relevant macro, even when it's disabled, because we
@@ -227,30 +204,18 @@ fi
 
 # Extract global structure definitions and flag definitions from toys/*/*.c
 
-function getglobals()
 {
-  for i in toys/*/*.c
-  do
-    NAME=${i##*/} NAME=${NAME%\.c}
-    DATA="$($SED -n -e '/^GLOBALS(/,/^)/b got;b;:got' \
-            -e 's/^GLOBALS(/_data {/' \
-            -e 's/^)/};/' -e 'p' $i)"
-    [ -n "$DATA" ] && echo -e "// $i\n\nstruct $NAME$DATA\n"
-  done
-}
-
-if isnewer globals.h toys
-then
-  GLOBSTRUCT="$(getglobals)"
-  (
-    echo "$GLOBSTRUCT"
-    echo
-    echo "extern union global_union {"
-    echo "$GLOBSTRUCT" | \
-      $SED -n 's/struct \(.*\)_data {/	struct \1_data \1;/p'
-    echo "} this;"
-  ) > "$GENDIR"/globals.h
-fi
+  STRUX="$($SED -ne 's/^#define[ \t]*FOR_\([^ \t]*\).*/\1/;T s1;h;:s1' \
+  -e '/^GLOBALS(/,/^)/{s/^GLOBALS(//;T s2;g;s/.*/struct &_data {/;:s2;s/^)/};\n/;p}' \
+  $TOYFILES)"
+  echo "$STRUX" &&
+  echo "extern union global_union {" &&
+  $SED -n 's/^struct \(.*\)_data .*/\1/;T;s/.*/\tstruct &_data &;/p' \
+    <<<"$STRUX" &&
+  echo "} this;"
+} > "$GENDIR"/globals.h || exit 1
+#    -e 'h;y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/;H;g;s/\n/ /'\
+#    -e 's/\([^ ]*\) \(.*\)/\tUSE_\2(struct \1_data \1;)/p')"
 
 hostcomp mktags
 if isnewer tags.h toys
@@ -259,13 +224,25 @@ then
     toys/*/*.c lib/*.c | "$UNSTRIPPED"/mktags > "$GENDIR"/tags.h
 fi
 
+# Create help.h, and zhelp.h if zcat enabled
 hostcomp config2help
 if isnewer help.h "$GENDIR"/Config.in
 then
-  "$UNSTRIPPED"/config2help Config.in $KCONFIG_CONFIG > "$GENDIR"/help.h || exit 1
+  "$UNSTRIPPED"/config2help Config.in $KCONFIG_CONFIG > "$GENDIR"/help.h||exit 1
 fi
-[ -z "$DIDNEWER" ] || echo }
 
+if grep -qx 'CONFIG_TOYBOX_ZHELP=y' "$KCONFIG_CONFIG"
+then
+  do_loudly $HOSTCC -I . scripts/install.c -o "$UNSTRIPPED"/instlist || exit 1
+  { echo "#define ZHELP_LEN $("$UNSTRIPPED"/instlist --help | wc -c)" &&
+    "$UNSTRIPPED"/instlist --help | gzip -9 | od -Anone -vtx1 | \
+    sed 's/ /,0x/g;1s/^,/static char zhelp_data[] = {\n /;$s/.*/&};/'
+  } > "$GENDIR"/zhelp.h || exit 1
+else
+  rm -f "$GENDIR"/zhelp.h
+fi
+
+[ -z "$DIDNEWER" ] || echo }
 [ -n "$NOBUILD" ] && exit 0
 
 echo "Compile $OUTNAME"

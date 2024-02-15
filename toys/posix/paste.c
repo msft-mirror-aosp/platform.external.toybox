@@ -2,11 +2,11 @@
  *
  * Copyright 2012 Felix Janda <felix.janda@posteo.de>
  *
- * http://pubs.opengroup.org/onlinepubs/9699919799/utilities/paste.html 
+ * http://pubs.opengroup.org/onlinepubs/9699919799/utilities/paste.html
  *
  * Deviations from posix: the FILE argument isn't mandatory, none == '-'
 
-USE_PASTE(NEWTOY(paste, "d:s", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LOCALE))
+USE_PASTE(NEWTOY(paste, "d:s", TOYFLAG_USR|TOYFLAG_BIN))
 
 config PASTE
   bool "paste"

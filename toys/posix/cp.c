@@ -23,7 +23,7 @@ config CP
   bool "cp"
   default y
   help
-    usage: cp [-adfHiLlnPpRrsTv] [--preserve=motcxa] [-t TARGET] SOURCE... [DEST]
+    usage: cp [-aDdFfHiLlnPpRrsTuv] [--preserve=motcxa] [-t TARGET] SOURCE... [DEST]
 
     Copy files from SOURCE to DEST.  If more than one SOURCE, DEST must
     be a directory.
@@ -38,14 +38,14 @@ config CP
     -L	Follow all symlinks
     -l	Hard link instead of copy
     -n	No clobber (don't overwrite DEST)
-    -u	Update (keep newest mtime)
     -P	Do not follow symlinks
     -p	Preserve timestamps, ownership, and mode
     -R	Recurse into subdirectories (DEST must be a directory)
     -r	Synonym for -R
     -s	Symlink instead of copy
-    -t	Copy to TARGET dir (no DEST)
     -T	DEST always treated as file, max 2 arguments
+    -t	Copy to TARGET dir (no DEST)
+    -u	Update (keep newest mtime)
     -v	Verbose
 
     Arguments to --preserve are the first letter(s) of:
@@ -119,12 +119,40 @@ struct cp_preserve {
   {"mode"}, {"ownership"}, {"timestamps"}, {"context"}, {"xattr"},
 );
 
+void cp_xattr(int fdin, int fdout, char *file)
+{
+  ssize_t listlen, len;
+  char *name, *value, *list;
+
+  if (!(TT.pflags&(_CP_xattr|_CP_context))) return;
+  if ((listlen = xattr_flist(fdin, 0, 0))<1) return;
+
+  list = xmalloc(listlen);
+  xattr_flist(fdin, list, listlen);
+  for (name = list; name-list < listlen; name += strlen(name)+1) {
+    // context copies security, xattr copies everything else
+    len = strncmp(name, "security.", 9) ? _CP_xattr : _CP_context;
+    if (!(TT.pflags&len)) continue;
+    if ((len = xattr_fget(fdin, name, 0, 0))>0) {
+      value = xmalloc(len);
+      if (len == xattr_fget(fdin, name, value, len))
+        if (xattr_fset(fdout, name, value, len, 0))
+          perror_msg("%s setxattr(%s=%s)", file, name, value);
+      free(value);
+    }
+  }
+  free(list);
+}
+
 // Callback from dirtree_read() for each file/directory under a source dir.
+
+// traverses two directories in parallel: try->dirfd is source dir,
+// try->extra is dest dir. TODO: filehandle exhaustion?
 
 static int cp_node(struct dirtree *try)
 {
   int fdout = -1, cfd = try->parent ? try->parent->extra : AT_FDCWD,
-      save = DIRTREE_SAVE*(CFG_MV && toys.which->name[0] == 'm'), rc = 0,
+      save = DIRTREE_SAVE*(CFG_MV && *toys.which->name == 'm'), rc = 0,
       tfd = dirtree_parentfd(try);
   unsigned flags = toys.optflags;
   char *s = 0, *catch = try->parent ? try->name : TT.destname, *err = "%s";
@@ -133,7 +161,7 @@ static int cp_node(struct dirtree *try)
   if (!dirtree_notdotdot(try)) return 0;
 
   // If returning from COMEAGAIN, jump straight to -p logic at end.
-  if (S_ISDIR(try->st.st_mode) && try->again) {
+  if (S_ISDIR(try->st.st_mode) && (try->again&DIRTREE_COMEAGAIN)) {
     fdout = try->extra;
     err = 0;
 
@@ -142,6 +170,8 @@ static int cp_node(struct dirtree *try)
       save = 0;
       llist_traverse(try->child, free);
     }
+
+    cp_xattr(try->dirfd, try->extra, catch);
   } else {
     // -d is only the same as -r for symlinks, not for directories
     if (S_ISLNK(try->st.st_mode) && (flags & FLAG_d)) flags |= FLAG_r;
@@ -180,6 +210,7 @@ static int cp_node(struct dirtree *try)
 
     // Loop for -f retry after unlink
     do {
+      int ii, fdin = -1;
 
       // directory, hardlink, symlink, mknod (char, block, fifo, socket), file
 
@@ -215,19 +246,17 @@ static int cp_node(struct dirtree *try)
       // appending the right number of .. entries as you go down the tree.
 
       } else if (flags & FLAG_s) {
-        char *s;
+        char *s, *s2;
         struct dirtree *or;
-        int dotdots = 0;
 
         s = dirtree_path(try, 0);
-        for (or = try; or->parent; or = or->parent) dotdots++;
-
-        if (*or->name == '/') dotdots = 0;
-        if (dotdots) {
-          char *s2 = xmprintf("%*c%s", 3*dotdots, ' ', s);
+        for (ii = 0, or = try; or->parent; or = or->parent) ii++;
+        if (*or->name == '/') ii = 0;
+        if (ii) {
+          s2 = xmprintf("%*c%s", 3*ii, ' ', s);
           free(s);
           s = s2;
-          while(dotdots--) {
+          while(ii--) {
             memcpy(s2, "../", 3);
             s2 += 3;
           }
@@ -255,13 +284,12 @@ static int cp_node(struct dirtree *try)
 
       // Copy contents of file.
       } else {
-        int fdin, ii;
-
         fdin = openat(tfd, try->name, O_RDONLY);
         if (fdin < 0) {
           catch = try->name;
           break;
         }
+
         // When copying contents use symlink target's attributes
         if (S_ISLNK(try->st.st_mode)) fstat(fdin, &try->st);
         fdout = openat(cfd, catch, O_RDWR|O_CREAT|O_TRUNC, try->st.st_mode);
@@ -270,33 +298,9 @@ static int cp_node(struct dirtree *try)
           err = 0;
         }
 
-        // We only copy xattrs for files because there's no flistxattrat()
-        if (TT.pflags&(_CP_xattr|_CP_context)) {
-          ssize_t listlen = xattr_flist(fdin, 0, 0), len;
-          char *name, *value, *list;
-
-          if (listlen>0) {
-            list = xmalloc(listlen);
-            xattr_flist(fdin, list, listlen);
-            list[listlen-1] = 0; // I do not trust this API.
-            for (name = list; name-list < listlen; name += strlen(name)+1) {
-              // context copies security, xattr copies everything else
-              ii = strncmp(name, "security.", 9) ? _CP_xattr : _CP_context;
-              if (!(TT.pflags&ii)) continue;
-              if ((len = xattr_fget(fdin, name, 0, 0))>0) {
-                value = xmalloc(len);
-                if (len == xattr_fget(fdin, name, value, len))
-                  if (xattr_fset(fdout, name, value, len, 0))
-                    perror_msg("%s setxattr(%s=%s)", catch, name, value);
-                free(value);
-              }
-            }
-            free(list);
-          }
-        }
-
-        close(fdin);
+        cp_xattr(fdin, fdout, catch);
       }
+      if (fdin != -1) close(fdin);
     } while (err && (flags & (FLAG_f|FLAG_n)) && !unlinkat(cfd, catch, 0));
   }
 
@@ -351,6 +355,7 @@ static int cp_node(struct dirtree *try)
     perror_msg(err, catch);
     free(s);
   }
+
   return 0;
 }
 
@@ -429,7 +434,7 @@ void cp_main(void)
 
     // "mv across devices" triggers cp fallback path, so set that as default
     errno = EXDEV;
-    if (CFG_MV && toys.which->name[0] == 'm') {
+    if (CFG_MV && *toys.which->name == 'm') {
       if (!FLAG(f) || FLAG(n)) {
         struct stat st;
         int exists = !stat(TT.destname, &st);
@@ -462,6 +467,7 @@ void cp_main(void)
 void mv_main(void)
 {
   toys.optflags |= FLAG_d|FLAG_p|FLAG_r;
+  TT.pflags =~0;
 
   cp_main();
 }

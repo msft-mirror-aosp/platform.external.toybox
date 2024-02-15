@@ -28,8 +28,8 @@
 #define USE_TOYBOX_SMACK(...)
 #define CFG_TOYBOX_SUID 0
 #define USE_TOYBOX_SUID(...)
-#define CFG_TOYBOX_UID_SYS 100
-#define CFG_TOYBOX_UID_USR 500
+#define CFG_TOYBOX_ZHELP 0
+#define USE_TOYBOX_ZHELP(...)
 #define CFG_ACPI 0
 #define USE_ACPI(...)
 #define CFG_ARCH 0
@@ -106,6 +106,8 @@
 #define USE_CROND(...)
 #define CFG_CRONTAB 0
 #define USE_CRONTAB(...)
+#define CFG_CSPLIT 0
+#define USE_CSPLIT(...)
 #define CFG_CUT 1
 #define USE_CUT(...) __VA_ARGS__
 #define CFG_DATE 1
@@ -272,6 +274,8 @@
 #define USE_I2CGET(...)
 #define CFG_I2CSET 0
 #define USE_I2CSET(...)
+#define CFG_I2CTRANSFER 0
+#define USE_I2CTRANSFER(...)
 #define CFG_ICONV 0
 #define USE_ICONV(...)
 #define CFG_ID 1
@@ -356,6 +360,8 @@
 #define USE_MDEV_CONF(...)
 #define CFG_MDEV 0
 #define USE_MDEV(...)
+#define CFG_MEMEATER 0
+#define USE_MEMEATER(...)
 #define CFG_MICROCOM 1
 #define USE_MICROCOM(...) __VA_ARGS__
 #define CFG_MIX 0
@@ -598,6 +604,10 @@
 #define USE_TRUNCATE(...) __VA_ARGS__
 #define CFG_TR 1
 #define USE_TR(...) __VA_ARGS__
+#define CFG_TS 0
+#define USE_TS(...)
+#define CFG_TSORT 0
+#define USE_TSORT(...)
 #define CFG_TTY 0
 #define USE_TTY(...)
 #define CFG_TUNCTL 0

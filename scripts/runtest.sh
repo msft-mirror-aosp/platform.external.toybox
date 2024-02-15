@@ -132,15 +132,15 @@ testing()
     return 0
   fi
 
-  echo -ne "$3" > ../expected
+  echo -ne "$3" > "$TESTDIR"/expected
   [ ! -z "$4" ] && echo -ne "$4" > input || rm -f input
-  echo -ne "$5" | ${EVAL:-eval --} "$2" > ../actual
+  echo -ne "$5" | ${EVAL:-eval --} "$2" > "$TESTDIR"/actual
   RETVAL=$?
 
   # Catch segfaults
   [ $RETVAL -gt 128 ] &&
     echo "exited with signal (or returned $RETVAL)" >> actual
-  DIFF="$(cd ..; diff -au${NOSPACE:+w} expected actual)"
+  DIFF="$(cd "$TESTDIR"; diff -au${NOSPACE:+w} expected actual 2>&1)"
   [ -z "$DIFF" ] && do_pass || VERBOSE=all do_fail
   if ! verbose_has quiet && { [ -n "$DIFF" ] || verbose_has spam; }
   then
@@ -165,15 +165,28 @@ testcmd()
   testing "${1:-$CMDNAME $2}" "\"$C\" $2" "$3" "$4" "$5"
 }
 
+utf8locale()
+{
+  local i
+
+  for i in $LC_ALL C.UTF-8 en_US.UTF-8
+  do
+    [ "$(LC_ALL=$i locale charmap 2>/dev/null)" == UTF-8 ] && LC_ALL=$i && break
+  done
+}
+
 # Simple implementation of "expect" written in shell.
 
-# txpect NAME COMMAND [I/O/E/Xstring]...
-# Run COMMAND and interact with it: send I strings to input, read O or E
-# strings from stdout or stderr (empty string is "read line of input here"),
-# X means close stdin/stdout/stderr and match return code (blank means nonzero)
+# txpect NAME COMMAND [I/O/E/X/R[OE]string]...
+# Run COMMAND and interact with it:
+# I send string to input
+# OE read exactly this string from stdout or stderr (bare = read+discard line)
+#    note: non-bare does not read \n unless you include it with O$'blah\n'
+# R prefix means O or E is regex match (read line, must contain substring)
+# X close stdin/stdout/stderr and match return code (blank means nonzero)
 txpect()
 {
-  local NAME CASE VERBOSITY LEN PID A B X O
+  local NAME CASE VERBOSITY IN OUT ERR LEN PID A B X O
 
   # Run command with redirection through fifos
   NAME="$CMDNAME $1"
@@ -236,7 +249,7 @@ txpect()
         wait $PID
         A=$?
         exec {OUT}<&- {ERR}<&-
-        if [ -z "$LEN" ]
+        if [ "$LEN" -eq 0 ]
         then
           [ $A -eq 0 ] && { do_fail;break;}        # any error
         else

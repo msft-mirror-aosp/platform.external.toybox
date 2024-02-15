@@ -10,13 +10,16 @@ void verror_msg(char *msg, int err, va_list va)
 {
   char *s = ": %s";
 
-  fprintf(stderr, "%s: ", toys.which->name);
-  if (msg) vfprintf(stderr, msg, va);
-  else s+=2;
-  if (err>0) fprintf(stderr, s, strerror(err));
-  if (err<0 && CFG_TOYBOX_HELP)
-    fprintf(stderr, " (see \"%s --help\")", toys.which->name);
-  if (msg || err) putc('\n', stderr);
+  // Exit silently in a pipeline
+  if (err != EPIPE) {
+    fprintf(stderr, "%s: ", toys.which->name);
+    if (msg) vfprintf(stderr, msg, va);
+    else s+=2;
+    if (err>0) fprintf(stderr, s, strerror(err));
+    if (err<0 && CFG_TOYBOX_HELP)
+      fprintf(stderr, " (see \"%s --help\")", toys.which->name);
+    if (msg || err) putc('\n', stderr);
+  }
   if (!toys.exitval) toys.exitval = (toys.which->flags>>24) ? : 1;
 }
 
@@ -55,14 +58,11 @@ void error_exit(char *msg, ...)
 // Die with an error message and strerror(errno)
 void perror_exit(char *msg, ...)
 {
-  // Die silently if our pipeline exited.
-  if (errno != EPIPE) {
-    va_list va;
+  va_list va;
 
-    va_start(va, msg);
-    verror_msg(msg, errno, va);
-    va_end(va);
-  }
+  va_start(va, msg);
+  verror_msg(msg, errno, va);
+  va_end(va);
 
   xexit();
 }
@@ -106,7 +106,8 @@ void perror_exit_raw(char *msg)
   perror_exit("%s", msg);
 }
 
-// Keep reading until full or EOF
+// Keep reading until full or EOF. Note: assumes sigaction(SA_RESTART),
+// otherwise SIGSTOP/SIGCONT can return 0 from read/write without EOF.
 ssize_t readall(int fd, void *buf, size_t len)
 {
   size_t count = 0;
@@ -318,8 +319,10 @@ long long atolx(char *numstr)
     if (shift==-1) val *= 2;
     else if (!shift) val *= 512;
     else if (shift>0) {
-      if (*c && tolower(*c++)=='d') while (shift--) val *= 1000;
-      else val *= 1LL<<(shift*10);
+      if (*c && tolower(*c)=='d') {
+        c++;
+        while (shift--) val *= 1000;
+      } else val *= 1LL<<(shift*10);
     }
   }
   while (isspace(*c)) c++;
@@ -665,19 +668,19 @@ int highest_bit(unsigned long l)
 }
 
 // Inefficient, but deals with unaligned access
-int64_t peek_le(void *ptr, unsigned size)
+long long peek_le(void *ptr, unsigned size)
 {
-  int64_t ret = 0;
+  long long ret = 0;
   char *c = ptr;
   int i;
 
-  for (i=0; i<size; i++) ret |= ((int64_t)c[i])<<(i*8);
+  for (i=0; i<size; i++) ret |= ((long long)c[i])<<(i*8);
   return ret;
 }
 
-int64_t peek_be(void *ptr, unsigned size)
+long long peek_be(void *ptr, unsigned size)
 {
-  int64_t ret = 0;
+  long long ret = 0;
   char *c = ptr;
   int i;
 
@@ -685,7 +688,7 @@ int64_t peek_be(void *ptr, unsigned size)
   return ret;
 }
 
-int64_t peek(void *ptr, unsigned size)
+long long peek(void *ptr, unsigned size)
 {
   return (IS_BIG_ENDIAN ? peek_be : peek_le)(ptr, size);
 }
@@ -1499,33 +1502,6 @@ int is_tar_header(void *pkt)
   sscanf(p+148, "%8o", &i);
 
   return i && tar_cksum(pkt) == i;
-}
-
-char *elf_arch_name(int type)
-{
-  int i;
-  // Values from include/linux/elf-em.h (plus arch/*/include/asm/elf.h)
-  // Names are linux/arch/ directory (sometimes before 32/64 bit merges)
-  struct {int val; char *name;} types[] = {{0x9026, "alpha"}, {93, "arc"},
-    {195, "arcv2"}, {40, "arm"}, {183, "arm64"}, {0x18ad, "avr32"},
-    {247, "bpf"}, {106, "blackfin"}, {140, "c6x"}, {23, "cell"}, {76, "cris"},
-    {252, "csky"}, {0x5441, "frv"}, {46, "h8300"}, {164, "hexagon"},
-    {50, "ia64"}, {258, "loongarch"}, {88, "m32r"}, {0x9041, "m32r"},
-    {4, "m68k"}, {174, "metag"}, {189, "microblaze"},
-    {0xbaab, "microblaze-old"}, {8, "mips"}, {10, "mips-old"}, {89, "mn10300"},
-    {0xbeef, "mn10300-old"}, {113, "nios2"}, {92, "openrisc"},
-    {0x8472, "openrisc-old"}, {15, "parisc"}, {20, "ppc"}, {21, "ppc64"},
-    {243, "riscv"}, {22, "s390"}, {0xa390, "s390-old"}, {135, "score"},
-    {42, "sh"}, {2, "sparc"}, {18, "sparc8+"}, {43, "sparc9"}, {188, "tile"},
-    {191, "tilegx"}, {3, "386"}, {6, "486"}, {62, "x86-64"}, {94, "xtensa"},
-    {0xabc7, "xtensa-old"}
-  };
-
-  for (i = 0; i<ARRAY_LEN(types); i++) {
-    if (type==types[i].val) return types[i].name;
-  }
-  sprintf(libbuf, "unknown arch %d", type);
-  return libbuf;
 }
 
 // Remove octal escapes from string (common in kernel exports)

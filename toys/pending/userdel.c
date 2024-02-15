@@ -13,7 +13,7 @@ config USERDEL
   help
     usage: userdel [-r] USER
     usage: deluser [-r] USER
-  
+
     Delete USER from the SYSTEM
 
     -r	remove home directory
@@ -92,13 +92,13 @@ void userdel_main(void)
 {
   struct passwd *pwd = xgetpwnam(*toys.optargs);
 
-  update_password("/etc/passwd", pwd->pw_name, NULL);
-  update_password("/etc/shadow", pwd->pw_name, NULL);
+  update_password("/etc/passwd", pwd->pw_name, 0, 0);
+  update_password("/etc/shadow", pwd->pw_name, 0, 0);
 
   // delete the group named USER, and remove user from group.
-  // could update_password() be used for this? 
+  // could update_password() be used for this?
   // not a good idea, as update_passwd() updates one entry at a time
-  // in this case it will be modifying the files as many times the 
+  // in this case it will be modifying the files as many times the
   // USER appears in group database files. So the customized version
   // of update_passwd() is here.
   update_groupfiles("/etc/group", *toys.optargs);

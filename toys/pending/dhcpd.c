@@ -36,7 +36,7 @@ config DEBUG_DHCP
 #define FOR_dhcpd
 
 #include "toys.h"
-#include <linux/sockios.h> 
+#include <linux/sockios.h>
 #include <linux/if_ether.h>
 
 // Todo: headers not in posix
@@ -123,8 +123,8 @@ config DEBUG_DHCP
 #define DHCP6_DUID_UUID   4
 
 GLOBALS(
-    char *iface;
-    long port;
+  char *i;
+  long p;
 )
 
 struct config_keyword {
@@ -134,29 +134,18 @@ struct config_keyword {
   char *def;
 };
 
-typedef struct __attribute__((packed)) dhcp_msg_s {
-  uint8_t op;
-  uint8_t htype;
-  uint8_t hlen;
-  uint8_t hops;
-  uint32_t xid;
-  uint16_t secs;
-  uint16_t flags;
-  uint32_t ciaddr;
-  uint32_t yiaddr;
-  uint32_t nsiaddr;
-  uint32_t ngiaddr;
-  uint8_t chaddr[16];
-  uint8_t sname[64];
-  uint8_t file[128];
-  uint32_t cookie;
-  uint8_t options[308];
+typedef struct dhcp_msg_s {
+  char op, htype, hlen, hops;
+  unsigned xid;
+  unsigned short secs, flags;
+  unsigned ciaddr, yiaddr, nsiaddr, ngiaddr;
+  char chaddr[16], sname[64], file[128];
+  unsigned cookie;
+  char options[308];
 } dhcp_msg_t;
 
-typedef struct __attribute__((packed)) dhcp6_msg_s {
-  uint8_t msgtype;
-  uint8_t transaction_id[3];
-  uint8_t options[524];
+typedef struct dhcp6_msg_s {
+  char msgtype, transaction_id[3], options[524];
 } dhcp6_msg_t;
 
 typedef struct __attribute__((packed)) dhcp_raw_s {
@@ -173,63 +162,53 @@ typedef struct __attribute__((packed)) dhcp6_raw_s {
 
 typedef struct static_lease_s {
   struct static_lease_s *next;
-  uint32_t nip;
+  unsigned nip;
   int mac[6];
 } static_lease;
 
 typedef struct static_lease6_s {
   struct static_lease6_s *next;
-  uint16_t duid_len;
-  uint16_t ia_type;
-  uint32_t iaid;
-  uint8_t nip6[16];
-  uint8_t duid[20];
+  unsigned short duid_len, ia_type;
+  unsigned iaid;
+  char nip6[16], duid[20];
 } static_lease6;
 
 typedef struct {
-  uint32_t expires;
-  uint32_t lease_nip;
-  uint8_t lease_mac[6];
-  char hostname[20];
-  uint8_t pad[2];
+  unsigned expires, lease_nip;
+  char lease_mac[6], hostname[20], pad[2];
 } dyn_lease;
 
 typedef struct {
-  uint16_t duid_len;
-  uint16_t ia_type;
-  uint32_t expires;
-  uint32_t iaid;
-  uint8_t lease_nip6[16];
-  uint8_t duid[20];
+  unsigned short duid_len, ia_type;
+  unsigned expires, iaid;
+  char lease_nip6[16], duid[20];
 } dyn_lease6;
 
 typedef struct option_val_s {
   char *key;
-  uint16_t code;
+  unsigned short code;
   void *val;
   size_t len;
 } option_val_t;
 
-struct __attribute__((packed)) optval_duid_llt {
-  uint16_t type;
-  uint16_t hwtype;
-  uint32_t time;
-  uint8_t lladdr[];   //flexible
+struct optval_duid_llt {
+  unsigned short type, hwtype;
+  unsigned time;
+  char lladdr[];
 };
 
-struct __attribute__((packed)) optval_ia_na {
-  uint32_t iaid;
-  uint32_t t1, t2;
-  uint8_t optval[];   //flexible
+struct optval_ia_na {
+  unsigned iaid, t1, t2;
+  char optval[];
 };
-struct __attribute__((packed)) optval_ia_addr {
-  uint8_t ipv6_addr[16];
-  uint32_t pref_lifetime;
-  uint32_t valid_lifetime;
+
+struct optval_ia_addr {
+  char ipv6_addr[16];
+  unsigned pref_lifetime, valid_lifetime;
 };
-struct __attribute__((packed)) optval_status_code {
-  uint16_t status_code;
-  uint8_t status_msg[]; //flexible
+struct optval_status_code {
+  unsigned short status_code;
+  char status_msg[];
 };
 
 typedef struct __attribute__((__may_alias__)) server_config_s {
@@ -907,7 +886,7 @@ static int send_packet(uint8_t broadcast)
   dhcp_raw_t packet;
   unsigned padding;
   int fd, result = -1;
-  uint8_t bmacaddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+  char bmacaddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
   memset(&packet, 0, sizeof(dhcp_raw_t));
   memcpy(&packet.dhcp, &gstate.send.send_pkt, sizeof(dhcp_msg_t));
@@ -1313,7 +1292,7 @@ static int verifyip6_in_lease(uint8_t *nip6, uint8_t *duid, uint16_t ia_type, ui
       return -1;
 
     if (!memcmp(((dyn_lease6*) listdls->arg)->duid, duid, ((dyn_lease6*) listdls->arg)->duid_len)
-        && ((dyn_lease6*) listdls->arg)->ia_type == ia_type) 
+        && ((dyn_lease6*) listdls->arg)->ia_type == ia_type)
       return -1;
   }
   for (sls6 = gstate.leases.sleases6; sls6; sls6 = sls6->next)
@@ -1397,12 +1376,12 @@ static int addip6_to_lease(uint8_t *assigned_nip, uint8_t *duid, uint16_t duid_l
   }
 
   dls6 = xzalloc(sizeof(dyn_lease6));
-  dls6->duid_len = duid_len; 
+  dls6->duid_len = duid_len;
   memcpy(dls6->duid, duid, duid_len);
   dls6->ia_type = ia_type;
   dls6->iaid = iaid;
   memcpy(dls6->lease_nip6, assigned_nip, sizeof(uint32_t)*4);
-  
+
   if (update) *lifetime = get_lease(*lifetime + now);
   dls6->expires = *lifetime + now;
 
@@ -1606,36 +1585,35 @@ void dhcpd_main(void)
 {
   struct timeval tv;
   int retval, i;
-  uint8_t *optptr, msgtype = 0;
-  uint16_t optlen = 0;
-  uint32_t waited = 0, serverid = 0, requested_nip = 0;
-  uint8_t transactionid[3] = {0,};
-  uint32_t reqested_lease = 0, ip_pool_size = 0;
-  char *hstname = NULL;
+  char *optptr, msgtype = 0, *hstname = 0, transactionid[3] = {0};
+  unsigned short optlen = 0;
+  unsigned waited = 0, serverid = 0, requested_nip = 0, reqested_lease = 0,
+           ip_pool_size = 0;
   fd_set rfds;
 
   infomode = LOG_CONSOLE;
-  if (!(toys.optflags & FLAG_f)) {
-    daemon(0,0);
+  if (!FLAG(f)) {
+    daemon(0, 0);
     infomode = LOG_SILENT;
   }
-  if (toys.optflags & FLAG_S) {
-        openlog("UDHCPD :", LOG_PID, LOG_DAEMON);
-        infomode |= LOG_SYSTEM;
+  if (FLAG(S)) {
+    openlog("UDHCPD :", LOG_PID, LOG_DAEMON);
+    infomode |= LOG_SYSTEM;
   }
   setlinebuf(stdout);
   //DHCPD_CONF_FILE
-  parse_server_config((toys.optc==1)?toys.optargs[0]:"/etc/dhcpd.conf", keywords);
+  parse_server_config((toys.optc==1) ? *toys.optargs: "/etc/dhcpd.conf",
+    keywords);
   infomsg(infomode, "toybox dhcpd started");
 
-  if (toys.optflags & FLAG_6){
+  if (FLAG(6)) {
     addr_version = AF_INET6;
     gconfig.t1 = ntohl(gconfig.t1);
     gconfig.t2 = ntohl(gconfig.t2);
     gconfig.pref_lifetime = ntohl(gconfig.pref_lifetime);
     gconfig.valid_lifetime = ntohl(gconfig.valid_lifetime);
     gconfig.port = 547;
-    for(i=0;i<4;i++)
+    for(i=0; i<4; i++)
       ip_pool_size += (gconfig.end_ip6[i]-gconfig.start_ip6[i])<<((3-i)*8);
   } else {
     gconfig.start_ip = ntohl(gconfig.start_ip);
@@ -1650,19 +1628,17 @@ void dhcpd_main(void)
   }
   write_pid(gconfig.pidfile);
   set_maxlease();
-  if(TT.iface) gconfig.interface = TT.iface;
-  if(TT.port) gconfig.port = TT.port;
+  if (TT.i) gconfig.interface = TT.i;
+  if (TT.p) gconfig.port = TT.p;
   (addr_version==AF_INET6) ? read_lease6file() : read_leasefile();
-
 
   if (get_interface(gconfig.interface, &gconfig.ifindex,
         (addr_version==AF_INET6)? (void*)gconfig.server_nip6 :
         (void*)&gconfig.server_nip, gconfig.server_mac) < 0)
     perror_exit("Failed to get interface %s", gconfig.interface);
   setup_signal();
-  if (addr_version==AF_INET6) {
-    open_listensock6();
-  } else {
+  if (addr_version==AF_INET6) open_listensock6();
+  else {
     gconfig.server_nip = htonl(gconfig.server_nip);
     open_listensock();
   }
@@ -1691,7 +1667,7 @@ void dhcpd_main(void)
       dbg("Error in select wait again...\n");
       continue;
     }
-    if (!retval) { // Timed out 
+    if (!retval) { // Timed out
       dbg("select wait Timed Out...\n");
       waited = 0;
       (addr_version == AF_INET6)? write_lease6file() : write_leasefile();
@@ -1704,7 +1680,7 @@ void dhcpd_main(void)
       }
       continue;
     }
-    if (FD_ISSET(sigfd.rd, &rfds)) { // Some Activity on RDFDs : is signal 
+    if (FD_ISSET(sigfd.rd, &rfds)) { // Some Activity on RDFDs : is signal
       unsigned char sig;
       if (read(sigfd.rd, &sig, 1) != 1) {
         dbg("signal read failed.\n");
@@ -1975,7 +1951,7 @@ void dhcpd_main(void)
             dbg("Message Type : %u\n", gstate.rqcode);
             break;
         }
-        
+
       } else {
         if(read_packet() < 0) {
           open_listensock();
@@ -1985,7 +1961,7 @@ void dhcpd_main(void)
 
         get_optval((uint8_t*)&gstate.rcvd.rcvd_pkt.options,
             DHCP_OPT_MESSAGE_TYPE, &gstate.rqcode);
-        if (gstate.rqcode == 0 || gstate.rqcode < DHCPDISCOVER 
+        if (gstate.rqcode == 0 || gstate.rqcode < DHCPDISCOVER
             || gstate.rqcode > DHCPINFORM) {
           dbg("no or bad message type option, ignoring packet.\n");
           continue;

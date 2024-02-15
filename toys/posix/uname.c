@@ -6,9 +6,8 @@
 
 USE_UNAME(NEWTOY(uname, "paomvrns", TOYFLAG_BIN))
 USE_ARCH(NEWTOY(arch, 0, TOYFLAG_USR|TOYFLAG_BIN))
-USE_LINUX32(NEWTOY(linux32, 0, TOYFLAG_USR|TOYFLAG_BIN))
 
-config ARCH 
+config ARCH
   bool "arch"
   default y
   help
@@ -16,29 +15,22 @@ config ARCH
 
     Print machine (hardware) name, same as uname -m.
 
-config LINUX32
-  bool "linux32"
-  default y
-  help
-    usage: linux32 [COMMAND...]
-
-    Tell uname -m to line to autoconf (to build 32 bit binaries on 64 bit kernel).
-
 config UNAME
   bool "uname"
   default y
   help
-    usage: uname [-asnrvm]
+    usage: uname [-asnrvmo]
 
     Print system information.
 
     -s	System name
     -n	Network (domain) name
     -r	Kernel Release number
-    -v	Kernel Version 
+    -v	Kernel Version
     -m	Machine (hardware) name
-    -o	Userspace type
     -a	All of the above (in order)
+
+    -o	Userspace type
 */
 
 #define FOR_uname
@@ -68,10 +60,4 @@ void arch_main(void)
 {
   toys.optflags = FLAG_m;
   uname_main();
-}
-
-void linux32_main(void)
-{
-  personality(PER_LINUX32);
-  xexec(toys.optc ? toys.optargs : (char *[]){"/bin/sh", 0});
 }

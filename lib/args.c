@@ -135,7 +135,7 @@ static void forget_arg(struct opts *opt)
 {
   if (opt->arg) {
     if (opt->type=='*') llist_traverse((void *)*opt->arg, free);
-    *opt->arg = 0;
+    *opt->arg = opt->val[2].l;
   }
 }
 
@@ -207,7 +207,8 @@ static void gotflag(struct getoptflagstate *gof, struct opts *opt, int longopt)
     *list = xzalloc(sizeof(struct arg_list));
     (*list)->arg = arg;
   } else if (type == '#' || type == '-') {
-    long l = atolx(arg);
+    long long l = atolx(arg);
+
     if (type == '-' && !ispunct(*arg)) l*=-1;
     if (l < opt->val[0].l) help_exit("-%c < %ld", opt->c, opt->val[0].l);
     if (l > opt->val[1].l) help_exit("-%c > %ld", opt->c, opt->val[1].l);
@@ -365,7 +366,7 @@ static int parse_optflaglist(struct getoptflagstate *gof)
           if (*options==1) break;
           if (CFG_TOYBOX_DEBUG && !opt)
             error_exit("[] unknown target %c", *options);
-          if (opt->c == *options) {
+          if (opt->c == (127&*options)) {
             bits |= ll;
             break;
           }

@@ -10,6 +10,8 @@
  * Copyright 2014 Kyungwan Han <asura321@gamil.com>
  *
  * No Standard
+ *
+ * TODO: toysh jobspec support, -n -L
 
 USE_KILL(NEWTOY(kill, "?ls: ", TOYFLAG_BIN|TOYFLAG_MAYFORK))
 USE_KILLALL5(NEWTOY(killall5, "?o*ls: [!lo][!ls]", TOYFLAG_SBIN))
@@ -118,7 +120,9 @@ void kill_main(void)
 
       snprintf(toybuf, sizeof(toybuf), "/proc/%d/stat", procpid);
       if (!readfile(toybuf, toybuf, sizeof(toybuf))) continue;
-      if (sscanf(toybuf, "%*d %*s %*c %*d %*d %d", &procsid) != 1) continue;
+      // command name can have embedded space and/or )
+      if (!(tmp = strrchr(toybuf, ')'))
+          || sscanf(tmp, " %*c %*d %*d %d", &procsid) != 1) continue;
       if (pid == procpid || sid == procsid || procpid == 1) continue;
 
       // Check for kernel threads.
@@ -126,7 +130,7 @@ void kill_main(void)
       if (!readfile(toybuf, toybuf, sizeof(toybuf)) || !*toybuf) continue;
 
       // Check with omit list.
-      for (count = 0; count < ocount; count++) 
+      for (count = 0; count < ocount; count++)
         if (procpid == olist[count]) break;
       if (count != ocount) continue;
 
