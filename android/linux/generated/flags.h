@@ -3808,16 +3808,17 @@
 #undef FLAG_F
 #endif
 
-// wc mcwl mcwl
+// wc Lcmwl Lcmwl
 #undef OPTSTR_wc
-#define OPTSTR_wc "mcwl"
+#define OPTSTR_wc "Lcmwl"
 #ifdef CLEANUP_wc
 #undef CLEANUP_wc
 #undef FOR_wc
 #undef FLAG_l
 #undef FLAG_w
-#undef FLAG_c
 #undef FLAG_m
+#undef FLAG_c
+#undef FLAG_L
 #endif
 
 // wget   <1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):
@@ -7432,8 +7433,9 @@
 #endif
 #define FLAG_l (1LL<<0)
 #define FLAG_w (1LL<<1)
-#define FLAG_c (1LL<<2)
-#define FLAG_m (1LL<<3)
+#define FLAG_m (1LL<<2)
+#define FLAG_c (1LL<<3)
+#define FLAG_L (1LL<<4)
 #endif
 
 #ifdef FOR_wget
