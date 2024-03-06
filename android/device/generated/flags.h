@@ -372,9 +372,9 @@
 #undef FLAG_l
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]
+// cp <1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -2191,9 +2191,9 @@
 #undef FLAG_q
 #endif
 
-// mv <1v(verbose)nF(remove-destination)fit:T[-ni] <1v(verbose)nF(remove-destination)fit:T[-ni]
+// mv <1x(swap)v(verbose)nF(remove-destination)fit:T[-ni] <1x(swap)v(verbose)nF(remove-destination)fit:T[-ni]
 #undef OPTSTR_mv
-#define OPTSTR_mv "<1v(verbose)nF(remove-destination)fit:T[-ni]"
+#define OPTSTR_mv "<1x(swap)v(verbose)nF(remove-destination)fit:T[-ni]"
 #ifdef CLEANUP_mv
 #undef CLEANUP_mv
 #undef FOR_mv
@@ -2204,6 +2204,7 @@
 #undef FLAG_F
 #undef FLAG_n
 #undef FLAG_v
+#undef FLAG_x
 #endif
 
 // nbd_client <3>3b#<1>4294967295=4096ns <3>3b#<1>4294967295=4096ns
@@ -5945,6 +5946,7 @@
 #define FLAG_F (1LL<<4)
 #define FLAG_n (1LL<<5)
 #define FLAG_v (1LL<<6)
+#define FLAG_x (1LL<<7)
 #endif
 
 #ifdef FOR_nbd_client

@@ -31,6 +31,11 @@ struct dos2unix_data {
   char *tempfile;
 };
 
+struct getopt_data {
+  struct arg_list *l;
+  char *o, *n;
+};
+
 struct realpath_data {
   char *R, *relative_base;
 };
@@ -88,11 +93,6 @@ struct diff_data {
 
 struct expr_data {
   char **tok, *delete;
-};
-
-struct getopt_data {
-  struct arg_list *l;
-  char *o, *n;
 };
 
 struct tr_data {
@@ -367,6 +367,7 @@ extern union global_union {
 	struct seq_data seq;
 	struct microcom_data microcom;
 	struct dos2unix_data dos2unix;
+	struct getopt_data getopt;
 	struct realpath_data realpath;
 	struct setsid_data setsid;
 	struct stat_data stat;
@@ -375,7 +376,6 @@ extern union global_union {
 	struct xxd_data xxd;
 	struct diff_data diff;
 	struct expr_data expr;
-	struct getopt_data getopt;
 	struct tr_data tr;
 	struct basename_data basename;
 	struct chmod_data chmod;

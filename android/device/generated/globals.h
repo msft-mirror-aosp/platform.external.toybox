@@ -145,6 +145,11 @@ struct free_data {
   char *buf;
 };
 
+struct getopt_data {
+  struct arg_list *l;
+  char *o, *n;
+};
+
 struct gpiodetect_data {
   struct double_list *chips;
   int chip_count;
@@ -314,11 +319,6 @@ struct expr_data {
 
 struct getfattr_data {
   char *n;
-};
-
-struct getopt_data {
-  struct arg_list *l;
-  char *o, *n;
 };
 
 struct lsof_data {
@@ -826,6 +826,7 @@ extern union global_union {
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
 	struct free_data free;
+	struct getopt_data getopt;
 	struct gpiodetect_data gpiodetect;
 	struct hwclock_data hwclock;
 	struct i2cdetect_data i2cdetect;
@@ -855,7 +856,6 @@ extern union global_union {
 	struct diff_data diff;
 	struct expr_data expr;
 	struct getfattr_data getfattr;
-	struct getopt_data getopt;
 	struct lsof_data lsof;
 	struct modprobe_data modprobe;
 	struct more_data more;

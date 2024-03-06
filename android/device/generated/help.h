@@ -306,6 +306,8 @@
 
 #define HELP_gpiodetect "usage: gpiodetect\n\nShow all gpio chips' names, labels, and number of lines."
 
+#define HELP_getopt "usage: getopt [-aTu] [-lo OPTIONS] [-n NAME] [OPTIONS] ARG...\n\nOutputs command line with recognized OPTIONS character arguments moved to\nfront, then \"--\", then non-option arguments. Returns 1 if unknown options.\nOPTIONS followed by : take an argument, or :: for optional arguments (which\nmust be attached, ala -xblah or --long=blah).\n\n-a	Allow long options starting with a single -\n-l	Long OPTIONS (repeated or comma separated)\n-n	Command NAME for error messages\n-o	Short OPTIONS (instead of using first argument)\n-T	Test whether this is a modern getopt\n-u	Unquoted output (default if no other options set)\n\nExample:\n  $ getopt -l long:,arg:: abc command --long -b there --arg\n  --long '-b' --arg '' -- 'command' 'there'"
+
 #define HELP_fsync "usage: fsync [-d] [FILE...]\n\nFlush disk cache for FILE(s), writing cached data to storage device.\n\n-d	Skip directory info (sync file contents only)."
 
 #define HELP_fsfreeze "usage: fsfreeze {-f | -u} MOUNTPOINT\n\nFreeze or unfreeze a filesystem.\n\n-f	Freeze\n-u	Unfreeze"
@@ -362,7 +364,7 @@
 
 #define HELP_acpi "usage: acpi [-abctV]\n\nShow status of power sources and thermal devices.\n\n-a	Show power adapters\n-b	Show batteries\n-c	Show cooling device state\n-t	Show temperatures\n-V	Show everything"
 
-#define HELP_xzcat "usage: xzcat [filename...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
+#define HELP_xzcat "usage: xzcat [FILE...]\n\nDecompress listed files to stdout. Use stdin if no files listed."
 
 #define HELP_vi "usage: vi [-s SCRIPT] FILE\n\nVisual text editor. Predates keyboards with standardized cursor keys.\nIf you don't know how to use it, hit the ESC key, type :q! and press ENTER.\n\n-s	run SCRIPT of commands on FILE\n\nvi mode commands:\n\n  [count][cmd][motion]\n  cmd: c d y\n  motion: 0 b e G H h j k L l M w $ f F\n\n  [count][cmd]\n  cmd: D I J O n o p x dd yy\n\n  [cmd]\n  cmd: / ? : A a i CTRL_D CTRL_B CTRL_E CTRL_F CTRL_Y \\e \\b\n\nex mode commands:\n\n  [cmd]\n  \\b \\e \\n w wq q! 'set list' 'set nolist' d $ % g v"
 
@@ -477,8 +479,6 @@
 #define HELP_gitcompat "Enable git compatible repos instead of minimal clone downloader."
 
 #define HELP_getty "usage: getty [OPTIONS] BAUD_RATE[,BAUD_RATE]... TTY [TERMTYPE]\n\nWait for a modem to dial into serial port, adjust baud rate, call login.\n\n-h    Enable hardware RTS/CTS flow control\n-L    Set CLOCAL (ignore Carrier Detect state)\n-m    Get baud rate from modem's CONNECT status message\n-n    Don't prompt for login name\n-w    Wait for CR or LF before sending /etc/issue\n-i    Don't display /etc/issue\n-f ISSUE_FILE  Display ISSUE_FILE instead of /etc/issue\n-l LOGIN  Invoke LOGIN instead of /bin/login\n-t SEC    Terminate after SEC if no login name is read\n-I INITSTR  Send INITSTR before anything else\n-H HOST    Log HOST into the utmp file as the hostname"
-
-#define HELP_getopt "usage: getopt [OPTIONS] [--] ARG...\n\nParse command-line options for use in shell scripts.\n\n-a	Allow long options starting with a single -.\n-l OPTS	Specify long options.\n-n NAME	Command name for error messages.\n-o OPTS	Specify short options.\n-T	Test whether this is a modern getopt.\n-u	Output options unquoted."
 
 #define HELP_getfattr "usage: getfattr [-d] [-h] [-n NAME] FILE...\n\nRead POSIX extended attributes.\n\n-d	Show values as well as names\n-h	Do not dereference symbolic links\n-n	Show only attributes with the given name\n--only-values	Don't show names"
 
@@ -660,9 +660,9 @@
 
 #define HELP_install "usage: install [-dDpsv] [-o USER] [-g GROUP] [-m MODE] [-t TARGET] [SOURCE...] [DEST]\n\nCopy files and set attributes.\n\n-d	Act like mkdir -p\n-D	Create leading directories for DEST\n-g	Make copy belong to GROUP\n-m	Set permissions to MODE\n-o	Make copy belong to USER\n-p	Preserve timestamps\n-s	Call \"strip -p\"\n-t	Copy files to TARGET dir (no DEST)\n-v	Verbose"
 
-#define HELP_mv "usage: mv [-finTv] [-t TARGET] SOURCE... [DEST]\n\n-f	Force copy by deleting destination file\n-i	Interactive, prompt before overwriting existing DEST\n-n	No clobber (don't overwrite DEST)\n-t	Move to TARGET dir (no DEST)\n-T	DEST always treated as file, max 2 arguments\n-v	Verbose"
+#define HELP_mv "usage: mv [-FfinTvx] [-t TARGET] SOURCE... [DEST]\n\n-F	Delete any existing DEST first (--remove-destination)\n-f	Force copy by deleting destination file\n-i	Interactive, prompt before overwriting existing DEST\n-n	No clobber (don't overwrite DEST)\n-t	Move to TARGET dir (no DEST)\n-T	DEST always treated as file, max 2 arguments\n-v	Verbose\n-x	Atomically exchange source/dest (--swap)"
 
-#define HELP_cp "usage: cp [-aDdFfHiLlnPpRrsTuv] [--preserve=motcxa] [-t TARGET] SOURCE... [DEST]\n\nCopy files from SOURCE to DEST.  If more than one SOURCE, DEST must\nbe a directory.\n\n-a	Same as -dpr\n-D	Create leading dirs under DEST (--parents)\n-d	Don't dereference symlinks\n-F	Delete any existing destination file first (--remove-destination)\n-f	Delete destination files we can't write to\n-H	Follow symlinks listed on command line\n-i	Interactive, prompt before overwriting existing DEST\n-L	Follow all symlinks\n-l	Hard link instead of copy\n-n	No clobber (don't overwrite DEST)\n-P	Do not follow symlinks\n-p	Preserve timestamps, ownership, and mode\n-R	Recurse into subdirectories (DEST must be a directory)\n-r	Synonym for -R\n-s	Symlink instead of copy\n-T	DEST always treated as file, max 2 arguments\n-t	Copy to TARGET dir (no DEST)\n-u	Update (keep newest mtime)\n-v	Verbose\n\nArguments to --preserve are the first letter(s) of:\n\n        mode - permissions (ignore umask for rwx, copy suid and sticky bit)\n   ownership - user and group\n  timestamps - file creation, modification, and access times.\n     context - security context\n       xattr - extended attributes\n         all - all of the above"
+#define HELP_cp "usage: cp [-aDdFfHiLlnPpRrsTuv] [--preserve=motcxa] [-t TARGET] SOURCE... [DEST]\n\nCopy files from SOURCE to DEST.  If more than one SOURCE, DEST must\nbe a directory.\n\n-a	Same as -dpr\n-D	Create leading dirs under DEST (--parents)\n-d	Don't dereference symlinks\n-F	Delete any existing DEST first (--remove-destination)\n-f	Delete destination files we can't write to\n-H	Follow symlinks listed on command line\n-i	Interactive, prompt before overwriting existing DEST\n-L	Follow all symlinks\n-l	Hard link instead of copy\n-n	No clobber (don't overwrite DEST)\n-P	Do not follow symlinks\n-p	Preserve timestamps, ownership, and mode\n-R	Recurse into subdirectories (DEST must be a directory)\n-r	Synonym for -R\n-s	Symlink instead of copy\n-T	DEST always treated as file, max 2 arguments\n-t	Copy to TARGET dir (no DEST)\n-u	Update (keep newest mtime)\n-v	Verbose\n\nArguments to --preserve are the first letter(s) of:\n\n        mode - permissions (ignore umask for rwx, copy suid and sticky bit)\n   ownership - user and group\n  timestamps - file creation, modification, and access times.\n     context - security context\n       xattr - extended attributes\n         all - all of the above"
 
 #define HELP_comm "usage: comm [-123] FILE1 FILE2\n\nRead FILE1 and FILE2, which should be ordered, and produce three text\ncolumns as output: lines only in FILE1; lines only in FILE2; and lines\nin both files. Filename \"-\" is a synonym for stdin.\n\n-1	Suppress the output column of lines unique to FILE1\n-2	Suppress the output column of lines unique to FILE2\n-3	Suppress the output column of lines duplicated in FILE1 and FILE2"
 
