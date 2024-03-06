@@ -1,32 +1,23 @@
 /* getopt.c - Parse command-line options
  *
  * Copyright 2019 The Android Open Source Project
- *
- * See https://man7.org/linux/man-pages/man1/getopt.1.html
 
 USE_GETOPT(NEWTOY(getopt, "^a(alternative)n:(name)o:(options)l*(long)(longoptions)Tu", TOYFLAG_USR|TOYFLAG_BIN))
 
 config GETOPT
   bool "getopt"
-  default y
+  default n
   help
-    usage: getopt [-aTu] [-lo OPTIONS] [-n NAME] [OPTIONS] ARG...
+    usage: getopt [OPTIONS] [--] ARG...
 
-    Outputs command line with recognized OPTIONS character arguments moved to
-    front, then "--", then non-option arguments. Returns 1 if unknown options.
-    OPTIONS followed by : take an argument, or :: for optional arguments (which
-    must be attached, ala -xblah or --long=blah).
+    Parse command-line options for use in shell scripts.
 
-    -a	Allow long options starting with a single -
-    -l	Long OPTIONS (repeated or comma separated)
-    -n	Command NAME for error messages
-    -o	Short OPTIONS (instead of using first argument)
-    -T	Test whether this is a modern getopt
-    -u	Unquoted output (default if no other options set)
-
-    Example:
-      $ getopt -l long:,arg:: abc command --long -b there --arg
-      --long '-b' --arg '' -- 'command' 'there'
+    -a	Allow long options starting with a single -.
+    -l OPTS	Specify long options.
+    -n NAME	Command name for error messages.
+    -o OPTS	Specify short options.
+    -T	Test whether this is a modern getopt.
+    -u	Output options unquoted.
 */
 
 #define FOR_getopt
@@ -40,14 +31,14 @@ GLOBALS(
 
 static void out(char *s)
 {
-  if (FLAG(u)) xprintf(" %s", s);
+  if (FLAG(u)) printf(" %s", s);
   else {
-    xputsn(" '");
+    printf(" '");
     for (; *s; s++) {
-      if (*s == '\'') xputsn("'\\''");
+      if (*s == '\'') printf("'\\''");
       else putchar(*s);
     }
-    putchar('\'');
+    printf("'");
   }
 }
 
@@ -61,16 +52,17 @@ static char *parse_long_opt(void *data, char *str, int len)
   if (!len || lopt->has_arg>2) return str;
 
   lopt->name = xstrndup(str, len);
-  (*lopt_ptr)++;
 
+  (*lopt_ptr)++;
   return 0;
 }
 
 void getopt_main(void)
 {
-  int argc = toys.optc+1, i = 0, j = 0, ch;
+  int argc = toys.optc+1;
   char **argv = xzalloc(sizeof(char *)*(argc+1));
   struct option *lopts = xzalloc(sizeof(struct option)*argc), *lopt = lopts;
+  int i = 0, j = 0, ch;
 
   if (FLAG(T)) {
     toys.exitval = 4;
@@ -78,35 +70,36 @@ void getopt_main(void)
   }
 
   comma_args(TT.l, &lopt, "bad -l", parse_long_opt);
-  argv[j++] = TT.n ? : "getopt";
+  argv[j++] = TT.n ? TT.n : "getopt";
 
+  // Legacy mode: don't quote output and take the first argument as OPTSTR.
   if (!FLAG(o)) {
+    toys.optflags |= FLAG_u;
     TT.o = toys.optargs[i++];
-    argc--;
+    if (!TT.o) error_exit("no OPTSTR");
+    --argc;
   }
-  if (!TT.o) error_exit("no OPTSTR");
-  if (!toys.optflags) toys.optflags = FLAG_u;
 
   while (i<toys.optc) argv[j++] = toys.optargs[i++];
 
-  // BSD getopt doesn't honor argv[0] (for -n), so handle errors ourselves.
+  // BSD getopts don't honor argv[0] (for -n), so handle errors ourselves.
   opterr = 0;
   optind = 1;
-  while ((ch = (FLAG(a) ? getopt_long_only : getopt_long)(argc, argv, TT.o,
+  while ((ch = (FLAG(a)?getopt_long_only:getopt_long)(argc, argv, TT.o,
           lopts, &i)) != -1) {
     if (ch == '?') {
-      fprintf(stderr, "%s: invalid option '%c'\n", *argv, optopt);
+      fprintf(stderr, "%s: invalid option '%c'\n", argv[0], optopt);
       toys.exitval = 1;
     } else if (!ch) {
-      xprintf(" --%s", lopts[i].name);
-      if (lopts[i].has_arg) out(optarg ? : "");
+      printf(" --%s", lopts[i].name);
+      if (lopts[i].has_arg) out(optarg ? optarg : "");
     } else {
-      xprintf(" -%c", ch);
+      printf(" -%c", ch);
       if (optarg) out(optarg);
     }
   }
 
-  xputsn(" --");
+  printf(" --");
   for (; optind<argc; optind++) out(argv[optind]);
-  putchar('\n');
+  printf("\n");
 }
