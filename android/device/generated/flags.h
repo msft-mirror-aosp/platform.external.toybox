@@ -372,9 +372,9 @@
 #undef FLAG_l
 #endif
 
-// cp <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]
+// cp <1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr] <1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr]
 #undef OPTSTR_cp
-#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslvnF(remove-destination)fit:T[-HLPd][-niu][+Rr]"
+#define OPTSTR_cp "<1(preserve):;D(parents)RHLPprudaslv(verbose)nF(remove-destination)fit:T[-HLPd][-niu][+Rr]"
 #ifdef CLEANUP_cp
 #undef CLEANUP_cp
 #undef FOR_cp
@@ -2191,9 +2191,9 @@
 #undef FLAG_q
 #endif
 
-// mv <1v(verbose)nF(remove-destination)fit:T[-ni] <1v(verbose)nF(remove-destination)fit:T[-ni]
+// mv <1x(swap)v(verbose)nF(remove-destination)fit:T[-ni] <1x(swap)v(verbose)nF(remove-destination)fit:T[-ni]
 #undef OPTSTR_mv
-#define OPTSTR_mv "<1v(verbose)nF(remove-destination)fit:T[-ni]"
+#define OPTSTR_mv "<1x(swap)v(verbose)nF(remove-destination)fit:T[-ni]"
 #ifdef CLEANUP_mv
 #undef CLEANUP_mv
 #undef FOR_mv
@@ -2204,6 +2204,7 @@
 #undef FLAG_F
 #undef FLAG_n
 #undef FLAG_v
+#undef FLAG_x
 #endif
 
 // nbd_client <3>3b#<1>4294967295=4096ns <3>3b#<1>4294967295=4096ns
@@ -2226,12 +2227,14 @@
 #undef FLAG_r
 #endif
 
-// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]
+// netcat ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U] ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUn[!tlL][!Lw][!Lu][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
+#undef FLAG_z
+#undef FLAG_v
 #undef FLAG_n
 #undef FLAG_U
 #undef FLAG_u
@@ -3806,16 +3809,17 @@
 #undef FLAG_F
 #endif
 
-// wc mcwl mcwl
+// wc Lcmwl Lcmwl
 #undef OPTSTR_wc
-#define OPTSTR_wc "mcwl"
+#define OPTSTR_wc "Lcmwl"
 #ifdef CLEANUP_wc
 #undef CLEANUP_wc
 #undef FOR_wc
 #undef FLAG_l
 #undef FLAG_w
-#undef FLAG_c
 #undef FLAG_m
+#undef FLAG_c
+#undef FLAG_L
 #endif
 
 // wget   <1>1(max-redirect)#<0=20d(debug)O(output-document):p(post-data):
@@ -5942,6 +5946,7 @@
 #define FLAG_F (1LL<<4)
 #define FLAG_n (1LL<<5)
 #define FLAG_v (1LL<<6)
+#define FLAG_x (1LL<<7)
 #endif
 
 #ifdef FOR_nbd_client
@@ -5967,21 +5972,23 @@
 #ifndef TT
 #define TT this.netcat
 #endif
-#define FLAG_n (1LL<<0)
-#define FLAG_U (1LL<<1)
-#define FLAG_u (1LL<<2)
-#define FLAG_6 (1LL<<3)
-#define FLAG_4 (1LL<<4)
-#define FLAG_f (1LL<<5)
-#define FLAG_s (1LL<<6)
-#define FLAG_q (1LL<<7)
-#define FLAG_p (1LL<<8)
-#define FLAG_W (1LL<<9)
-#define FLAG_w (1LL<<10)
-#define FLAG_L (1LL<<11)
-#define FLAG_l (1LL<<12)
-#define FLAG_E (1LL<<13)
-#define FLAG_t (1LL<<14)
+#define FLAG_z (1LL<<0)
+#define FLAG_v (1LL<<1)
+#define FLAG_n (1LL<<2)
+#define FLAG_U (1LL<<3)
+#define FLAG_u (1LL<<4)
+#define FLAG_6 (1LL<<5)
+#define FLAG_4 (1LL<<6)
+#define FLAG_f (1LL<<7)
+#define FLAG_s (1LL<<8)
+#define FLAG_q (1LL<<9)
+#define FLAG_p (1LL<<10)
+#define FLAG_W (1LL<<11)
+#define FLAG_w (1LL<<12)
+#define FLAG_L (1LL<<13)
+#define FLAG_l (1LL<<14)
+#define FLAG_E (1LL<<15)
+#define FLAG_t (1LL<<16)
 #endif
 
 #ifdef FOR_netstat
@@ -7428,8 +7435,9 @@
 #endif
 #define FLAG_l (1LL<<0)
 #define FLAG_w (1LL<<1)
-#define FLAG_c (1LL<<2)
-#define FLAG_m (1LL<<3)
+#define FLAG_m (1LL<<2)
+#define FLAG_c (1LL<<3)
+#define FLAG_L (1LL<<4)
 #endif
 
 #ifdef FOR_wget

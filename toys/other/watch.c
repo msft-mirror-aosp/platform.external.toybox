@@ -40,8 +40,7 @@ static void watch_child(int sig)
 
   status = WIFEXITED(status) ? WEXITSTATUS(status) : WTERMSIG(status)+127;
   if (status) {
-    // TODO should this be beep()?
-    if (FLAG(b)) putchar('\b');
+    if (FLAG(b)) putchar('\a');
     if (FLAG(e)) {
       printf("Exit status %d\r\n", status);
       tty_reset();
@@ -89,6 +88,7 @@ void watch_main(void)
   xsignal_flags(SIGCHLD, watch_child, SA_RESTART|SA_NOCLDSTOP);
 
   for (;;) {
+    fflush(NULL);
 
     // Time for a new period?
     if ((now = millitime())>=then) {
@@ -106,8 +106,8 @@ void watch_main(void)
         // Get and measure time string, trimming gratuitous \n
         ctimelen = strlen(ss = ctime(&t));
         if (ss[ctimelen-1]=='\n') ss[--ctimelen] = 0;
- 
-        // print cmdline, then * or ' ' (showing truncation), then ctime 
+
+        // print cmdline, then * or ' ' (showing truncation), then ctime
         pad = width-++ctimelen;
         if (pad>0) draw_trim(cmd, -pad, pad);
         printf("%c", pad<cmdlen ? '*' : ' ');

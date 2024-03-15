@@ -324,7 +324,7 @@ void hash_by_name(int fd, char *name, char *result)
     if (CFG_TOYBOX_FLOAT) {
       hash->rconsttable32 = xmalloc(64*4);
       for (i = 0; i<64; i++) hash->rconsttable32[i] = fabs(sin(i+1))*(1LL<<32);
-    } else hash->rconsttable32 = md5nofloat;
+    } else hash->rconsttable32 = (void *)md5nofloat;
   } else if (name[3] == '2') { // sha224, sha256
     hash->rconsttable32 = xmalloc(64*4);
     for (i=0; i<64; i++) hash->rconsttable32[i] = sha512nofloat[i] >> 32;
@@ -389,6 +389,6 @@ void hash_by_name(int fd, char *name, char *result)
   // by looping on a volatile pointer.
   for (pp = (void *)hash; pp-(unsigned *)hash<sizeof(*hash)/4; pp++) *pp = 0;
   for (pp = (void *)libbuf; pp-(unsigned *)libbuf<sizeof(libbuf)/4; pp++)
-    *pp = 0; 
+    *pp = 0;
 }
 #endif

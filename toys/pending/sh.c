@@ -1053,7 +1053,7 @@ static char *declarep(struct sh_vars *var)
   }
   *out = 0;
 
-  return ss; 
+  return ss;
 }
 
 // Skip past valid prefix that could go before redirect
@@ -1621,7 +1621,7 @@ int do_wildcard_files(struct dirtree *node)
   lvl = ll;
   patend = wildcard_path(TT.wcpat, pattern-TT.wcpat, TT.wcdeck, &ll, 1);
 
-  // Don't include . entries unless explicitly asked for them 
+  // Don't include . entries unless explicitly asked for them
   if (*node->name=='.' && *pattern!='.') return 0;
 
   // Don't descend into non-directory (was called with DIRTREE_SYMFOLLOW)
@@ -3931,8 +3931,9 @@ do_then:
             printf("\n");
           } else {
             match = atoi(ss);
+            i = *s;
             free(ss);
-            if (!*ss) {
+            if (!i) {
               TT.ff->pl = blk->start;
               continue;
             } else setvarval(blk->fvar, (match<1 || match>blk->farg.c)
@@ -4693,7 +4694,7 @@ void local_main(void)
     if (ff->vars) break;
   }
 
-  // list existing vars (todo: 
+  // list existing vars (todo:
   if (!toys.optc) {
     for (var = ff->vars; var; var++) xputs(var->str); // TODO escape
     return;
