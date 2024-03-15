@@ -110,7 +110,7 @@
 
 #define HELP_gzip "usage: gzip [-19cdfkt] [FILE...]\n\nCompress files. With no files, compresses stdin to stdout.\nOn success, the input files are removed and replaced by new\nfiles with the .gz suffix.\n\n-c	Output to stdout\n-d	Decompress (act as gunzip)\n-f	Force: allow overwrite of output file\n-k	Keep input files (default is to remove)\n-t	Test integrity\n-#	Compression level 1-9 (1:fastest, 6:default, 9:best)"
 
-#define HELP_dmesg "usage: dmesg [-Cc] [-r|-t|-T] [-n LEVEL] [-s SIZE] [-w]\n\nPrint or control the kernel ring buffer.\n\n-C	Clear ring buffer without printing\n-c	Clear ring buffer after printing\n-n	Set kernel logging LEVEL (1-9)\n-r	Raw output (with <level markers>)\n-S	Use syslog(2) rather than /dev/kmsg\n-s	Show the last SIZE many bytes\n-T	Human readable timestamps\n-t	Don't print timestamps\n-w	Keep waiting for more output (aka --follow)"
+#define HELP_dmesg "usage: dmesg [-Cc] [-r|-t|-T] [-n LEVEL] [-s SIZE] [-w]\n\nPrint or control the kernel ring buffer.\n\n-C	Clear ring buffer without printing\n-c	Clear ring buffer after printing\n-n	Set kernel logging LEVEL (1-8)\n-r	Raw output (with <level markers>)\n-S	Use syslog(2) rather than /dev/kmsg\n-s	Show the last SIZE many bytes\n-T	Human readable timestamps\n-t	Don't print timestamps\n-w	Keep waiting for more output (aka --follow)"
 
 #define HELP_wget_libtls "Enable HTTPS support for wget by linking to LibTLS.\nSupports using libtls, libretls or libtls-bearssl.\n\nUse TOYBOX_LIBCRYPTO to enable HTTPS support via OpenSSL."
 
