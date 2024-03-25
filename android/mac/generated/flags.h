@@ -843,15 +843,16 @@
 #undef FLAG_s
 #endif
 
-// env ^i0u* ^i0u*
+// env ^e:i0u* ^e:i0u*
 #undef OPTSTR_env
-#define OPTSTR_env "^i0u*"
+#define OPTSTR_env "^e:i0u*"
 #ifdef CLEANUP_env
 #undef CLEANUP_env
 #undef FOR_env
 #undef FLAG_u
 #undef FLAG_0
 #undef FLAG_i
+#undef FLAG_e
 #endif
 
 // eval    
@@ -4709,6 +4710,7 @@
 #define FLAG_u (1LL<<0)
 #define FLAG_0 (1LL<<1)
 #define FLAG_i (1LL<<2)
+#define FLAG_e (1LL<<3)
 #endif
 
 #ifdef FOR_eval
