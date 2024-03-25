@@ -131,8 +131,6 @@ typedef enum BcError {
 
 #define BC_VEC_START_CAP (1<<5)
 
-typedef unsigned char uchar;
-
 typedef void (*BcVecFree)(void*);
 
 typedef struct BcVec {
@@ -535,7 +533,7 @@ BcStatus bc_lex_token(BcLex *l);
 // We can calculate the conversion between tokens and exprs by subtracting the
 // position of the first operator in the lex enum and adding the position of
 // the first in the expr enum. Note: This only works for binary operators.
-#define BC_PARSE_TOKEN_INST(t) ((uchar) ((t) - BC_LEX_NEG + BC_INST_NEG))
+#define BC_PARSE_TOKEN_INST(t) ((char) ((t) - BC_LEX_NEG + BC_INST_NEG))
 
 #define bc_parse_posixErr(p, e) (bc_vm_posixError((e), (p)->l.line))
 
@@ -746,7 +744,7 @@ size_t bc_lex_kws_len = sizeof(bc_lex_kws) / sizeof(BcLexKeyword);
 char *bc_parse_const1 = "1";
 
 // This is an array of data for operators that correspond to token types.
-uchar bc_parse_ops[] = {
+char bc_parse_ops[] = {
   BC_PARSE_OP(0, 0), BC_PARSE_OP(0, 0),
   BC_PARSE_OP(1, 0), BC_PARSE_OP(1, 0),
   BC_PARSE_OP(4, 0),
@@ -788,85 +786,169 @@ BcProgramUnary bc_program_unarys[] = {
   bc_program_negate, bc_program_not,
 };
 
-char bc_program_stdin_name[] = "<stdin>";
 char bc_program_ready_msg[] = "ready for more input\n";
 
 char *bc_lib_name = "gen/lib.bc";
 
-char bc_lib[] = {
-  115,99,97,108,101,61,50,48,10,100,101,102,105,110,101,32,101,40,120,41,123,
-  10,97,117,116,111,32,98,44,115,44,110,44,114,44,100,44,105,44,112,44,102,44,
-  118,10,98,61,105,98,97,115,101,10,105,98,97,115,101,61,65,10,105,102,40,120,
-  60,48,41,123,10,110,61,49,10,120,61,45,120,10,125,10,115,61,115,99,97,108,101,
-  10,114,61,54,43,115,43,46,52,52,42,120,10,115,99,97,108,101,61,115,99,97,108,
-  101,40,120,41,43,49,10,119,104,105,108,101,40,120,62,49,41,123,10,100,43,61,
-  49,10,120,47,61,50,10,115,99,97,108,101,43,61,49,10,125,10,115,99,97,108,101,
-  61,114,10,114,61,120,43,49,10,112,61,120,10,102,61,118,61,49,10,102,111,114,
-  40,105,61,50,59,118,59,43,43,105,41,123,10,112,42,61,120,10,102,42,61,105,10,
-  118,61,112,47,102,10,114,43,61,118,10,125,10,119,104,105,108,101,40,100,45,
-  45,41,114,42,61,114,10,115,99,97,108,101,61,115,10,105,98,97,115,101,61,98,
-  10,105,102,40,110,41,114,101,116,117,114,110,40,49,47,114,41,10,114,101,116,
-  117,114,110,40,114,47,49,41,10,125,10,100,101,102,105,110,101,32,108,40,120,
-  41,123,10,97,117,116,111,32,98,44,115,44,114,44,112,44,97,44,113,44,105,44,
-  118,10,98,61,105,98,97,115,101,10,105,98,97,115,101,61,65,10,105,102,40,120,
-  60,61,48,41,123,10,114,61,40,49,45,49,48,94,115,99,97,108,101,41,47,49,10,105,
-  98,97,115,101,61,98,10,114,101,116,117,114,110,40,114,41,10,125,10,115,61,115,
-  99,97,108,101,10,115,99,97,108,101,43,61,54,10,112,61,50,10,119,104,105,108,
-  101,40,120,62,61,50,41,123,10,112,42,61,50,10,120,61,115,113,114,116,40,120,
-  41,10,125,10,119,104,105,108,101,40,120,60,61,46,53,41,123,10,112,42,61,50,
-  10,120,61,115,113,114,116,40,120,41,10,125,10,114,61,97,61,40,120,45,49,41,
-  47,40,120,43,49,41,10,113,61,97,42,97,10,118,61,49,10,102,111,114,40,105,61,
-  51,59,118,59,105,43,61,50,41,123,10,97,42,61,113,10,118,61,97,47,105,10,114,
-  43,61,118,10,125,10,114,42,61,112,10,115,99,97,108,101,61,115,10,105,98,97,
-  115,101,61,98,10,114,101,116,117,114,110,40,114,47,49,41,10,125,10,100,101,
-  102,105,110,101,32,115,40,120,41,123,10,97,117,116,111,32,98,44,115,44,114,
-  44,97,44,113,44,105,10,105,102,40,120,60,48,41,114,101,116,117,114,110,40,45,
-  115,40,45,120,41,41,10,98,61,105,98,97,115,101,10,105,98,97,115,101,61,65,10,
-  115,61,115,99,97,108,101,10,115,99,97,108,101,61,49,46,49,42,115,43,50,10,97,
-  61,97,40,49,41,10,115,99,97,108,101,61,48,10,113,61,40,120,47,97,43,50,41,47,
-  52,10,120,45,61,52,42,113,42,97,10,105,102,40,113,37,50,41,120,61,45,120,10,
-  115,99,97,108,101,61,115,43,50,10,114,61,97,61,120,10,113,61,45,120,42,120,
-  10,102,111,114,40,105,61,51,59,97,59,105,43,61,50,41,123,10,97,42,61,113,47,
-  40,105,42,40,105,45,49,41,41,10,114,43,61,97,10,125,10,115,99,97,108,101,61,
-  115,10,105,98,97,115,101,61,98,10,114,101,116,117,114,110,40,114,47,49,41,10,
-  125,10,100,101,102,105,110,101,32,99,40,120,41,123,10,97,117,116,111,32,98,
-  44,115,10,98,61,105,98,97,115,101,10,105,98,97,115,101,61,65,10,115,61,115,
-  99,97,108,101,10,115,99,97,108,101,42,61,49,46,50,10,120,61,115,40,50,42,97,
-  40,49,41,43,120,41,10,115,99,97,108,101,61,115,10,105,98,97,115,101,61,98,10,
-  114,101,116,117,114,110,40,120,47,49,41,10,125,10,100,101,102,105,110,101,32,
-  97,40,120,41,123,10,97,117,116,111,32,98,44,115,44,114,44,110,44,97,44,109,
-  44,116,44,102,44,105,44,117,10,98,61,105,98,97,115,101,10,105,98,97,115,101,
-  61,65,10,110,61,49,10,105,102,40,120,60,48,41,123,10,110,61,45,49,10,120,61,
-  45,120,10,125,10,105,102,40,115,99,97,108,101,60,54,53,41,123,10,105,102,40,
-  120,61,61,49,41,123,10,114,61,46,55,56,53,51,57,56,49,54,51,51,57,55,52,52,
-  56,51,48,57,54,49,53,54,54,48,56,52,53,56,49,57,56,55,53,55,50,49,48,52,57,
-  50,57,50,51,52,57,56,52,51,55,55,54,52,53,53,50,52,51,55,51,54,49,52,56,48,
-  47,110,10,105,98,97,115,101,61,98,10,114,101,116,117,114,110,40,114,41,10,125,
-  10,105,102,40,120,61,61,46,50,41,123,10,114,61,46,49,57,55,51,57,53,53,53,57,
-  56,52,57,56,56,48,55,53,56,51,55,48,48,52,57,55,54,53,49,57,52,55,57,48,50,
-  57,51,52,52,55,53,56,53,49,48,51,55,56,55,56,53,50,49,48,49,53,49,55,54,56,
-  56,57,52,48,50,47,110,10,105,98,97,115,101,61,98,10,114,101,116,117,114,110,
-  40,114,41,10,125,10,125,10,115,61,115,99,97,108,101,10,105,102,40,120,62,46,
-  50,41,123,10,115,99,97,108,101,43,61,53,10,97,61,97,40,46,50,41,10,125,10,115,
-  99,97,108,101,61,115,43,51,10,119,104,105,108,101,40,120,62,46,50,41,123,10,
-  109,43,61,49,10,120,61,40,120,45,46,50,41,47,40,49,43,46,50,42,120,41,10,125,
-  10,114,61,117,61,120,10,102,61,45,120,42,120,10,116,61,49,10,102,111,114,40,
-  105,61,51,59,116,59,105,43,61,50,41,123,10,117,42,61,102,10,116,61,117,47,105,
-  10,114,43,61,116,10,125,10,115,99,97,108,101,61,115,10,105,98,97,115,101,61,
-  98,10,114,101,116,117,114,110,40,40,109,42,97,43,114,41,47,110,41,10,125,10,
-  100,101,102,105,110,101,32,106,40,110,44,120,41,123,10,97,117,116,111,32,98,
-  44,115,44,111,44,97,44,105,44,118,44,102,10,98,61,105,98,97,115,101,10,105,
-  98,97,115,101,61,65,10,115,61,115,99,97,108,101,10,115,99,97,108,101,61,48,
-  10,110,47,61,49,10,105,102,40,110,60,48,41,123,10,110,61,45,110,10,111,61,110,
-  37,50,10,125,10,97,61,49,10,102,111,114,40,105,61,50,59,105,60,61,110,59,43,
-  43,105,41,97,42,61,105,10,115,99,97,108,101,61,49,46,53,42,115,10,97,61,40,
-  120,94,110,41,47,50,94,110,47,97,10,114,61,118,61,49,10,102,61,45,120,42,120,
-  47,52,10,115,99,97,108,101,43,61,108,101,110,103,116,104,40,97,41,45,115,99,
-  97,108,101,40,97,41,10,102,111,114,40,105,61,49,59,118,59,43,43,105,41,123,
-  10,118,61,118,42,102,47,105,47,40,110,43,105,41,10,114,43,61,118,10,125,10,
-  115,99,97,108,101,61,115,10,105,98,97,115,101,61,98,10,105,102,40,111,41,97,
-  61,45,97,10,114,101,116,117,114,110,40,97,42,114,47,49,41,10,125,10,0
-};
+char *bc_lib =
+"scale=20;\n"
+
+"define e(x){\n"
+"  auto b,s,n,r,d,i,p,f,v;\n"
+"  b=ibase;\n"
+"  ibase=A;\n"
+"  if(x<0){\n"
+"    n=1; x=-x;\n"
+"  }\n"
+"  s=scale;\n"
+"  r=6+s+.44*x;\n"
+"  scale=scale(x)+1;\n"
+"  while(x>1){\n"
+"    d+=1; x/=2;\n"
+"    scale+=1;\n"
+"  }\n"
+"  scale=r;\n"
+"  r=x+1; p=x; f=v=1;\n"
+"  for(i=2;v;++i){;\n"
+"    p*=x; f*=i; v=p/f; r+=v;\n"
+"  }\n"
+"  while(d--)r*=r;\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  if(n)return(1/r)\n"
+"    return(r/1)\n"
+"}\n"
+
+"define l(x){\n"
+"  auto b,s,r,p,a,q,i,v;\n"
+"  b=ibase;\n"
+"  ibase=A;\n"
+"  if(x<=0){;\n"
+"    r=(1-10^scale)/1;\n"
+"    ibase=b;\n"
+"    return(r)\n"
+"  }\n"
+"  s=scale;\n"
+"  scale+=6;\n"
+"  p=2;\n"
+"  while(x>=2){;\n"
+"    p*=2;\n"
+"    x=sqrt(x);\n"
+"  }\n"
+"  while(x<=.5){;\n"
+"    p*=2;\n"
+"    x=sqrt(x);\n"
+"  }\n"
+"  r=a=(x-1)/(x+1);\n"
+"  q=a*a;\n"
+"  v=1;\n"
+"  for(i=3;v;i+=2){;\n"
+"    a*=q; v=a/i; r+=v;\n"
+"  }\n"
+"  r*=p;\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  return(r/1)\n"
+"}\n"
+
+"define s(x){\n"
+"  auto b,s,r,a,q,i;\n"
+"  if(x<0)return(-s(-x))\n"
+"    b=ibase;\n"
+"  ibase=A;\n"
+"  s=scale;\n"
+"  scale=1.1*s+2;\n"
+"  a=a(1);\n"
+"  scale=0;\n"
+"  q=(x/a+2)/4;\n"
+"  x-=4*q*a;\n"
+"  if(q%2) x=-x;\n"
+"  scale=s+2;\n"
+"  r=a=x;\n"
+"  q=-x*x;\n"
+"  for(i=3;a;i+=2){;\n"
+"    a*=q/(i*(i-1)); r+=a;\n"
+"  }\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  return(r/1)\n"
+"}\n"
+
+"define c(x){\n"
+"  auto b,s;\n"
+"  b=ibase;\n"
+"  ibase=A;\n"
+"  s=scale;\n"
+"  scale*=1.2;\n"
+"  x=s(2*a(1)+x);\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  return(x/1)\n"
+"}\n"
+
+"define a(x){\n"
+"  auto b,s,r,n,a,m,t,f,i,u;\n"
+"  b=ibase;\n"
+"  ibase=A;\n"
+"  n=1;\n"
+"  if(x<0){\n"
+"    n=-1;\n"
+"    x=-x;\n"
+"  }\n"
+"  if(scale<65){\n"
+"    if(x==1){;\n"
+"      r=.7853981633974483096156608458198757210492923498437764552437361480/n;\n"
+"      ibase=b;\n"
+"      return(r)\n"
+"    }\n"
+"    if(x==.2){;\n"
+"      r=.1973955598498807583700497651947902934475851037878521015176889402/n;\n"
+"      ibase=b;\n"
+"      return(r)\n"
+"    }\n"
+"  }\n"
+"  s=scale;\n"
+"  if(x>.2){\n"
+"    scale+=5; a=a(.2);\n"
+"  }\n"
+"  scale=s+3;\n"
+"  while(x>.2){\n"
+"    m+=1; x=(x-.2)/(1+.2*x);\n"
+"  }\n"
+"  r=u=x; f=-x*x; t=1;\n"
+"  for(i=3;t;i+=2){;\n"
+"    u*=f; t=u/i; r+=t;\n"
+"  }\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  return((m*a+r)/n)\n"
+"}\n"
+
+"define j(n,x){\n"
+"  auto b,s,o,a,i,v,f;\n"
+"  b=ibase;\n"
+"  ibase=A;\n"
+"  s=scale;\n"
+"  scale=0;\n"
+"  n/=1;\n"
+"  if(n<0){\n"
+"    n=-n; o=n%2;\n"
+"  }\n"
+"  a=1;\n"
+"  for(i=2;i<=n;++i)a*=i;\n"
+"  scale=1.5*s;\n"
+"  a=(x^n)/2^n/a;\n"
+"  r=v=1;\n"
+"  f=-x*x/4;\n"
+"  scale+=length(a)-scale(a);\n"
+"  for(i=1;v;++i){;\n"
+"    v=v*f/i/(n+i); r+=v;\n"
+"  }\n"
+"  scale=s;\n"
+"  ibase=b;\n"
+"  if(o)a=-a;\n"
+"  return(a*r/1)\n"
+"}\n";
 
 static void bc_vec_grow(BcVec *v, unsigned long n) {
   unsigned long old = v->cap;
@@ -908,18 +990,18 @@ void bc_vec_push(BcVec *v, void *data) {
   bc_vec_npush(v, 1, data);
 }
 
-void bc_vec_pushByte(BcVec *v, uchar data) {
+void bc_vec_pushByte(BcVec *v, char data) {
   bc_vec_push(v, &data);
 }
 
 void bc_vec_pushIndex(BcVec *v, size_t idx) {
 
-  uchar amt, nums[sizeof(size_t)];
+  char amt, nums[sizeof(size_t)];
 
   for (amt = 0; idx; ++amt) {
-    nums[amt] = (uchar) idx;
+    nums[amt] = (char) idx;
     idx &= ((size_t) ~(UCHAR_MAX));
-    idx >>= sizeof(uchar) * CHAR_BIT;
+    idx >>= sizeof(char) * CHAR_BIT;
   }
 
   bc_vec_push(v, &amt);
@@ -1085,7 +1167,7 @@ BcStatus bc_read_line(BcVec *vec, char *prompt) {
   s = bc_read_chars(vec, prompt);
   if (s && s != BC_STATUS_EOF) return s;
   if (bc_read_binary(vec->v, vec->len - 1))
-    return bc_vm_verr(BC_ERROR_VM_BIN_FILE, bc_program_stdin_name);
+    return bc_vm_verr(BC_ERROR_VM_BIN_FILE, "<stdin>");
 
   return BC_STATUS_SUCCESS;
 }
@@ -1494,7 +1576,7 @@ static BcStatus bc_num_k(BcNum *a, BcNum *b, BcNum *c) {
       carry = 0;
 
       for (j = 0; !TT.sig && j < a->len; ++j) {
-        unsigned int in = (uchar) ptr[j];
+        unsigned int in = (char) ptr[j];
         in += ((unsigned int) a->num[j]) * ((unsigned int) b->num[i]);
         carry = bc_num_addDigit(ptr + j, in, carry);
       }
@@ -1926,7 +2008,7 @@ static void bc_num_printDigits(size_t n, size_t len, int rdx) {
     bc_num_printNewline();
     dig = n / pow;
     n -= dig * pow;
-    putchar(((uchar) dig) + '0');
+    putchar(((char) dig) + '0');
   }
 }
 
@@ -2140,7 +2222,7 @@ BcStatus bc_num_ulong(BcNum *n, unsigned long *result) {
     if (prev == SIZE_MAX || prev / 10 != r)
       return bc_vm_err(BC_ERROR_MATH_OVERFLOW);
 
-    r = prev + ((uchar) n->num[--i]);
+    r = prev + ((char) n->num[--i]);
 
     if (r == SIZE_MAX || r < prev) return bc_vm_err(BC_ERROR_MATH_OVERFLOW);
   }
@@ -2361,7 +2443,7 @@ BcStatus bc_func_insert(BcFunc *f, char *name, BcType type, size_t line) {
 }
 
 void bc_func_init(BcFunc *f, char *name) {
-  bc_vec_init(&f->code, sizeof(uchar), NULL);
+  bc_vec_init(&f->code, sizeof(char), NULL);
   bc_vec_init(&f->strs, sizeof(char*), bc_string_free);
   bc_vec_init(&f->consts, sizeof(char*), bc_string_free);
   bc_vec_init(&f->autos, sizeof(struct str_len), bc_id_free);
@@ -2989,7 +3071,7 @@ void bc_parse_pushIndex(BcParse *p, size_t idx) {
   bc_vec_pushIndex(&p->func->code, idx);
 }
 
-void bc_parse_addId(BcParse *p, uchar inst) {
+void bc_parse_addId(BcParse *p, char inst) {
 
   BcFunc *f = p->func;
   BcVec *v = inst == BC_INST_NUM ? &f->consts : &f->strs;
@@ -3141,8 +3223,8 @@ static void bc_parse_operator(BcParse *p, BcLexType type,
                               size_t start, size_t *nexprs)
 {
   BcLexType t;
-  uchar l, r = BC_PARSE_OP_PREC(type);
-  uchar left = BC_PARSE_OP_LEFT(type);
+  char l, r = BC_PARSE_OP_PREC(type);
+  char left = BC_PARSE_OP_LEFT(type);
 
   while (p->ops.len > start) {
 
@@ -3385,7 +3467,7 @@ static BcStatus bc_parse_incdec(BcParse *p, BcInst *prev,
 {
   BcStatus s;
   BcLexType type;
-  uchar inst;
+  char inst;
   BcInst etype = *prev;
   BcLexType last = p->l.last;
 
@@ -3500,7 +3582,7 @@ static BcStatus bc_parse_return(BcParse *p) {
   BcStatus s;
   BcLexType t;
   int paren;
-  uchar inst = BC_INST_RET0;
+  char inst = BC_INST_RET0;
 
   if (!BC_PARSE_FUNC(p)) return bc_parse_err(p, BC_ERROR_PARSE_TOKEN);
 
@@ -4345,8 +4427,8 @@ static BcStatus bc_parse_expr_err(BcParse *p, uint8_t flags, BcParseNext next) {
         if (BC_PARSE_LEAF(prev, bin_last, rprn))
           return bc_parse_err(p, BC_ERROR_PARSE_EXPR);
 
-        prev = (uchar) (t - BC_LEX_KEY_LAST + BC_INST_LAST);
-        bc_parse_push(p, (uchar) prev);
+        prev = (char) (t - BC_LEX_KEY_LAST + BC_INST_LAST);
+        bc_parse_push(p, (char) prev);
 
         get_token = 1;
         rprn = bin_last = 0;
@@ -4490,11 +4572,11 @@ static char *bc_program_str(BcProgram *p, size_t idx, int str) {
 
 static size_t bc_program_index(char *code, size_t *bgn) {
 
-  uchar amt = (uchar) code[(*bgn)++], i = 0;
+  char amt = (char) code[(*bgn)++], i = 0;
   size_t res = 0;
 
   for (; i < amt; ++i, ++(*bgn)) {
-    size_t temp = ((size_t) ((int) (uchar) code[*bgn]) & UCHAR_MAX);
+    size_t temp = ((size_t) ((int) (char) code[*bgn]) & UCHAR_MAX);
     res |= (temp << (i * CHAR_BIT));
   }
 
@@ -4504,13 +4586,13 @@ static size_t bc_program_index(char *code, size_t *bgn) {
 static char *bc_program_name(char *code, size_t *bgn) {
 
   size_t i;
-  uchar c;
+  char c;
   char *s;
   char *str = code + *bgn, *ptr = strchr(str, UCHAR_MAX);
 
   s = xmalloc(((unsigned long) ptr) - ((unsigned long) str) + 1);
 
-  for (i = 0; (c = (uchar) code[(*bgn)++]) && c != UCHAR_MAX; ++i)
+  for (i = 0; (c = (char) code[(*bgn)++]) && c != UCHAR_MAX; ++i)
     s[i] = (char) c;
 
   s[i] = '\0';
@@ -4714,7 +4796,7 @@ static void bc_program_retire(BcProgram *p, BcResult *r, BcResultType t) {
   bc_vec_push(&p->results, r);
 }
 
-static BcStatus bc_program_op(BcProgram *p, uchar inst) {
+static BcStatus bc_program_op(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult *opd1, *opd2, res;
@@ -4753,7 +4835,7 @@ static BcStatus bc_program_read(BcProgram *p) {
   }
 
   file = TT.file;
-  bc_lex_file(&parse.l, bc_program_stdin_name);
+  bc_lex_file(&parse.l, "<stdin>");
   bc_vec_npop(&f->code, f->code.len);
   bc_vec_init(&buf, sizeof(char), NULL);
 
@@ -4819,7 +4901,7 @@ static void bc_program_printString(char *str)
   }
 }
 
-static BcStatus bc_program_print(BcProgram *p, uchar inst, size_t idx) {
+static BcStatus bc_program_print(BcProgram *p, char inst, size_t idx) {
 
   BcStatus s = BC_STATUS_SUCCESS;
   BcResult *r;
@@ -4880,7 +4962,7 @@ void bc_program_not(BcResult *r, BcNum *n) {
   if (!BC_NUM_CMP_ZERO(n)) bc_num_one(&r->d.n);
 }
 
-static BcStatus bc_program_unary(BcProgram *p, uchar inst) {
+static BcStatus bc_program_unary(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult res, *ptr;
@@ -4896,7 +4978,7 @@ static BcStatus bc_program_unary(BcProgram *p, uchar inst) {
   return s;
 }
 
-static BcStatus bc_program_logical(BcProgram *p, uchar inst) {
+static BcStatus bc_program_logical(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult *opd1, *opd2, res;
@@ -5006,7 +5088,7 @@ static BcStatus bc_program_copyToVar(BcProgram *p, char *name,
   return s;
 }
 
-static BcStatus bc_program_assign(BcProgram *p, uchar inst) {
+static BcStatus bc_program_assign(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult *left, *right, res;
@@ -5074,7 +5156,7 @@ static BcStatus bc_program_pushVar(BcProgram *p, char *code, size_t *bgn) {
 }
 
 static BcStatus bc_program_pushArray(BcProgram *p, char *code,
-                                     size_t *bgn, uchar inst)
+                                     size_t *bgn, char inst)
 {
   BcStatus s = BC_STATUS_SUCCESS;
   BcResult r;
@@ -5110,12 +5192,12 @@ err:
   return s;
 }
 
-static BcStatus bc_program_incdec(BcProgram *p, uchar inst) {
+static BcStatus bc_program_incdec(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult *ptr, res, copy;
   BcNum *num = NULL;
-  uchar inst2;
+  char inst2;
 
   s = bc_program_prep(p, &ptr, &num);
   if (s) return s;
@@ -5202,7 +5284,7 @@ static BcStatus bc_program_call(BcProgram *p, char *code,
   return BC_STATUS_SUCCESS;
 }
 
-static BcStatus bc_program_return(BcProgram *p, uchar inst) {
+static BcStatus bc_program_return(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult res;
@@ -5258,7 +5340,7 @@ unsigned long bc_program_len(BcNum *n) {
   return len;
 }
 
-static BcStatus bc_program_builtin(BcProgram *p, uchar inst) {
+static BcStatus bc_program_builtin(BcProgram *p, char inst) {
 
   BcStatus s;
   BcResult *opnd;
@@ -5293,7 +5375,7 @@ static BcStatus bc_program_builtin(BcProgram *p, uchar inst) {
   return s;
 }
 
-static void bc_program_pushGlobal(BcProgram *p, uchar inst) {
+static void bc_program_pushGlobal(BcProgram *p, char inst) {
 
   BcResult res;
   unsigned long val;
@@ -5422,7 +5504,7 @@ BcStatus bc_program_exec(BcProgram *p) {
 
   while (!s && ip->idx < func->code.len) {
 
-    uchar inst = (uchar) code[(ip->idx)++];
+    char inst = (char) code[(ip->idx)++];
 
     switch (inst) {
 
@@ -5741,10 +5823,10 @@ static BcStatus bc_vm_stdin(void) {
   size_t string = 0;
   int comment = 0, done = 0;
 
-  bc_lex_file(&BC_VM->prs.l, bc_program_stdin_name);
+  bc_lex_file(&BC_VM->prs.l, "<stdin>");
 
-  bc_vec_init(&buffer, sizeof(uchar), NULL);
-  bc_vec_init(&buf, sizeof(uchar), NULL);
+  bc_vec_init(&buffer, sizeof(char), NULL);
+  bc_vec_init(&buf, sizeof(char), NULL);
   bc_vec_pushByte(&buffer, '\0');
 
   // This loop is complex because the vm tries not to send any lines that end
@@ -5767,7 +5849,7 @@ static BcStatus bc_vm_stdin(void) {
     for (i = 0; i < len; ++i) {
 
       int notend = len > i + 1;
-      uchar c = (uchar) str[i];
+      char c = (char) str[i];
 
       if (!comment && (i - 1 > len || str[i - 1] != '\\')) string ^= c == '"';
 
