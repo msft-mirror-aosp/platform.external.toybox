@@ -123,7 +123,7 @@ void ToyboxTest::TestBody() {
   // And whether it is uses toybox as its implementation.
   std::string implementation = SystemStdoutOrFatal(std::string("realpath ") + toy_path);
   if (!android::base::EndsWith(implementation, "/toybox")) {
-    std::cout << toy_ << " is non-toybox implementation";
+    std::cout << toy_ << " is *not* toybox; this does not count as a test failure";
     // If there is no symlink for the toy on the device then run the tests but don't report
     // failures.
     ignore_failures = true;
