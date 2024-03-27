@@ -518,6 +518,7 @@ struct du_data {
 
 struct env_data {
   struct arg_list *u;
+  char *e;
 };
 
 struct expand_data {
