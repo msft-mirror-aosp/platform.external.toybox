@@ -148,7 +148,7 @@
 
 #define HELP_watchdog "usage: watchdog [-F] [-t UPDATE] [-T DEADLINE] DEV\n\nStart the watchdog timer at DEV with optional timeout parameters.\n\n-F	run in the foreground (do not daemonize)\n-t	poke watchdog every UPDATE seconds (default 4)\n-T	reboot if not poked for DEADLINE seconds (default 60)"
 
-#define HELP_watch "usage: watch [-tebx] [-n SEC] PROG ARGS\n\nRun PROG every -n seconds, showing output. Hit q to quit.\n\n-n	Loop period in seconds (default 2)\n-t	Don't print header\n-e	Exit on error\n-b	Beep on command error\n-x	Exec command directly (vs \"sh -c\")"
+#define HELP_watch "usage: watch [-tebx] [-n SEC] COMMAND...\n\nRun COMMAND every -n seconds, showing output that fits terminal, q to quit.\n\n-n	Number of seconds between repeats (default 2.0)\n-t	Don't print header\n-e	Exit on error\n-b	Beep on command error\n-x	Exec command directly (without \"sh -c\")"
 
 #define HELP_w "usage: w\n\nShow who is logged on and since how long they logged in."
 
