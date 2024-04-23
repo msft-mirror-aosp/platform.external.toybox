@@ -294,6 +294,7 @@ toybox_symlinks = [
     "getconf",
     "getenforce",
     "getfattr",
+    "getopt",
     "gpiodetect",
     "gpiofind",
     "gpioget",
