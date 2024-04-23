@@ -53,6 +53,7 @@ ${CROSS_COMPILE}cc --static -xc - -o /dev/null <<< "int main(void){return 0;}"||
 
 # ----- Create hermetic build environment
 
+rm -rf generated
 if [ -z "$NOAIRLOCK"] && [ -n "$CROSS_COMPILE" ]; then
   # When cross compiling set host $PATH to binaries with known behavior by
   # - building a host toybox later builds use as their command line
@@ -134,7 +135,7 @@ if [ $$ -eq 1 ]; then
   [ -z "$HANDOFF" ] && [ -e /mnt/init ] && HANDOFF=/mnt/init
   [ -z "$HANDOFF" ] && HANDOFF=/bin/sh && echo -e '\e[?7hType exit when done.'
 
-  setsid -c <>/dev/$(sed '$s@.*/@@' /sys/class/tty/console/active) >&0 2>&1 \
+  setsid -c <>/dev/$(sed '$s@.*[ /]@@' /sys/class/tty/console/active) >&0 2>&1 \
     $HANDOFF
   reboot -f &
   sleep 5
@@ -152,7 +153,10 @@ root:x:0:0:root:/root:/bin/sh
 guest:x:500:500:guest:/home/guest:/bin/sh
 nobody:x:65534:65534:nobody:/proc/self:/dev/null
 EOF
-echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group || exit 1
+echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group &&
+: ${VERSION:=$(toybox --version)} &&
+# Optional file, basically a comment
+echo $'NAME="mkroot"\nVERSION="'${VERSION#* }$'"\nHOME_URL="https://landley.net/toybox"' > "$ROOT"/etc/os-release || exit 1
 
 # Build any packages listed on command line
 for i in ${PKG:+plumbing $PKG}; do
@@ -177,6 +181,7 @@ fi
 
 # Convert comma separated values in $1 to CONFIG=$2 lines
 csv2cfg() { sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1\n/g' <<< "$1" | sed '/^$/!{/=/!s/.*/&='"$2/}";}
+be2csv() { eval "echo $*" | tr ' ' ,; } # brace expansion to csv
 
 # Set variables from $CROSS, die on unrecognized target:
 # BUILTIN - if set, statically link initramfs into kernel image
@@ -191,12 +196,17 @@ get_target_config()
   # Target-specific info in an (alphabetical order) if/else staircase
   # Each target needs board config, serial console, RTC, ethernet, block device.
 
-  if [ "$CROSS" == armv5l ]; then
+  KARGS=ttyS0 VMLINUX=vmlinux
+  if [ "$CROSS" == armv5l ] || [ "$CROSS" == armv4l ]; then
     # This could use the same VIRT board as armv7, but let's demonstrate a
     # different one requiring a separate device tree binary.
-    QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
     KARCH=arm KARGS=ttyAMA0 VMLINUX=arch/arm/boot/zImage
-    KCONF=CPU_ARM926T,MMU,VFP,ARM_THUMB,AEABI,ARCH_VERSATILE,ATAGS,DEPRECATED_PARAM_STRUCT,ARM_ATAG_DTB_COMPAT,ARM_ATAG_DTB_COMPAT_CMDLINE_EXTEND,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_DRV_PL031,RTC_HCTOSYS,PCI,PCI_VERSATILE,BLK_DEV_SD,SCSI,SCSI_LOWLEVEL,SCSI_SYM53C8XX_2,SCSI_SYM53C8XX_MMIO,NET_VENDOR_REALTEK,8139CP,SCSI_SYM53C8XX_DMA_ADDRESSING_MODE=0
+    QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
+    KCONF="$(be2csv CPU_ARM926T MMU VFP ARM_THUMB AEABI ARCH_VERSATILE ATAGS \
+      DEPRECATED_PARAM_STRUCT BLK_DEV_SD NET_VENDOR_REALTEK 8139CP \
+      ARM_ATAG_DTB_COMPAT{,_CMDLINE_EXTEND} PCI{,_VERSATILE} \
+      SERIAL_AMBA_PL011{,_CONSOLE} RTC_{CLASS,DRV_PL031,HCTOSYS} \
+      SCSI{,_LOWLEVEL,_SYM53C8XX_{2,MMIO,DMA_ADDRESSING_MODE=0}})"
     DTB=versatile-pb.dtb
   elif [ "$CROSS" == armv7l ] || [ "$CROSS" == aarch64 ]; then
     if [ "$CROSS" == aarch64 ]; then
@@ -206,9 +216,13 @@ get_target_config()
       QEMU="arm -M virt" KARCH=arm VMLINUX=arch/arm/boot/zImage
     fi
     KARGS=ttyAMA0
-    KCONF=MMU,ARCH_MULTI_V7,ARCH_VIRT,SOC_DRA7XX,ARCH_OMAP2PLUS_TYPICAL,ARCH_ALPINE,ARM_THUMB,VDSO,CPU_IDLE,ARM_CPUIDLE,KERNEL_MODE_NEON,SERIAL_AMBA_PL011,SERIAL_AMBA_PL011_CONSOLE,RTC_CLASS,RTC_HCTOSYS,RTC_DRV_PL031,VIRTIO_MENU,VIRTIO_NET,PCI,PCI_HOST_GENERIC,VIRTIO_BLK,VIRTIO_PCI,VIRTIO_MMIO,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,PATA_PLATFORM,PATA_OF_PLATFORM,ATA_GENERIC,ARM_LPAE
+    KCONF="$(be2csv MMU SOC_DRA7XX VDSO CPU_IDLE KERNEL_MODE_NEON \
+      ARCH_{MULTI_V7,VIRT,OMAP2PLUS_TYPICAL,ALPINE} ARM_{THUMB,CPUIDLE,LPAE} \
+      ATA{,_SFF,_BMDMA,_PIIX,_GENERIC} VIRTIO_{MENU,NET,BLK,PCI,MMIO} \
+      SERIAL_AMBA_PL011{,_CONSOLE} RTC_{CLASS,HCTOSYS,DRV_PL031} \
+      PATA_{,OF_}PLATFORM PCI{,_HOST_GENERIC})"
   elif [ "$CROSS" == hexagon ]; then
-    QEMU="hexagon -M comet" KARGS=ttyS0 VMLINUX=vmlinux
+    QEMU="hexagon -M comet"
     KARCH="hexagon LLVM_IAS=1" KCONF=SPI,SPI_BITBANG,IOMMU_SUPPORT
   elif [ "$CROSS" == i486 ] || [ "$CROSS" == i686 ] ||
        [ "$CROSS" == x86_64 ] || [ "$CROSS" == x32 ]; then
@@ -220,46 +234,76 @@ get_target_config()
       QEMU=x86_64 KCONF=64BIT
       [ "$CROSS" == x32 ] && KCONF=X86_X32
     fi
-    KARCH=x86 KARGS=ttyS0 VMLINUX=arch/x86/boot/bzImage
-    KCONF=$KCONF,UNWINDER_FRAME_POINTER,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_INTEL,E1000,SERIAL_8250,SERIAL_8250_CONSOLE,RTC_CLASS
+    KARCH=x86 VMLINUX=arch/x86/boot/bzImage
+    KCONF+=,"$(be2csv UNWINDER_FRAME_POINTER PCI BLK_DEV_SD NET_VENDOR_INTEL \
+      E1000 RTC_CLASS ATA{,_SFF,_BMDMA,_PIIX} SERIAL_8250{,_CONSOLE})"
   elif [ "$CROSS" == m68k ]; then
-    QEMU="m68k -M q800" KARCH=m68k KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=MMU,M68040,M68KFPU_EMU,MAC,SCSI,SCSI_LOWLEVEL,BLK_DEV_SD,SCSI_MAC_ESP,MACINTOSH_DRIVERS,NET_VENDOR_NATSEMI,MACSONIC,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE
-  elif [ "$CROSS" == mips ] || [ "$CROSS" == mipsel ]; then
-    QEMU="mips -M malta" KARCH=mips KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=MIPS_MALTA,CPU_MIPS32_R2,SERIAL_8250,SERIAL_8250_CONSOLE,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,ATA_PIIX,NET_VENDOR_AMD,PCNET32,POWER_RESET,POWER_RESET_SYSCON
-    [ "$CROSS" == mipsel ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN &&
-      QEMU="mipsel -M malta"
+    QEMU="m68k -M q800" KARCH=m68k
+    KCONF="$(be2csv MMU M68040 M68KFPU_EMU MAC BLK_DEV_SD MACINTOSH_DRIVERS \
+      NET_VENDOR_NATSEMI MACSONIC SCSI{,_LOWLEVEL,_MAC_ESP} \
+      SERIAL_PMACZILOG{,_TTYS,_CONSOLE})"
+  elif [ "$CROSS" == microblaze ]; then
+    QEMU="microblaze -M petalogix-s3adsp1800" KARCH=microblaze KARGS=ttyUL0
+    KCONF="$(be2csv MMU CPU_BIG_ENDIAN SERIAL_UARTLITE{,_CONSOLE} \
+      XILINX_{EMACLITE,MICROBLAZE0_{FAMILY="spartan3adsp",USE_{{MSR,PCMP}_INSTR,BARREL,HW_MUL}=1}})"
+  elif [ "${CROSS#mips}" != "$CROSS" ]; then # mips mipsel mips64 mips64el
+    QEMU="$CROSS -M malta" KARCH=mips
+    KCONF="$(be2csv MIPS_MALTA CPU_MIPS32_R2 BLK_DEV_SD NET_VENDOR_AMD PCNET32 \
+      PCI SERIAL_8250{,_CONSOLE} ATA{,_SFF,_BMDMA,_PIIX} POWER_RESET{,_SYSCON})"
+    [ "${CROSS/64/}" == "$CROSS" ] && KCONF+=,CPU_MIPS32_R2 ||
+      KCONF+=,64BIT,CPU_MIPS64_R1,MIPS32_O32
+    [ "${CROSS%el}" != "$CROSS" ] && KCONF+=,CPU_LITTLE_ENDIAN
   elif [ "$CROSS" == or1k ]; then
-    KARCH=openrisc QEMU="or1k -M or1k-sim" KARGS=FIXME VMLINUX=vmlinux BUILTIN=1
-    KCONF=OPENRISC_BUILTIN_DTB=\"or1ksim\",ETHOC,SERIO,SERIAL_8250,SERIAL_8250_CONSOLE,SERIAL_OF_PLATFORM
+    KARCH=openrisc QEMU="or1k -M or1k-sim" KARGS=FIXME BUILTIN=1
+    KCONF="$(be2csv ETHOC SERIO SERIAL_OF_PLATFORM SERIAL_8250{,_CONSOLE})"
+    KCONF+=,OPENRISC_BUILTIN_DTB=\"or1ksim\"
   elif [ "$CROSS" == powerpc ]; then
-    KARCH=powerpc QEMU="ppc -M g3beige" KARGS=ttyS0 VMLINUX=vmlinux
-    KCONF=ALTIVEC,PPC_PMAC,PPC_OF_BOOT_TRAMPOLINE,ATA,ATA_SFF,ATA_BMDMA,PATA_MACIO,BLK_DEV_SD,MACINTOSH_DRIVERS,ADB,ADB_CUDA,NET_VENDOR_NATSEMI,NET_VENDOR_8390,NE2K_PCI,SERIO,SERIAL_PMACZILOG,SERIAL_PMACZILOG_TTYS,SERIAL_PMACZILOG_CONSOLE,BOOTX_TEXT
+    KARCH=powerpc QEMU="ppc -M g3beige"
+    KCONF="$(be2csv ALTIVEC PATA_MACIO BLK_DEV_SD MACINTOSH_DRIVERS SERIO \
+      NET_VENDOR_{8390,NATSEMI} NE2K_PCI SERIAL_PMACZILOG{,_TTYS,_CONSOLE} \
+      ATA{,_SFF,_BMDMA} ADB{,_CUDA} BOOTX_TEXT PPC_{PMAC,OF_BOOT_TRAMPOLINE})"
   elif [ "$CROSS" == powerpc64 ] || [ "$CROSS" == powerpc64le ]; then
     KARCH=powerpc QEMU="ppc64 -M pseries -vga none" KARGS=hvc0
-    VMLINUX=vmlinux
-    KCONF=PPC64,PPC_PSERIES,PPC_OF_BOOT_TRAMPOLINE,BLK_DEV_SD,SCSI_LOWLEVEL,SCSI_IBMVSCSI,ATA,NET_VENDOR_IBM,IBMVETH,HVC_CONSOLE,PPC_TRANSACTIONAL_MEM,PPC_DISABLE_WERROR,SECTION_MISMATCH_WARN_ONLY
+    KCONF="$(be2csv PPC64 BLK_DEV_SD ATA NET_VENDOR_IBM IBMVETH HVC_CONSOLE \
+      PPC_{PSERIES,OF_BOOT_TRAMPOLINE,TRANSACTIONAL_MEM,DISABLE_WERROR} \
+      SCSI_{LOWLEVEL,IBMVSCSI})"
     [ "$CROSS" == powerpc64le ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN
   elif [ "$CROSS" = s390x ]; then
     QEMU="s390x" KARCH=s390 VMLINUX=arch/s390/boot/bzImage
-    KCONF=MARCH_Z900,PACK_STACK,VIRTIO_NET,VIRTIO_BLK,SCLP_TTY,SCLP_CONSOLE,SCLP_VT220_TTY,SCLP_VT220_CONSOLE,S390_GUEST
+    KCONF="$(be2csv MARCH_Z900 PACK_STACK S390_GUEST VIRTIO_{NET,BLK} \
+      SCLP_VT220_{TTY,CONSOLE})"
   elif [ "$CROSS" == sh2eb ]; then
-    BUILTIN=1 KARCH=sh VMLINUX=vmlinux
-    KCONF=CPU_SUBTYPE_J2,CPU_BIG_ENDIAN,SH_JCORE_SOC,SMP,BINFMT_ELF_FDPIC,JCORE_EMAC,SERIAL_UARTLITE,SERIAL_UARTLITE_CONSOLE,HZ_100,CMDLINE_OVERWRITE,SPI,SPI_JCORE,MMC,PWRSEQ_SIMPLE,MMC_BLOCK,MMC_SPI,BINMT_FLAT,BINFMT_MISC,DNOTIFY,INOTIFY_USER,FUSE_FS,I2C,I2C_HELPER_AUTO,LOCALVERSION_AUTO,MTD,MTD_SPI_NOR,MTD_SST25L,MTD_OF_PARTS,POSIX_MQUEUE,SYSVIPC,UEVENT_HELPER,UIO,UIO_PDRV_GENIRQ,FLATMEM_MANUAL,MEMORY_START=0x10000000,CMDLINE=\"console=ttyUL0\ earlycon\"
-    KCONF+=,BFP_SYSCALL,CRYPTO_DES,CRYPTO_DH,CRYPTO_ECHAINIV,CRYPTO_LZO,CRYPTO_MANAGER_DISABLE_TESTS,CRYPTO_RSA,CRYPTO_SHA1,CRYPTO_SHA3,INET_DIAG,SERIAL_8250
-    # TODO NET_9P,9P_FS fails to boot in 6.3, unaligned access?
-  elif [ "$CROSS" == sh4 ]; then
-    QEMU="sh4 -M r2d -serial null -serial mon:stdio" KARCH=sh
+    BUILTIN=1 KARCH=sh
+    KCONF="$(be2csv CPU_{SUBTYPE_J2,BIG_ENDIAN} SH_JCORE_SOC SMP JCORE_EMAC \
+      FLATMEM_MANUAL MEMORY_START=0x10000000 CMDLINE_OVERWRITE DNOTIFY FUSE_FS \
+      INOTIFY_USER SPI{,_JCORE} SERIAL_UARTLITE{,_CONSOLE} PWRSEQ_SIMPLE \
+      MMC{,_BLOCK,_SPI} UIO{,_PDRV_GENIRQ} MTD{,_SPI_NOR,_SST25L,_OF_PARTS} \
+      BINFMT_{ELF_FDPIC,MISC} I2C{,_HELPER_AUTO})"
+    KCONF+=,CMDLINE=\"console=ttyUL0\ earlycon\"
+  elif [ "$CROSS" == sh4 ] || [ "$CROSS" == sh4eb ]; then
+    QEMU="$CROSS -M r2d -serial null -serial mon:stdio" KARCH=sh
     KARGS="ttySC1 noiotrap" VMLINUX=arch/sh/boot/zImage
-    KCONF=CPU_SUBTYPE_SH7751R,MMU,VSYSCALL,SH_FPU,SH_RTS7751R2D,RTS7751R2D_PLUS,SERIAL_SH_SCI,SERIAL_SH_SCI_CONSOLE,PCI,NET_VENDOR_REALTEK,8139CP,PCI,BLK_DEV_SD,ATA,ATA_SFF,ATA_BMDMA,PATA_PLATFORM,BINFMT_ELF_FDPIC,BINFMT_FLAT,MEMORY_START=0x0c000000
-#see also SPI SPI_SH_SCI MFD_SM501 RTC_CLASS RTC_DRV_R9701 RTC_DRV_SH RTC_HCTOSYS
+    KCONF="$(be2csv CPU_SUBTYPE_SH7751R MMU VSYSCALL SH_{FPU,RTS7751R2D} PCI \
+      RTS7751R2D_PLUS SERIAL_SH_SCI{,_CONSOLE} NET_VENDOR_REALTEK 8139CP \
+      BLK_DEV_SD ATA{,_SFF,_BMDMA} PATA_PLATFORM BINFMT_ELF_FDPIC \
+      MEMORY_START=0x0c000000)"
+#see also SPI{,_SH_SCI} MFD_SM501 RTC_{CLASS,DRV_{R9701,SH},HCTOSYS}
+    [ "$CROSS" == sh4eb ] && KCONF+=,CPU_BIG_ENDIAN
   else die "Unknown \$CROSS=$CROSS"
   fi
 }
 
+# Linux kernel .config symbols common to all architectures
+: ${GENERIC_KCONF:=$(be2csv PANIC_TIMEOUT=1 NO_HZ HIGH_RES_TIMERS RD_GZIP \
+  BINFMT_{ELF,SCRIPT} BLK_DEV{,_INITRD,_LOOP} EXT4_{FS,USE_FOR_EXT2} \
+  VFAT_FS FAT_DEFAULT_UTF8 MISC_FILESYSTEMS NLS_{CODEPAGE_437,ISO8859_1} \
+  SQUASHFS{,_XATTR,_ZLIB} TMPFS{,_POSIX_ACL} DEVTMPFS{,_MOUNT} \
+  NET{,DEVICES,_CORE,CONSOLE} PACKET UNIX INET IPV6 ETHERNET \
+  COMPAT_32BIT_TIME EARLY_PRINTK IKCONFIG{,_PROC})}
+
 # ----- Build kernel for target
 
+INITRAMFS=initramfs.cpio.gz
 if [ -z "$LINUX" ] || [ ! -d "$LINUX/kernel" ]; then
   echo 'No $LINUX directory, kernel build skipped.'
 else
@@ -270,7 +314,7 @@ else
 
   # Write the qemu launch script
   if [ -n "$QEMU" ]; then
-    [ -z "$BUILTIN" ] && INITRD='-initrd "$DIR"/initramfs.cpio.gz'
+    [ -z "$BUILTIN" ] && INITRD='-initrd "$DIR"/'"$INITRAMFS"
     { echo DIR='"$(dirname $0)";' qemu-system-"$QEMU" -m 256 '"$@"' $QEMU_MORE \
         -nographic -no-reboot -kernel '"$DIR"'/linux-kernel $INITRD \
         ${DTB:+-dtb '"$DIR"'/linux.dtb} \
@@ -284,30 +328,28 @@ else
   pushd "$LINUX" && make distclean && popd &&
   cp -sfR "$LINUX" "$TEMP/linux" && pushd "$TEMP/linux" &&
 
-  # Write linux-miniconfig
+  # Write microconfig (minimal symbol name/value list in CSV format)
   mkdir -p "$OUTDOC" &&
-  { echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
-    echo -e "# make ARCH=$KARCH -j \$(nproc)\n# boot $VMLINUX\n\n"
+  for i in "$GENERIC_KCONF" "$KCONF" ${MODULES+MODULES,MODULE_UNLOAD} "$KEXTRA"
+  do echo "$i"; done > "$OUTDOC"/linux-microconfig &&
 
-    # Expand list of =y symbols, first generic then architecture-specific
-    for i in BINFMT_ELF,BINFMT_SCRIPT,PANIC_TIMEOUT=1,NO_HZ,HIGH_RES_TIMERS,BLK_DEV,BLK_DEV_INITRD,RD_GZIP,BLK_DEV_LOOP,EXT4_FS,EXT4_USE_FOR_EXT2,VFAT_FS,FAT_DEFAULT_UTF8,NLS_CODEPAGE_437,NLS_ISO8859_1,MISC_FILESYSTEMS,SQUASHFS,SQUASHFS_XATTR,SQUASHFS_ZLIB,DEVTMPFS,DEVTMPFS_MOUNT,TMPFS,TMPFS_POSIX_ACL,NET,PACKET,UNIX,INET,IPV6,NETDEVICES,NET_CORE,NETCONSOLE,ETHERNET,COMPAT_32BIT_TIME,EARLY_PRINTK,IKCONFIG,IKCONFIG_PROC "$KCONF" ${MODULES+MODULES,MODULE_UNLOAD} "$KEXTRA" ; do
-      echo "$i" >> "$OUTDOC"/linux-microconfig
+  # expand to miniconfig (symbol list to switch on after running "allnoconfig")
+  {
+    echo "# make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG=linux-miniconfig"
+    echo "# make ARCH=$KARCH -j \$(nproc)"
+    echo "# boot $VMLINUX${DTB:+ dtb $DTB} console=$KARGS"
+    echo
+    while read i; do
       echo "# architecture ${X:-independent}"
       csv2cfg "$i" y
       X=${X:+extra} X=${X:-specific}
-    done
+    done < "$OUTDOC"/linux-microconfig
     [ -n "$BUILTIN" ] && echo -e CONFIG_INITRAMFS_SOURCE="\"$OUTPUT/fs\""
     for i in $MODULES; do csv2cfg "$i" m; done
-    echo "$KERNEL_CONFIG"
   } > "$OUTDOC/linux-miniconfig" &&
-  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTDOC/linux-miniconfig" &&
 
-  # Second config pass to remove stupid kernel defaults
-  # See http://lkml.iu.edu/hypermail/linux/kernel/1912.3/03493.html
-  sed -e 's/# CONFIG_EXPERT .*/CONFIG_EXPERT=y/' -e "$(sed -E -e '/^$/d' \
-    -e 's@([^,]*)($|,)@/^CONFIG_\1=y/d;$a# CONFIG_\1 is not set\n@g' \
-       <<< VT,SCHED_DEBUG,DEBUG_MISC,X86_DEBUG_FPU)" -i .config &&
-  yes "" | make ARCH=$KARCH oldconfig > /dev/null &&
+  # Expand miniconfig to full .config
+  make ARCH=$KARCH allnoconfig KCONFIG_ALLCONFIG="$OUTDOC/linux-miniconfig" &&
   cp .config "$OUTDOC/linux-fullconfig" &&
 
   # Build kernel. Copy config, device tree binary, and kernel binary to output
@@ -322,12 +364,11 @@ else
 fi
 
 # clean up and package root filesystem for initramfs.
-if [ -z "$BUILTIN" ]; then
-  announce initramfs
-  { (cd "$ROOT" && find . -printf '%P\n' | cpio -o -H newc -R +0:+0 ) || exit 1
-    ! test -e "$OUTDOC/modules.cpio.gz" || zcat $_;} | gzip \
-    > "$OUTPUT"/initramfs.cpio.gz || exit 1
-fi
+announce initramfs
+[ -z "$BUILTIN" ] && DIR="$OUTPUT" || DIR="$OUTDOC"
+{ (cd "$ROOT" && find . -printf '%P\n' | cpio -o -H newc -R +0:+0 ) || exit 1
+  ! test -e "$OUTDOC/modules.cpio.gz" || zcat $_;} | gzip \
+  > "$DIR/$INITRAMFS" || exit 1
 
 mv "$LOG".{n,y} && echo "Output is in $OUTPUT"
 rmdir "$TEMP" 2>/dev/null || exit 0 # remove if empty, not an error
