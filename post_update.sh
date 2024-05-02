@@ -1,8 +1,13 @@
 #!/bin/bash
 
+# external-updater provides:
 # $1 Path to the new version.
 # $2 Path to the old version.
 
+if [ "$#" -lt 1 ]; then
+  echo 'need at least the path to the current version!'
+  exit 1
+fi
 cd $1
 
 set -e

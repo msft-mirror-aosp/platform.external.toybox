@@ -402,8 +402,8 @@
 #define USE_MODPROBE(...)
 #define CFG_MORE 0
 #define USE_MORE(...)
-#define CFG_MOUNT 0
-#define USE_MOUNT(...)
+#define CFG_MOUNT 1
+#define USE_MOUNT(...) __VA_ARGS__
 #define CFG_MOUNTPOINT 0
 #define USE_MOUNTPOINT(...)
 #define CFG_MV 1
@@ -618,8 +618,8 @@
 #define USE_UCLAMPSET(...)
 #define CFG_ULIMIT 0
 #define USE_ULIMIT(...)
-#define CFG_UMOUNT 0
-#define USE_UMOUNT(...)
+#define CFG_UMOUNT 1
+#define USE_UMOUNT(...) __VA_ARGS__
 #define CFG_UNAME 1
 #define USE_UNAME(...) __VA_ARGS__
 #define CFG_UNICODE 0
@@ -630,8 +630,8 @@
 #define USE_UNIX2DOS(...) __VA_ARGS__
 #define CFG_UNLINK 0
 #define USE_UNLINK(...)
-#define CFG_UNSHARE 0
-#define USE_UNSHARE(...)
+#define CFG_UNSHARE 1
+#define USE_UNSHARE(...) __VA_ARGS__
 #define CFG_UPTIME 0
 #define USE_UPTIME(...)
 #define CFG_USERADD 0
