@@ -14,10 +14,25 @@ struct mktemp_data {
   char *p, *tmpdir;
 };
 
+struct mount_data {
+  struct arg_list *o;
+  char *t, *O;
+
+  unsigned long flags;
+  char *opts;
+  int okuser;
+};
+
 struct seq_data {
   char *s, *f;
 
   int precision, buflen;
+};
+
+struct umount_data {
+  struct arg_list *t;
+
+  char *types;
 };
 
 struct microcom_data {
@@ -34,6 +49,11 @@ struct dos2unix_data {
 struct getopt_data {
   struct arg_list *l;
   char *o, *n;
+};
+
+struct nsenter_data {
+  char *UupnmiC[7];
+  long t;
 };
 
 struct realpath_data {
@@ -399,10 +419,13 @@ extern union global_union {
 	struct hostname_data hostname;
 	struct md5sum_data md5sum;
 	struct mktemp_data mktemp;
+	struct mount_data mount;
 	struct seq_data seq;
+	struct umount_data umount;
 	struct microcom_data microcom;
 	struct dos2unix_data dos2unix;
 	struct getopt_data getopt;
+	struct nsenter_data nsenter;
 	struct realpath_data realpath;
 	struct setsid_data setsid;
 	struct stat_data stat;
