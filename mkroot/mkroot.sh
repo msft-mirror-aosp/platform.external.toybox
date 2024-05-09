@@ -17,7 +17,7 @@ done
 : ${TOP:=$PWD/root} ${BUILD:=$TOP/build} ${LOG:=$BUILD/log}
 : ${AIRLOCK:=$BUILD/airlock} ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/mkroot/packages}
 
-announce() { printf "\033]2;$CROSS $*\007" >/dev/tty; printf "\n=== $*\n";}
+announce() { printf "\033]2;$CROSS $*\007" 2>/dev/null >/dev/tty; printf "\n=== $*\n";}
 die() { echo "$@" >&2; exit 1; }
 
 # ----- Are we cross compiling (via CROSS_COMPILE= or CROSS=)
@@ -154,7 +154,9 @@ guest:x:500:500:guest:/home/guest:/bin/sh
 nobody:x:65534:65534:nobody:/proc/self:/dev/null
 EOF
 echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group &&
-: ${VERSION:=$(toybox --version)} &&
+# Grab toybox version git or toys.h
+: ${VERSION:=$(git describe --tags --abbrev=12 2>/dev/null)} &&
+: ${VERSION:=$(sed -n 's/.*TOYBOX_VERSION "\([^"]*\)".*/\1/p' toys.h)} &&
 # Optional file, basically a comment
 echo $'NAME="mkroot"\nVERSION="'${VERSION#* }$'"\nHOME_URL="https://landley.net/toybox"' > "$ROOT"/etc/os-release || exit 1
 
