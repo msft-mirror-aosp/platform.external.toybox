@@ -45,13 +45,14 @@ test_toy() {
   implementation=$(adb shell "realpath $location")
   non_toy=false
   if [ "$implementation" != "/system/bin/toybox" ]; then
-    echo "-- note: $toy is non-toybox implementation"
+    echo "-- note: $toy is *not* toybox; this does not count as a test failure"
     non_toy=true
   fi
 
   adb shell $dash_t "\
       export C=\"\$(which $toy)\"; \
       export CMDNAME=$toy; \
+      export TESTDIR=$tmp_dir; \
       export FILES=/data/local/tmp/toybox-tests/tests/files/ ; \
       export LANG=en_US.UTF-8; \
       export VERBOSE=1 ; \

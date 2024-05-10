@@ -15,22 +15,18 @@ config GREP
   bool "grep"
   default y
   help
-    usage: grep [-EFrivwcloqsHbhn] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE] [FILE]...
+    usage: grep [-abcEFHhIiLlnoqrsvwxZz] [-ABC NUM] [-m MAX] [-e REGEX]... [-MS PATTERN]... [-f REGFILE]... [FILE]...
 
     Show lines matching regular expressions. If no -e, first argument is
     regular expression to match. With no files (or "-" filename) read stdin.
     Returns 0 if matched, 1 if no match found, 2 for command errors.
 
-    -e  Regex to match. (May be repeated.)
-    -f  File listing regular expressions to match.
+    -e  Regex(es) to match.       -f  File(s) of regexes to match (1 per line).
 
     file search:
-    -r  Recurse into subdirectories (defaults FILE to ".")
-    -R  Recurse into subdirectories and symlinks to directories
-    -M  Match filename pattern (--include)
-    -S  Skip filename pattern (--exclude)
-    --exclude-dir=PATTERN  Skip directory pattern
-    -I  Ignore binary files
+    -r  Recurse into subdirs     -R  Recurse following symlinks
+    -M  Match files (--include)  -S  Skip files (--exclude)
+    -I  Ignore binary files      --exclude-dir=PATTERN  Skip directories
 
     match type:
     -A  Show NUM lines after     -B  Show NUM lines before match
@@ -72,7 +68,7 @@ GLOBALS(
   char *purple, *cyan, *red, *green, *grey;
   struct double_list *reg;
   int found, tried, delim;
-  struct arg_list *fixed[256];
+  struct arg_list **fixed;
 )
 
 struct reg {
@@ -104,10 +100,20 @@ static void outline(char *line, char dash, char *name, long lcount, long bcount,
   }
 }
 
+static int matchw(char *line, char *start, long so, long eo)
+{
+  if (FLAG(w)) {
+    if (so+(start-line)) if (isalnum(start[so-1]) || start[so-1]=='_') return 0;
+    if (isalnum(start[eo]) || start[eo]=='_') return 0;
+  }
+
+  return 1;
+}
+
 // Show matches in one file
 static void do_grep(int fd, char *name)
 {
-  long lcount = 0, mcount = 0, offset = 0, after = 0, before = 0;
+  long lcount = 0, mcount = 0, offset = 0, after = 0, before = 0, new = 1;
   struct double_list *dlb = 0;
   char *bars = 0;
   FILE *file;
@@ -136,7 +142,7 @@ static void do_grep(int fd, char *name)
     if (bin && FLAG(I)) return;
   }
 
-  if (!(file = fdopen(fd, "r"))) return perror_msg("%s", name);
+  if (!(file = fdopen(fd, "r"))) return perror_msg_raw(name);
 
   // Loop through lines of input
   for (;;) {
@@ -150,7 +156,7 @@ static void do_grep(int fd, char *name)
     lcount++;
     errno = 0;
     ulen = len = getdelim(&line, &ulen, TT.delim, file);
-    if (len == -1 && errno) perror_msg("%s", name);
+    if (len == -1 && errno) perror_msg_raw(name);
     if (len<1) break;
     if (line[ulen-1] == TT.delim) line[--ulen] = 0;
 
@@ -159,7 +165,7 @@ static void do_grep(int fd, char *name)
     for (shoe = (void *)TT.reg; shoe; shoe = shoe->next) shoe->rc = 0;
 
     // Loop to handle multiple matches in same line
-    do {
+    if (new) do {
       regmatch_t *mm = (void *)toybuf;
       struct arg_list *seek;
 
@@ -167,7 +173,7 @@ static void do_grep(int fd, char *name)
       rc = 1;
 
       // Handle "fixed" (literal) matches (if any)
-      if (TT.e && *start) for (ss = start; ss-line<ulen; ss++) {
+      if (TT.e) for (ss = start; ss-line<=ulen; ss++) {
         ii = FLAG(i) ? toupper(*ss) : *ss;
         for (seek = TT.fixed[ii]; seek; seek = seek->next) {
           if (*(pp = seek->arg)=='^' && !FLAG(F)) {
@@ -186,6 +192,7 @@ static void do_grep(int fd, char *name)
           }
           if (pp[ii] && (pp[ii]!='$' || pp[ii+1] || ss[ii])) continue;
           mm->rm_eo = (mm->rm_so = ss-start)+ii;
+          if (!matchw(line, start, mm->rm_so, mm->rm_eo)) continue;
           rc = 0;
 
           goto got;
@@ -193,8 +200,6 @@ static void do_grep(int fd, char *name)
         if (FLAG(x)) break;
       }
 
-      // Empty pattern always matches
-      if (rc && *TT.fixed && !FLAG(o)) rc = 0;
 got:
       // Handle regex matches (if any)
       for (shoe = (void *)TT.reg; shoe; shoe = shoe->next) {
@@ -207,6 +212,7 @@ got:
                                 &shoe->m, start==line ? 0 : REG_NOTBOL);
         }
 
+        if (!matchw(line, start, shoe->m.rm_so, shoe->m.rm_eo)) continue;
         // If we got a match, is it a _better_ match?
         if (!shoe->rc && (rc || shoe->m.rm_so < mm->rm_so ||
             (shoe->m.rm_so == mm->rm_so && shoe->m.rm_eo >= mm->rm_eo)))
@@ -222,23 +228,6 @@ got:
       }
 
       if (!rc && FLAG(x) && (mm->rm_so || ulen-(start-line)!=mm->rm_eo)) rc = 1;
-
-      if (!rc && FLAG(w)) {
-        char c = 0;
-
-        if ((start+mm->rm_so)!=line) {
-          c = start[mm->rm_so-1];
-          if (!isalnum(c) && c != '_') c = 0;
-        }
-        if (!c) {
-          c = start[mm->rm_eo];
-          if (!isalnum(c) && c != '_') c = 0;
-        }
-        if (c) {
-          move = mm->rm_so+1;
-          continue;
-        }
-      }
 
       if (FLAG(v)) {
         if (FLAG(o)) {
@@ -348,7 +337,10 @@ got:
     }
     free(line);
 
-    if (FLAG(m) && mcount >= TT.m) break;
+    if (FLAG(m) && mcount >= TT.m) {
+      if (!after) break;
+      new = 0;
+    }
   }
 
   if (FLAG(L)) xprintf("%s%c", name, TT.delim);
@@ -356,12 +348,7 @@ got:
 
   // loopfiles will also close the fd, but this frees an (opaque) struct.
   fclose(file);
-  while (dlb) {
-    struct double_list *dl = dlist_pop(&dlb);
-
-    free(dl->data);
-    free(dl);
-  }
+  llist_traverse(dlb, llist_free_double);
 }
 
 static int lensort(struct arg_list **a, struct arg_list **b)
@@ -423,14 +410,13 @@ static void parse_regex(void)
       } else if (*s>127 || strchr(special+4, *s)) break;
     }
 
-    // Add entry to fast path (literal-ish match) or slow path (regexec)
+    // Leave entry in fast path (literal-ish match) or move to slow path (regex)
     if (!*s || FLAG(F)) last = &((*last)->next);
     else {
       struct reg *shoe;
 
       dlist_add_nomalloc(&TT.reg, (void *)(shoe = xmalloc(sizeof(struct reg))));
-      xregcomp(&shoe->r, (*last)->arg,
-               (REG_EXTENDED*!!FLAG(E))|(REG_ICASE*!!FLAG(i)));
+      xregcomp(&shoe->r, (*last)->arg, REG_EXTENDED*FLAG(E)|REG_ICASE*FLAG(i));
       al = *last;
       *last = (*last)->next;
       free(al);
@@ -454,13 +440,17 @@ static void parse_regex(void)
   }
 
   // Sort each fast path pattern set by length so first hit is longest match
-  if (TT.e) for (key = 0; key<256; key++) {
-    if (!TT.fixed[key]) continue;
+  // Zero length matches aren't sorted, instead appended to every list.
+  if (TT.e) for (key = 1; key<256; key++) {
+    if (!TT.fixed[key]) {
+      TT.fixed[key] = *TT.fixed;
+      continue;
+    }
     for (len = 0, al = TT.fixed[key]; al; al = al->next) len++;
     last = xmalloc(len*sizeof(void *));
     for (len = 0, al = TT.fixed[key]; al; al = al->next) last[len++] = al;
     qsort(last, len, sizeof(void *), (void *)lensort);
-    for (ii = 0; ii<len; ii++) last[ii]->next = ii ? last[ii-1] : 0;
+    for (ii = 0; ii<len; ii++) last[ii]->next = ii ? last[ii-1] : *TT.fixed;
     TT.fixed[key] = last[len-1];
     free(last);
   }
@@ -476,7 +466,7 @@ static int do_grep_r(struct dirtree *new)
   if (S_ISDIR(new->st.st_mode)) {
     for (al = TT.exclude_dir; al; al = al->next)
       if (!fnmatch(al->arg, new->name, 0)) return 0;
-    return DIRTREE_RECURSE|(FLAG(R)?DIRTREE_SYMFOLLOW:0);
+    return DIRTREE_RECURSE|DIRTREE_SYMFOLLOW*FLAG(R);
   }
   if (TT.S || TT.M) {
     for (al = TT.S; al; al = al->next)
@@ -503,6 +493,8 @@ static int do_grep_r(struct dirtree *new)
 void grep_main(void)
 {
   char **ss = toys.optargs;
+
+  TT.fixed = xzalloc(256*sizeof(*TT.fixed));
 
   if (FLAG(color) && (!TT.color || !strcmp(TT.color, "auto")) && !isatty(1))
     toys.optflags &= ~FLAG_color;

@@ -9,7 +9,7 @@ config READLINK
   bool "readlink"
   default y
   help
-    usage: readlink FILE...
+    usage: readlink [-efmnqz] FILE...
 
     With no options, show what symlink points to, return error if not symlink.
 
@@ -43,7 +43,6 @@ config REALPATH
 
 #define FOR_realpath
 #define FORCE_FLAGS
-#define TT this.readlink // workaround: first FOR_ doesn't match filename
 #include "toys.h"
 
 GLOBALS(
@@ -60,7 +59,7 @@ static char *resolve(char *arg)
 
   if (FLAG(s)) flags |= ABS_KEEP;
   else if (FLAG(L)) arg = dd = xabspath(arg, ABS_KEEP);
-  if (!(s = xabspath(arg, flags)) && !FLAG(q)) perror_msg("%s", arg);
+  if (!(s = xabspath(arg, flags)) && !FLAG(q)) perror_msg_raw(arg);
   free(dd);
 
   // Trim off this prefix if path under here

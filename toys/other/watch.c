@@ -1,4 +1,4 @@
-/* watch.c - Execute a program periodically
+/* watch.c - Show bounded output of a periodically executed command.
  *
  * Copyright 2013 Sandeep Sharma <sandeep.jack2756@gmail.com>
  * Copyright 2013 Kyungwan Han <asura321@gmail.com>
@@ -6,21 +6,22 @@
  * No standard. See http://man7.org/linux/man-pages/man1/watch.1.html
  *
  * TODO: trailing combining characters
-USE_WATCH(NEWTOY(watch, "^<1n%<100=2000tebx", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LOCALE))
+
+USE_WATCH(NEWTOY(watch, "^<1n%<100=2000tebx", TOYFLAG_USR|TOYFLAG_BIN))
 
 config WATCH
   bool "watch"
   default y
   help
-    usage: watch [-teb] [-n SEC] PROG ARGS
+    usage: watch [-tebx] [-n SEC] COMMAND...
 
-    Run PROG every -n seconds, showing output. Hit q to quit.
+    Run COMMAND every -n seconds, showing output that fits terminal, q to quit.
 
-    -n	Loop period in seconds (default 2)
+    -n	Number of seconds between repeats (default 2.0)
     -t	Don't print header
     -e	Exit on error
     -b	Beep on command error
-    -x	Exec command directly (vs "sh -c")
+    -x	Exec command directly (without "sh -c")
 */
 
 #define FOR_watch
@@ -40,8 +41,7 @@ static void watch_child(int sig)
 
   status = WIFEXITED(status) ? WEXITSTATUS(status) : WTERMSIG(status)+127;
   if (status) {
-    // TODO should this be beep()?
-    if (FLAG(b)) putchar('\b');
+    if (FLAG(b)) putchar('\a');
     if (FLAG(e)) {
       printf("Exit status %d\r\n", status);
       tty_reset();
@@ -58,7 +58,7 @@ static void watch_child(int sig)
 static int watch_escape(FILE *out, int cols, int wc)
 {
   if (wc==27 || (wc>=7 && wc<=13)) return -1;
-  if (wc < 32) return 0;
+  if (wc<32) return 0;
 
   return crunch_escape(out, cols, wc);
 }
@@ -89,12 +89,12 @@ void watch_main(void)
   xsignal_flags(SIGCHLD, watch_child, SA_RESTART|SA_NOCLDSTOP);
 
   for (;;) {
+    fflush(0);
 
     // Time for a new period?
     if ((now = millitime())>=then) {
-
       // Incrementing then instead of adding offset to now avoids drift,
-      // loop is in case we got suspend/resumed and need to skip periods
+      // loop in case we got suspend/resumed and need to skip periods
       while ((then += TT.n)<=now);
       start_redraw(&width, &height);
 
@@ -106,13 +106,13 @@ void watch_main(void)
         // Get and measure time string, trimming gratuitous \n
         ctimelen = strlen(ss = ctime(&t));
         if (ss[ctimelen-1]=='\n') ss[--ctimelen] = 0;
- 
-        // print cmdline, then * or ' ' (showing truncation), then ctime 
+
+        // print cmdline, then * or ' ' (showing truncation), then ctime
         pad = width-++ctimelen;
         if (pad>0) draw_trim(cmd, -pad, pad);
         printf("%c", pad<cmdlen ? '*' : ' ');
         if (width) xputs(ss+(width>ctimelen ? 0 : width-1));
-        if (yy>=3) xprintf("\r\n");
+        if (height>=3) xprintf("\r\n");
         xx = 0;
         yy = 2;
       }

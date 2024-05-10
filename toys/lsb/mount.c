@@ -349,7 +349,7 @@ void mount_main(void)
         for (mmm = mtl2; mmm; mmm = mmm->next)
           if (!strcmp(mm->dir, mmm->dir) && !strcmp(mm->device, mmm->device))
             break;
- 
+
       // user only counts from fstab, not opts.
       if (!mmm) {
         TT.okuser = comma_scan(mm->opts, "user", 1);
@@ -373,13 +373,28 @@ void mount_main(void)
   // show mounts from /proc/mounts
   } else if (!dev) {
     for (mtl = xgetmountlist(0); mtl && (mm = dlist_pop(&mtl)); free(mm)) {
-      char *s = 0;
+      char *s = mm->device, *ss = "", *temp;
+      struct stat st;
 
       if (TT.t && strcmp(TT.t, mm->type)) continue;
-      if (*mm->device == '/') s = xabspath(mm->device, 0);
-      xprintf("%s on %s type %s (%s)\n",
-              s ? s : mm->device, mm->dir, mm->type, mm->opts);
-      free(s);
+      if (*s == '/') {
+        if (!stat(mm->device, &st) && S_ISBLK(st.st_mode) &&
+            dev_major(st.st_rdev)==7)
+        {
+          temp = xmprintf("/sys/block/loop%d/loop/backing_file",
+            dev_minor(st.st_rdev));
+          s = chomp(readfile(temp, 0, 0));
+          free(temp);
+          if (s) {
+            ss = xmprintf(",file=%s"+!*mm->opts, s);
+            free(s);
+          };
+        }
+        s = xabspath(mm->device, 0);
+      }
+      xprintf("%s on %s type %s (%s%s)\n", s, mm->dir, mm->type, mm->opts, ss);
+      if (s != mm->device) free(s);
+      if (*ss) free(ss);
     }
 
   // two arguments

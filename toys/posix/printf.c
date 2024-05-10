@@ -5,7 +5,7 @@
  *
  * See http://pubs.opengroup.org/onlinepubs/9699919799/utilities/printf.html
  *
- * todo: *m$ ala printf("%1$d:%2$.*3$d:%4$.*3$d\n", hour, min, precision, sec);
+ * TODO: *m$ ala printf("%1$d:%2$.*3$d:%4$.*3$d\n", hour, min, precision, sec);
 
 USE_PRINTF(NEWTOY(printf, "<1?^", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_MAYFORK))
 
@@ -46,6 +46,7 @@ static int handle_slash(char **esc_val, int posix)
   else {
     if (posix && *ptr=='0') ptr++;
     if (*ptr >= '0' && *ptr <= '7') base = 8;
+    else if (ptr != *esc_val) goto done;
   }
   len = (char []){0,3,2}[base/8];
 
@@ -69,6 +70,7 @@ static int handle_slash(char **esc_val, int posix)
     ptr++;
     len--;
   }
+done:
   *esc_val = ptr;
 
   return result;

@@ -7,7 +7,7 @@
 
 HOSTCC?=cc
 
-export CROSS_COMPILE CFLAGS OPTIMIZE LDOPTIMIZE CC HOSTCC V STRIP
+export CROSS_COMPILE CFLAGS OPTIMIZE LDOPTIMIZE CC HOSTCC V STRIP ASAN
 
 all: toybox
 
@@ -25,8 +25,8 @@ include kconfig/Makefile
 -include .singlemake
 
 $(KCONFIG_CONFIG): $(KCONFIG_TOP)
-	@if [ -e "$(KCONFIG_CONFIG)" ]; then make silentoldconfig; \
-	else echo "Not configured (run 'make defconfig' or 'make menuconfig')";\
+	@if [ -e "$(KCONFIG_CONFIG)" ]; then $(MAKE) silentoldconfig; \
+	else echo "Not configured (run '$(MAKE) defconfig' or '$(MAKE) menuconfig')";\
 	exit 1; fi
 
 $(KCONFIG_TOP): generated/Config.in generated/Config.probed
@@ -39,7 +39,7 @@ baseline: generated/unstripped/toybox
 	@cp generated/unstripped/toybox generated/unstripped/toybox_old
 
 bloatcheck: generated/unstripped/toybox_old generated/unstripped/toybox
-	@scripts/bloatcheck generated/unstripped/toybox_old generated/unstripped/toybox
+	@scripts/probes/bloatcheck generated/unstripped/toybox_old generated/unstripped/toybox
 
 install_flat: toybox
 	scripts/install.sh --symlink --force
@@ -64,7 +64,7 @@ root_clean:
 	@echo root cleaned
 
 clean::
-	@chmod -fR 700 generated || true
+	@chmod -fR 700 generated 2>/dev/null || true
 	@rm -rf toybox generated change install .singleconfig*
 	@echo cleaned
 
@@ -73,11 +73,12 @@ distclean: clean root_clean
 	@rm -f toybox* .config* .singlemake
 	@echo removed .config
 
+tests: ASAN=1
 tests: toybox
 	scripts/test.sh
 
 root:
-	scripts/mkroot.sh $(MAKEFLAGS)
+	mkroot/mkroot.sh $(MAKEFLAGS)
 
 run_root:
 	cd root/"$${CROSS:-host}" && ./run-qemu.sh

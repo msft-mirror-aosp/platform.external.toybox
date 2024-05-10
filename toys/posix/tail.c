@@ -6,7 +6,7 @@
  *
  * Deviations from posix: -f waits for pipe/fifo on stdin (nonblock?).
 
-USE_TAIL(NEWTOY(tail, "?fFs:c(bytes)-n(lines)-[-cn][-fF]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAIL(NEWTOY(tail, "?fFs:c(bytes)-n(lines)-[-cn][-fF]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LINEBUF))
 
 config TAIL
   bool "tail"
@@ -148,7 +148,7 @@ static void tail_continue()
       }
       fd = TT.F[i].fd;
       path = TT.F[i].path;
- 
+
       if (stat(TT.F[i].path, &sb)) {
         if (fd >= 0) {
           close(fd);
@@ -301,7 +301,7 @@ void tail_main(void)
   TT.ss = TT.s ? xparsemillitime(TT.s) : 1000;
 
   loopfiles_rw(args,
-    O_RDONLY|WARN_ONLY|LOOPFILES_ANYWAY|(O_CLOEXEC*!(FLAG(f) || FLAG(F))),
+    O_RDONLY|WARN_ONLY|LOOPFILES_ANYWAY|O_CLOEXEC*!(FLAG(f) || FLAG(F)),
     0, do_tail);
 
   // Wait for more data when following files

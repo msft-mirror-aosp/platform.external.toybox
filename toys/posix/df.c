@@ -10,19 +10,19 @@ config DF
   bool "df"
   default y
   help
-    usage: df [-HPkhi] [-t type] [FILE...]
+    usage: df [-aHhikP] [-t TYPE] [FILE...]
 
     The "disk free" command shows total/used/available disk space for
     each filesystem listed on the command line, or all currently mounted
     filesystems.
 
     -a	Show all (including /proc and friends)
-    -P	The SUSv3 "Pedantic" option
-    -k	Sets units back to 1024 bytes (the default without -P)
-    -h	Human readable (K=1024)
     -H	Human readable (k=1000)
+    -h	Human readable (K=1024)
     -i	Show inodes instead of blocks
-    -t type	Display only filesystems of this type
+    -k	Sets units back to 1024 bytes (the default without -P)
+    -P	The SUSv3 "Pedantic" option (512 byte blocks)
+    -t TYPE	Display only filesystems of this type
 
     Pedantic provides a slightly less useful output format dictated by POSIX,
     and sets the units to 512 bytes instead of the default 1024 bytes.
@@ -115,7 +115,7 @@ static void show_mt(struct mtab_list *mt, int measuring)
       suap[i] = (block*suap[i])/TT.units;
 
       if (FLAG(H)||FLAG(h))
-        human_readable(dsuapm[i+1], suap[i], FLAG(H) ? HR_1000 : 0);
+        human_readable(dsuapm[i+1], suap[i], HR_1000*FLAG(H));
       else sprintf(dsuapm[i+1], "%llu", suap[i]);
       dsuapm[i+2] = strchr(dsuapm[i+1], 0)+1;
     }

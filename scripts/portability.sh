@@ -22,9 +22,11 @@ else
   : ${LDOPTIMIZE:=-Wl,--gc-sections -Wl,--as-needed} ${STRIP:=strip -s -R .note* -R .comment}
 fi
 
-# Disable a pointless warning only clang produces
+# Disable pointless warnings only clang produces
 [ -n "$("$CROSS_COMPILE$CC" --version | grep -w clang)" ] &&
-  CFLAGS+=" -Wno-string-plus-int"
+  CFLAGS+=" -Wno-string-plus-int -Wno-invalid-source-encoding" ||
+# And ones only gcc produces
+  CFLAGS+=" -Wno-restrict -Wno-format-overflow"
 
 # Address Sanitizer
 if [ -n "$ASAN" ]; then
@@ -40,9 +42,6 @@ fi
 
 # Probe number of available processors, and add one.
 : ${CPUS:=$(($(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null)+1))}
-
-# Centos 7 bug workaround, EOL June 30 2024. TODO
-DASHN=-n; wait -n 2>/dev/null; [ $? -eq 2 ] && unset DASHN
 
 # If the build is using gnu tools, make them behave less randomly.
 export LANG=c

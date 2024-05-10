@@ -48,10 +48,10 @@ testing "-T null" "$TAR --null -T input | LST" \
 # inherited from Bell Labs Unix v7
 
 # Note: testing both "tar c" and "tar -c" here.
-testing "specify UID, fetch GID" "tar -c --owner nobody:65534 --group sys --mtime @0 file | LST" \
-  "-rw-rw-r-- nobody/sys 0 1970-01-01 00:00 file\n" "" ""
-testing "fetch UID, specify GID" "tar c --owner root --group nobody:65534 --mtime @0 file | LST" \
-  "-rw-rw-r-- root/nobody 0 1970-01-01 00:00 file\n" "" ""
+testing "specify UID, fetch GID" "tar -c --owner nobody:65534 --mtime @0 file | LST" \
+  "-rw-rw-r-- nobody/$(stat -c %G file) 0 1970-01-01 00:00 file\n" "" ""
+testing "fetch UID, specify GID" "tar c --group nobody:65534 --mtime @0 file | LST" \
+  "-rw-rw-r-- $(stat -c %U file)/nobody 0 1970-01-01 00:00 file\n" "" ""
 
 # Large values switch from ascii numbers to a binary format.
 testing "huge values" "tar c --owner 9999999 --group 8888888 --mtime @0 file | SUM 3" \
@@ -123,7 +123,7 @@ testing "create long fname" "$TAR dir/${LONG:1:97} dir/${LONG:1:96} | SUM 3" \
   testing "create long symlink" "$TAR dir/lshort dir/llong | SUM 3" \
     "07eaf397634b5443dbf2d3ec38a4302150fcfe82\n" "" ""
 
-  ln -s $LONG dir/${LONG:5}
+  skipnot ln -s $LONG dir/${LONG:5} 2>/dev/null
   testing "create long->long" "$TAR dir/${LONG:5} | SUM 7" \
     "b9e24f53e27496c5125445230d201b4a36ff7398\n" "" ""
 
@@ -154,11 +154,13 @@ nulldev=1,3 # devtmpfs values
 [ "$(uname)" == "Darwin" ] && nulldev=3,2
 
 testing "pass /dev/null" \
-  "tar c --mtime @0 --group sys /dev/null 2>/dev/null | LST" \
-  "crw-rw-rw- root/sys $nulldev 1970-01-01 00:00 dev/null\n" "" ""
+  "tar c --mtime @0 /dev/null 2>/dev/null | LST" \
+  "crw-rw-rw- $(stat -c %U/%G /dev/null) $nulldev 1970-01-01 00:00 dev/null\n" \
+  "" ""
 testing "--absolute-names" \
-  "tar c --mtime @0 --group sys --absolute-names /dev/null 2>/dev/null | LST" \
-  "crw-rw-rw- root/sys $nulldev 1970-01-01 00:00 /dev/null\n" "" ""
+  "tar c --mtime @0 --absolute-names /dev/null 2>/dev/null | LST" \
+  "crw-rw-rw- $(stat -c %U/%G /dev/null) $nulldev 1970-01-01 00:00 /dev/null\n"\
+  "" ""
 
 # compression types
 testing "autodetect gzip" 'LST -f "$FILES"/tar/tar.tgz' \
@@ -231,8 +233,12 @@ toyonly testing "autodetect falls back to gzip -d when no zcat" \
   "PATH=path; tar tf $FILES/tar/tar.tgz" "dir/\ndir/file\n" "" ""
 rm -rf path
 
-# Tests that don't produce the same results on MacOS X as Linux
-[ "$(uname)" == Darwin ] && SKIP=999
+# TODO: run sparse tests on tmpfs mount? (Request filesystem type?)
+# Only run sparse tests if filesystem can handle sparse files @4k granularity
+dd if=/dev/zero bs=4k count=1 seek=1 of=blah.img 2>/dev/null
+[ $(du blah.img | sed 's/[ \t].*//') -ne 4 ] && SKIP=999
+rm -f blah.img
+[ "$(uname)" == "Darwin" ] && SKIP=999
 
   yes | head -n $((1<<18)) > bang
   {
@@ -277,7 +283,7 @@ rm -rf path
     "807664bcad0e827793318ff742991d6f006b2127\n" "" ""
   rm fweep2 fweep2.tar
 
-SKIP=0 # End of tests that don't work on MacOS X
+SKIP=0 # End of sparse tests
 
 mkdir -p links
 touch links/orig
@@ -383,6 +389,7 @@ testing 'without -P' "$TAR --no-recursion -C / /// .. 2>/dev/null | SUM 3" \
 
 # Wildcards: --exclude, include (create/extract * cmdline/recursive)
 # --anchored, --wildcards, --wildcards-match-slash
+# --no-* versions of each. Span coverage, switching on/off...
 
 #pattern a.c
 #  abcd dabc a/c da/c
@@ -407,11 +414,15 @@ testing 'creation --wildcards --exclude'\
   '$TAR -C sub --wildcards --exclude=d?bc abcd dabc | LL' \
   'abcd\n' '' ''
 
+# TODO: do we need to set DIRTREE_BREADTH at top level? Come up with test if so.
 mkdir sub2
 touch sub2/{ephebe,klatch,djelibeybi}
 testing 'tsort' '$TAR -c sub2 --sort=name | tar t' \
-  'sub2/\nsub2/djelibeybi\nsub2/ephebe\nsub2/klatch\n' \
-  '' ''
+  'sub2/\nsub2/djelibeybi\nsub2/ephebe\nsub2/klatch\n' '' ''
+
+touch file
+testing './file bug' 'tar c ./file > tar.tar && tar t ./file < tar.tar' \
+  './file\n' '' ''
 
 if false
 then

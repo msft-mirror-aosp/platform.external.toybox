@@ -22,7 +22,7 @@
  * print, l escapes \n
  * Added --tarxform mode to support tar --xform
 
-USE_SED(NEWTOY(sed, "(help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]", TOYFLAG_BIN|TOYFLAG_LOCALE|TOYFLAG_NOHELP))
+USE_SED(NEWTOY(sed, "(help)(version)(tarxform)e*f*i:;nErz(null-data)s[+Er]", TOYFLAG_BIN|TOYFLAG_NOHELP))
 
 config SED
   bool "sed"
@@ -42,8 +42,8 @@ config SED
     -z	Use \0 rather than \n as input line separator
 
     A SCRIPT is one or more COMMANDs separated by newlines or semicolons.
-    All -e SCRIPTs are combined as if separated by newlines, followed by all -f
-    SCRIPT_FILEs. If no -e or -f then first argument is the SCRIPT.
+    All -e SCRIPTs and -f SCRIPT_FILE contents are combined in order as if
+    separated by newlines. If no -e or -f then first argument is the SCRIPT.
 
     COMMANDs apply to every line unless prefixed with an ADDRESS of the form:
 
@@ -91,7 +91,7 @@ config SED
       =  Print the current line number (plus newline)
       #  Comment, ignores rest of this line of SCRIPT (until newline)
 
-    Commands that take an argument: 
+    Commands that take an argument:
 
       : LABEL    Target for jump commands
       a TEXT     Append text to output before reading next line
@@ -109,7 +109,7 @@ config SED
                  i/I      Ignore case when matching
                  p        Print resulting line when match found and replaced
                  w [file] Write (append) line to file when match replaced
-      t LABEL    Test, jump if s/// command matched this line since last test 
+      t LABEL    Test, jump if s/// command matched this line since last test
       T LABEL    Test false, jump to :LABEL only if no s/// found a match
       w FILE     Write (append) line to file
       y/old/new/ Change each character in 'old' to corresponding character
@@ -308,7 +308,7 @@ static void sed_line(char **pline, long plen)
           command->hit = TT.count;
 
         if (!command->lmatch[1] && !command->rmatch[1]) miss = 1;
-      } 
+      }
 
       // Didn't match?
       lm = !(command->not^!!command->hit);
@@ -449,7 +449,7 @@ static void sed_line(char **pline, long plen)
       }
 
       // Pending append goes out right after N
-      goto done; 
+      goto done;
     } else if (c=='p' || c=='P') {
       char *l = (c=='P') ? strchr(line, TT.delim) : 0;
 
@@ -837,7 +837,7 @@ static void parse_pattern(char **pline, long len)
         if (!(s = unescape_delimited_string(&line, 0))) goto error;
         if (!*s) command->rmatch[i] = 0;
         else {
-          xregcomp((void *)reg, s, REG_EXTENDED*!!FLAG(r));
+          xregcomp((void *)reg, s, REG_EXTENDED*FLAG(r));
           command->rmatch[i] = reg-toybuf;
           reg += sizeof(regex_t);
         }
@@ -1087,7 +1087,7 @@ void sed_main(void)
   }
 
   // Handling our own --version means we handle our own --help too.
-  if (FLAG(help)) help_exit(0);
+  if (FLAG(help)) return show_help(stdout, 0);
 
   // Parse pattern into commands.
 
@@ -1110,7 +1110,7 @@ void sed_main(void)
   }
   parse_pattern(0, 0);
   dlist_terminate(TT.pattern);
-  if (TT.nextlen) error_exit("no }");  
+  if (TT.nextlen) error_exit("no }");
 
   TT.fdout = 1;
   TT.remember = xstrdup("");
@@ -1124,5 +1124,5 @@ void sed_main(void)
     sed_line(0, 0);
   }
 
-  // todo: need to close fd when done for TOYBOX_FREE?
+  // TODO: need to close fd when done for TOYBOX_FREE?
 }

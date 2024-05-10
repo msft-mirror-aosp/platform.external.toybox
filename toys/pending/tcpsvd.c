@@ -1,12 +1,12 @@
-/* tcpsvd.c - TCP(UDP)/IP service daemon 
+/* tcpsvd.c - TCP(UDP)/IP service daemon
  *
  * Copyright 2013 Ashwini Kumar <ak.ashwini@gmail.com>
  * Copyright 2013 Sandeep Sharma <sandeep.jack2756@gmail.com>
  * Copyright 2013 Kyungwan Han <asura321@gmail.com>
- * 
+ *
  * No Standard.
 
-USE_TCPSVD(NEWTOY(tcpsvd, "^<3c#=30<1C:b#=20<0u:l:hEv", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TCPSVD(NEWTOY(tcpsvd, "^<3c#=30<1b#=20<0C:u:l:hEv", TOYFLAG_USR|TOYFLAG_BIN))
 USE_TCPSVD(OLDTOY(udpsvd, tcpsvd, TOYFLAG_USR|TOYFLAG_BIN))
 
 config TCPSVD
@@ -16,8 +16,8 @@ config TCPSVD
   help
     usage: tcpsvd [-hEv] [-c N] [-C N[:MSG]] [-b N] [-u User] [-l Name] IP Port Prog
     usage: udpsvd [-hEv] [-c N] [-u User] [-l Name] IP Port Prog
-    
-    Create TCP/UDP socket, bind to IP:PORT and listen for incoming connection. 
+
+    Create TCP/UDP socket, bind to IP:PORT and listen for incoming connection.
     Run PROG for each connection.
 
     IP            IP to listen on, 0 = all
@@ -39,11 +39,8 @@ config TCPSVD
 #include "toys.h"
 
 GLOBALS(
-  char *name;
-  char *user;
-  long bn;
-  char *nmsg;
-  long cn;
+  char *l, *u, *C;
+  long b, c;
 
   int maxc;
   int count_all;
@@ -52,7 +49,7 @@ GLOBALS(
 
 struct list_pid {
   struct list_pid *next;
-  char *ip;  
+  char *ip;
   int pid;
 };
 
@@ -74,11 +71,11 @@ struct list_pid *pids = NULL;
 static char *sock_to_address(struct sockaddr *sock, int flags)
 {
   char hbuf[NI_MAXHOST] = {0,};
-  char sbuf[NI_MAXSERV] = {0,}; 
+  char sbuf[NI_MAXSERV] = {0,};
   int status = 0;
   socklen_t len = sizeof(struct sockaddr_in6);
 
-  if (!(status = getnameinfo(sock, len, hbuf, sizeof(hbuf), sbuf, 
+  if (!(status = getnameinfo(sock, len, hbuf, sizeof(hbuf), sbuf,
           sizeof(sbuf), flags))) {
     if (flags & NI_NUMERICSERV) return xmprintf("%s:%s",hbuf, sbuf);
     return xmprintf("%s",hbuf);
@@ -101,7 +98,7 @@ static void insert(struct list_pid **l, int pid, char *addr)
 }
 
 // Hashing of IP address.
-static int haship( char *addr)
+static int haship(char *addr)
 {
   uint32_t ip[8] = {0,};
   int count = 0, i = 0;
@@ -122,9 +119,9 @@ static int haship( char *addr)
 // Remove a node from the list.
 static char *delete(struct list_pid **pids, int pid)
 {
-  struct list_pid *prev, *free_node, *head = *pids; 
+  struct list_pid *prev, *free_node, *head = *pids;
   char *ip = NULL;
- 
+
   if (!head) return NULL;
   prev = free_node = NULL;
   while (head) {
@@ -171,22 +168,21 @@ static void handle_exit(int sig)
 {
   int status;
   pid_t pid_n = wait(&status);
+  char *ip = (pid_n<1) ? 0 : delete(&pids, pid_n);
 
-  if (pid_n <= 0) return;
-  char *ip = delete(&pids, pid_n);
   if (!ip) return;
   remove_connection(ip);
   TT.count_all--;
-  if (toys.optflags & FLAG_v) {
+  if (FLAG(v)) {
     if (WIFEXITED(status))
       xprintf("%s: end %d exit %d\n",toys.which->name, pid_n, WEXITSTATUS(status));
     else if (WIFSIGNALED(status))
       xprintf("%s: end %d signaled %d\n",toys.which->name, pid_n, WTERMSIG(status));
-    if (TT.cn > 1) xprintf("%s: status %d/%d\n",toys.which->name, TT.count_all, TT.cn);
+    if (TT.c > 1) xprintf("%s: status %d/%ld\n",toys.which->name, TT.count_all, TT.c);
   }
 }
 
-// Grab uid and gid 
+// Grab uid and gid
 static void get_uidgid(uid_t *uid, gid_t *gid, char *ug)
 {
   struct passwd *pass = NULL;
@@ -211,7 +207,7 @@ static void get_uidgid(uid_t *uid, gid_t *gid, char *ug)
     if (!(grp = getgrnam(group))) {
       n = atolx_range(group, 0, INT_MAX);
       if (!(grp = getgrgid(n))) perror_exit("Invalid group '%s'",group);
-    }    
+    }
   }
   if (grp) *gid = grp->gr_gid;
 }
@@ -225,8 +221,8 @@ static int create_bind_sock(char *host, struct sockaddr *haddr)
   unsigned long port;
 
   errno = 0;
-  port = strtoul(toys.optargs[1], &ptr, 10);  
-  if (errno || port > 65535) 
+  port = strtoul(toys.optargs[1], &ptr, 10);
+  if (errno || port > 65535)
     error_exit("Invalid port, Range is [0-65535]");
   if (*ptr) ptr = toys.optargs[1];
   else {
@@ -235,17 +231,17 @@ static int create_bind_sock(char *host, struct sockaddr *haddr)
   }
 
   memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_UNSPEC;  
-  hints.ai_socktype = ((TT.udp) ?SOCK_DGRAM : SOCK_STREAM);
-  if ((ret = getaddrinfo(host, ptr, &hints, &res))) 
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = (TT.udp ? SOCK_DGRAM : SOCK_STREAM);
+  if ((ret = getaddrinfo(host, ptr, &hints, &res)))
     perror_exit("%s", gai_strerror(ret));
 
-  for (rp = res; rp; rp = rp->ai_next) 
+  for (rp = res; rp; rp = rp->ai_next)
     if ( (rp->ai_family == AF_INET) || (rp->ai_family == AF_INET6)) break;
 
   if (!rp) error_exit("Invalid IP %s", host);
 
-  sockfd = xsocket(rp->ai_family, TT.udp ?SOCK_DGRAM :SOCK_STREAM, 0);
+  sockfd = xsocket(rp->ai_family, TT.udp ? SOCK_DGRAM : SOCK_STREAM, 0);
   setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set));
   if (TT.udp) setsockopt(sockfd, IPPROTO_IP, IP_PKTINFO, &set, sizeof(set));
   xbind(sockfd, rp->ai_addr, rp->ai_addrlen);
@@ -256,10 +252,10 @@ static int create_bind_sock(char *host, struct sockaddr *haddr)
 
 static void handle_signal(int sig)
 {
-  if (toys.optflags & FLAG_v) xprintf("got signal %d, exit\n", sig);
+  if (FLAG(v)) xprintf("got signal %d, exit\n", sig);
   raise(sig);
   _exit(sig + 128); //should not reach here
-} 
+}
 
 void tcpsvd_main(void)
 {
@@ -272,41 +268,38 @@ void tcpsvd_main(void)
   char *ptr = NULL, *addr, *server, buf[sizeof(struct sockaddr_in6)];
   socklen_t len = sizeof(buf);
 
-  TT.udp = (*toys.which->name == 'u');
+  TT.udp = *toys.which->name == 'u';
   if (TT.udp) toys.optflags &= ~FLAG_C;
   memset(buf, 0, len);
-  if (toys.optflags & FLAG_C) {
-    if ((ptr = strchr(TT.nmsg, ':'))) {
-      *ptr = '\0';
-      ptr++;
-    }
-    TT.maxc = atolx_range(TT.nmsg, 1, INT_MAX);
+  if (FLAG(C)) {
+    if ((ptr = strchr(TT.C, ':'))) *ptr++ = 0;
+    TT.maxc = atolx_range(TT.C, 1, INT_MAX);
   }
-  
+
   fd = create_bind_sock(toys.optargs[0], (struct sockaddr*)&haddr);
-  if(toys.optflags & FLAG_u) {
-    get_uidgid(&uid, &gid, TT.user);
+  if (FLAG(u)) {
+    get_uidgid(&uid, &gid, TT.u);
     setuid(uid);
     setgid(gid);
   }
 
-  if (!TT.udp && (listen(fd, TT.bn) < 0)) perror_exit("Listen failed");
+  if (!TT.udp && (listen(fd, TT.b) < 0)) perror_exit("Listen failed");
   server = sock_to_address((struct sockaddr*)&haddr, NI_NUMERICHOST|NI_NUMERICSERV);
-  if (toys.optflags & FLAG_v) {
-    if (toys.optflags & FLAG_u)
-      xprintf("%s: listening on %s, starting, uid %u, gid %u\n"
-          ,toys.which->name, server, uid, gid);
-    else 
+  if (FLAG(v)) {
+    if (FLAG(u))
+      xprintf("%s: listening on %s, starting, uid %u, gid %u\n",
+        toys.which->name, server, uid, gid);
+    else
       xprintf("%s: listening on %s, starting\n", toys.which->name, server);
   }
-  for (j = 0; j < HASH_NR; j++) h[j].head = NULL;
-  sigatexit(handle_signal);  
+  for (j = 0; j < HASH_NR; j++) h[j].head = 0;
+  sigatexit(handle_signal);
   signal(SIGCHLD, handle_exit);
 
   while (1) {
-    if (TT.count_all  < TT.cn) {
+    if (TT.count_all < TT.c) {
       if (TT.udp) {
-        if(recvfrom(fd, NULL, 0, MSG_PEEK, (struct sockaddr *)buf, &len) < 0)
+        if (recvfrom(fd, 0, 0, MSG_PEEK, (void *)buf, &len) < 0)
           perror_exit("recvfrom");
         newfd = fd;
       } else {
@@ -323,12 +316,12 @@ void tcpsvd_main(void)
     addr = sock_to_address((struct sockaddr*)buf, NI_NUMERICHOST);
 
     hash = haship(addr);
-    if (toys.optflags & FLAG_C) {
+    if (FLAG(C)) {
       for (head = h[hash].head; head; head = head->next)
         if (!strcmp(head->d, addr)) break;
 
       if (head && head->count >= TT.maxc) {
-        if (ptr) write(newfd, ptr, strlen(ptr)+1);
+        if (ptr) write(newfd, ptr, strlen(ptr)); // TODO: this can block
         close(newfd);
         TT.count_all--;
         continue;
@@ -353,18 +346,17 @@ void tcpsvd_main(void)
 
     if (!(pid = xfork())) {
       char *serv = NULL, *clie = NULL;
-      char *client = sock_to_address((struct sockaddr*)buf, NI_NUMERICHOST | NI_NUMERICSERV);
-      if (toys.optflags & FLAG_h) { //lookup name
-        if (toys.optflags & FLAG_l) serv = xstrdup(TT.name);
-        else serv = sock_to_address((struct sockaddr*)&haddr, 0);
-        clie = sock_to_address((struct sockaddr*)buf, 0);
+      char *client = sock_to_address((void *)buf, NI_NUMERICHOST | NI_NUMERICSERV);
+      if (FLAG(h)) { //lookup name
+        serv = TT.l ? xstrdup(TT.l) : sock_to_address((void *)&haddr, 0);
+        clie = sock_to_address((void *)buf, 0);
       }
 
-      if (!(toys.optflags & FLAG_E)) {
-        setenv("PROTO", TT.udp ?"UDP" :"TCP", 1);
+      if (!FLAG(E)) {
+        setenv("PROTO", TT.udp ? "UDP" :"TCP", 1);
         setenv("PROTOLOCALADDR", server, 1);
         setenv("PROTOREMOTEADDR", client, 1);
-        if (toys.optflags & FLAG_h) {
+        if (FLAG(h)) {
           setenv("PROTOLOCALHOST", serv, 1);
           setenv("PROTOREMOTEHOST", clie, 1);
         }
@@ -374,15 +366,15 @@ void tcpsvd_main(void)
           setenv("TCPCONCURRENCY", max_c, 1); //Not valid for udp
         }
       }
-      if (toys.optflags & FLAG_v) {
+      if (FLAG(v)) {
         xprintf("%s: start %d %s-%s",toys.which->name, getpid(), server, client);
-        if (toys.optflags & FLAG_h) xprintf(" (%s-%s)", serv, clie);
+        if (FLAG(h)) xprintf(" (%s-%s)", serv, clie);
         xputc('\n');
-        if (TT.cn > 1) 
-          xprintf("%s: status %d/%d\n",toys.which->name, TT.count_all, TT.cn);
+        if (TT.c > 1)
+          xprintf("%s: status %d/%ld\n",toys.which->name, TT.count_all, TT.c);
       }
       free(client);
-      if (toys.optflags & FLAG_h) {
+      if (FLAG(h)) {
         free(serv);
         free(clie);
       }

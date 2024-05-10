@@ -4,13 +4,13 @@
  *
  * No standard.
 
-USE_HEXEDIT(NEWTOY(hexedit, "<1>1r", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LOCALE))
+USE_HEXEDIT(NEWTOY(hexedit, "<1>1r", TOYFLAG_USR|TOYFLAG_BIN))
 
 config HEXEDIT
   bool "hexedit"
   default y
   help
-    usage: hexedit FILE
+    usage: hexedit [-r] FILE
 
     Hexadecimal file editor/viewer. All changes are written to disk immediately.
 
@@ -43,7 +43,7 @@ GLOBALS(
 static void show_error(char *what)
 {
   printf("\e[%dH\e[41m\e[37m\e[K\e[1m%s\e[0m", TT.rows+1, what);
-  xflush(1);
+  fflush(0);
   msleep(500);
 }
 
@@ -55,7 +55,7 @@ static int prompt(char *prompt, char *initial_value)
   strcpy(TT.input, initial_value);
   while (1) {
     printf("\e[%dH\e[K\e[1m%s: \e[0m%s\e[?25h", TT.rows+1, prompt, TT.input);
-    xflush(1);
+    fflush(0);
 
     key = scan_key(TT.keybuf, -1);
     if (key < 0 || key == 27) break;
@@ -252,7 +252,7 @@ void hexedit_main(void)
 
     // Display cursor and flush output
     highlight(x, y, FLAG(r) ? 3 : side);
-    xflush(1);
+    fflush(0);
 
     // Wait for next key
     key = scan_key(TT.keybuf, -1);

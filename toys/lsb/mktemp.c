@@ -10,7 +10,7 @@ config MKTEMP
   bool "mktemp"
   default y
   help
-    usage: mktemp [-dqu] [-p DIR] [TEMPLATE]
+    usage: mktemp [-dqtu] [-p DIR] [TEMPLATE]
 
     Safely create a new file "DIR/TEMPLATE" and print its name.
 
@@ -48,7 +48,7 @@ void mktemp_main(void)
   if (!template) template = "tmp.XXXXXXXXXX";
   else {
     if (*template == '/' && TT.p && *TT.p) perror_exit("-p + /template");
-    if (!FLAG(p)&&!FLAG(t)) dir = 0;
+    if (!FLAG(p) && !FLAG(t)) dir = 0;
   }
 
   // TODO: coreutils cleans paths, so -p /t/// would result in /t/xxx...

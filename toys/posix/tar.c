@@ -20,7 +20,7 @@
  * No --no-null because the args infrastructure isn't ready.
  * Until args.c learns about no- toggles, --no-thingy always wins over --thingy
 
-USE_TAR(NEWTOY(tar, "&(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
 
 config TAR
   bool "tar"
@@ -194,7 +194,7 @@ static struct double_list *filter(struct double_list *lst, char *name)
 {
   struct double_list *end = lst;
   long long flags = toys.optflags;
-  char *ss, *last;
+  char *ss;
 
   if (!lst || !*name) return 0;
 
@@ -211,13 +211,11 @@ static struct double_list *filter(struct double_list *lst, char *name)
 
   // The +1 instead of ++ is in case of conseutive slashes
   do {
-    for (ss = last = name; *ss; ss++) {
+    if (do_filter(lst->data, name, flags)) return lst;
+    if (!(flags & FLAG_anchored)) for (ss = name; *ss; ss++) {
       if (*ss!='/' || !ss[1]) continue;
-      if (!(flags & FLAG_anchored)) {
-        if (do_filter(lst->data, ss+1, flags)) return lst;
-      } else last = ss+1;
+      if (do_filter(lst->data, ss+1, flags)) return lst;
     }
-    if (do_filter(lst->data, last, flags)) return lst;
   } while (end != (lst = lst->next));
 
   return 0;
@@ -286,11 +284,12 @@ static int add_to_tar(struct dirtree *node)
     if (S_ISDIR(st->st_mode) && !node->again) {
       free(name);
 
-      return DIRTREE_BREADTH;
+      return DIRTREE_BREADTH|DIRTREE_SYMFOLLOW*FLAG(h);
+
     } else if ((node->again&DIRTREE_BREADTH) && node->child) {
       struct dirtree *dt, **sort = xmalloc(sizeof(void *)*node->extra);
 
-      for (node->extra = 0, dt = node->child; dt; dt = dt->next) 
+      for (node->extra = 0, dt = node->child; dt; dt = dt->next)
         sort[node->extra++] = dt;
       qsort(sort, node->extra--, sizeof(void *), (void *)dirtree_sort);
       node->child = *sort;
@@ -345,7 +344,7 @@ static int add_to_tar(struct dirtree *node)
 
   // Are there hardlinks to a non-directory entry?
   lnk = 0;
-  if (st->st_nlink>1 && !S_ISDIR(st->st_mode)) {
+  if ((st->st_nlink>1 || FLAG(h)) && !S_ISDIR(st->st_mode)) {
     // Have we seen this dev&ino before?
     for (i = 0; i<TT.hlc; i++) if (same_dev_ino(st, &TT.hlx[i].di)) break;
     if (i != TT.hlc) lnk = TT.hlx[i].arg;
@@ -514,7 +513,9 @@ done:
   free(xfname);
   free(name);
 
-  return recurse*(DIRTREE_RECURSE|(FLAG(h)?DIRTREE_SYMFOLLOW:0));
+  if (FLAG(one_file_system) && node->parent
+      && node->parent->st.st_dev != node->st.st_dev) recurse = 0;
+  return recurse*(DIRTREE_RECURSE|DIRTREE_SYMFOLLOW*FLAG(h));
 }
 
 static void wsettime(char *s, long long sec)
@@ -547,7 +548,7 @@ static int dirflush(char *name, int isdir)
     // --restrict means first entry extracted is what everything must be under
     if (FLAG(restrict)) {
       free(TT.cwd);
-      TT.cwd = strdup(s);
+      TT.cwd = xstrdup(s);
       toys.optflags ^= FLAG_restrict;
     }
     // use resolved name so trailing / is stripped
@@ -615,7 +616,7 @@ static void extract_to_disk(char *name)
 
   if (dirflush(name, S_ISDIR(ala))) {
     if (S_ISREG(ala) && !TT.hdr.link_target) skippy(TT.hdr.size);
- 
+
     return;
   }
 
@@ -798,7 +799,7 @@ static void unpack_tar(char *first)
 
     // At this point, we have something to output. Convert metadata.
     TT.hdr.mode = OTOI(tar.mode)&0xfff;
-    if (tar.type == 'S' || !tar.type) TT.hdr.mode |= 0x8000;
+    if (tar.type == 'S' || !tar.type || !*tar.magic) TT.hdr.mode |= 0x8000;
     else TT.hdr.mode |= (char []){8,8,10,2,6,4,1,8}[tar.type-'0']<<12;
     TT.hdr.uid = OTOI(tar.uid);
     TT.hdr.gid = OTOI(tar.gid);
@@ -923,7 +924,7 @@ static void unpack_tar(char *first)
           xsetenv(xmprintf("TAR_GID=%o", TT.hdr.gid), 0);
 
           pid = xpopen((char *[]){"sh", "-c", TT.to_command, NULL}, &fd, 0);
-          // todo: short write exits tar here, other skips data.
+          // TODO: short write exits tar here, other skips data.
           sendfile_sparse(fd);
           fd = xpclose_both(pid, 0);
           if (fd) error_msg("%d: Child returned %d", pid, fd);
@@ -966,7 +967,7 @@ static void do_XT(char **pline, long len)
 
 static  char *get_archiver()
 {
-  return FLAG(I) ? TT.I : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
+  return TT.I ? : FLAG(z) ? "gzip" : FLAG(j) ? "bzip2" : "xz";
 }
 
 void tar_main(void)
@@ -1004,7 +1005,7 @@ void tar_main(void)
   for (args = toys.optargs; *args; args++) trim2list(&TT.incl, *args);
   // -T is always --verbatim-files-from: no quote removal or -arg handling
   for (;TT.T; TT.T = TT.T->next)
-    do_lines(xopenro(TT.T->arg), FLAG(null) ? '\0' : '\n', do_XT);
+    do_lines(xopenro(TT.T->arg), '\n'*!FLAG(null), do_XT);
 
   // If include file list empty, don't create empty archive
   if (FLAG(c)) {
@@ -1062,7 +1063,7 @@ void tar_main(void)
         // detect gzip and bzip signatures
         if (SWAP_BE16(*(short *)hdr)==0x1f8b) toys.optflags |= FLAG_z;
         else if (!smemcmp(hdr, "BZh", 3)) toys.optflags |= FLAG_j;
-        else if (peek_be(hdr, 7) == 0xfd377a585a0000UL) toys.optflags |= FLAG_J;
+        else if (peek_be(hdr, 7) == 0xfd377a585a0000ULL) toys.optflags |= FLAG_J;
         else error_exit("Not tar");
 
         // if we can seek back we don't need to loop and copy data
@@ -1149,18 +1150,19 @@ void tar_main(void)
     if (FLAG(j)||FLAG(z)||FLAG(I)||FLAG(J)) {
       int pipefd[2] = {-1, TT.fd};
 
-      xpopen_both((char *[]){get_archiver(), 0}, pipefd);
+      TT.pid = xpopen_both((char *[]){get_archiver(), 0}, pipefd);
       close(TT.fd);
       TT.fd = pipefd[0];
     }
     do {
       TT.warn = 1;
-      ii = FLAG(h) ? DIRTREE_SYMFOLLOW : 0;
-      if (FLAG(sort)|FLAG(s)) ii |= DIRTREE_BREADTH;
-      dirtree_flagread(dl->data, FLAG(h) ? DIRTREE_SYMFOLLOW : 0, add_to_tar);
+      dirtree_flagread(dl->data,
+        DIRTREE_SYMFOLLOW*FLAG(h)|DIRTREE_BREADTH*(FLAG(sort)|FLAG(s)),
+        add_to_tar);
     } while (TT.incl != (dl = dl->next));
 
     writeall(TT.fd, toybuf, 1024);
+    close(TT.fd);
   }
   if (TT.pid) {
     TT.pid = xpclose_both(TT.pid, 0);
