@@ -118,7 +118,7 @@ struct blkid_data {
 };
 
 struct blockdev_data {
-  long setbsz, setra;
+  long setra, setbsz;
 };
 
 struct chrt_data {
@@ -598,8 +598,7 @@ struct mkdir_data {
 };
 
 struct mkfifo_data {
-  char *m;
-  char *Z;
+  char *m, *Z;
 
   mode_t mode;
 };
