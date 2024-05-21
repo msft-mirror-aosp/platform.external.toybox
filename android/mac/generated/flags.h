@@ -2228,14 +2228,13 @@
 #undef FLAG_r
 #endif
 
-// netcat   ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]
+// netcat   ^tElLw#<1W#<1p#<1>65535q#<1O:o:s:f:46uUnz[!tlL][!Lw][!Lu][!46U][!oO]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1O:o:s:f:46uUnz[!tlL][!Lw][!Lu][!46U][!oO]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
 #undef FLAG_z
-#undef FLAG_v
 #undef FLAG_n
 #undef FLAG_U
 #undef FLAG_u
@@ -2243,6 +2242,8 @@
 #undef FLAG_4
 #undef FLAG_f
 #undef FLAG_s
+#undef FLAG_o
+#undef FLAG_O
 #undef FLAG_q
 #undef FLAG_p
 #undef FLAG_W
@@ -5975,22 +5976,23 @@
 #define TT this.netcat
 #endif
 #define FLAG_z (FORCED_FLAG<<0)
-#define FLAG_v (FORCED_FLAG<<1)
-#define FLAG_n (FORCED_FLAG<<2)
-#define FLAG_U (FORCED_FLAG<<3)
-#define FLAG_u (FORCED_FLAG<<4)
-#define FLAG_6 (FORCED_FLAG<<5)
-#define FLAG_4 (FORCED_FLAG<<6)
-#define FLAG_f (FORCED_FLAG<<7)
-#define FLAG_s (FORCED_FLAG<<8)
-#define FLAG_q (FORCED_FLAG<<9)
-#define FLAG_p (FORCED_FLAG<<10)
-#define FLAG_W (FORCED_FLAG<<11)
-#define FLAG_w (FORCED_FLAG<<12)
-#define FLAG_L (FORCED_FLAG<<13)
-#define FLAG_l (FORCED_FLAG<<14)
-#define FLAG_E (FORCED_FLAG<<15)
-#define FLAG_t (FORCED_FLAG<<16)
+#define FLAG_n (FORCED_FLAG<<1)
+#define FLAG_U (FORCED_FLAG<<2)
+#define FLAG_u (FORCED_FLAG<<3)
+#define FLAG_6 (FORCED_FLAG<<4)
+#define FLAG_4 (FORCED_FLAG<<5)
+#define FLAG_f (FORCED_FLAG<<6)
+#define FLAG_s (FORCED_FLAG<<7)
+#define FLAG_o (FORCED_FLAG<<8)
+#define FLAG_O (FORCED_FLAG<<9)
+#define FLAG_q (FORCED_FLAG<<10)
+#define FLAG_p (FORCED_FLAG<<11)
+#define FLAG_W (FORCED_FLAG<<12)
+#define FLAG_w (FORCED_FLAG<<13)
+#define FLAG_L (FORCED_FLAG<<14)
+#define FLAG_l (FORCED_FLAG<<15)
+#define FLAG_E (FORCED_FLAG<<16)
+#define FLAG_t (FORCED_FLAG<<17)
 #endif
 
 #ifdef FOR_netstat

@@ -78,8 +78,11 @@ struct microcom_data {
 };
 
 struct netcat_data {
-  char *f, *s;
+  char *f, *s, *o, *O;
   long q, p, W, w;
+
+  unsigned ofd, olast, opos, ocount[2];
+  char obuf[16];
 };
 
 struct netstat_data {
