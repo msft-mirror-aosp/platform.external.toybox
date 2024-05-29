@@ -2022,9 +2022,9 @@
 #undef FLAG_M
 #endif
 
-// microcom <1>1s#=115200X <1>1s#=115200X
+// microcom <1>1s#X <1>1s#X
 #undef OPTSTR_microcom
-#define OPTSTR_microcom "<1>1s#=115200X"
+#define OPTSTR_microcom "<1>1s#X"
 #ifdef CLEANUP_microcom
 #undef CLEANUP_microcom
 #undef FOR_microcom
@@ -2713,6 +2713,14 @@
 #undef FLAG_n
 #undef FLAG_F
 #undef FLAG_D
+#endif
+
+// return   >1
+#undef OPTSTR_return
+#define OPTSTR_return ">1"
+#ifdef CLEANUP_return
+#undef CLEANUP_return
+#undef FOR_return
 #endif
 
 // rev    
@@ -6421,6 +6429,13 @@
 #define FLAG_n (FORCED_FLAG<<3)
 #define FLAG_F (FORCED_FLAG<<4)
 #define FLAG_D (FORCED_FLAG<<5)
+#endif
+
+#ifdef FOR_return
+#define CLEANUP_return
+#ifndef TT
+#define TT this.return
+#endif
 #endif
 
 #ifdef FOR_rev
