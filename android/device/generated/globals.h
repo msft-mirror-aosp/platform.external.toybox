@@ -78,8 +78,11 @@ struct microcom_data {
 };
 
 struct netcat_data {
-  char *f, *s;
+  char *f, *s, *o, *O;
   long q, p, W, w;
+
+  unsigned ofd, olast, opos, ocount[2];
+  char obuf[16];
 };
 
 struct netstat_data {
@@ -118,7 +121,7 @@ struct blkid_data {
 };
 
 struct blockdev_data {
-  long setbsz, setra;
+  long setra, setbsz;
 };
 
 struct chrt_data {
@@ -518,6 +521,7 @@ struct du_data {
 
 struct env_data {
   struct arg_list *u;
+  char *e;
 };
 
 struct expand_data {
@@ -597,8 +601,7 @@ struct mkdir_data {
 };
 
 struct mkfifo_data {
-  char *m;
-  char *Z;
+  char *m, *Z;
 
   mode_t mode;
 };

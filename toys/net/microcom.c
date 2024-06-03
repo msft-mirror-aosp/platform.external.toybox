@@ -2,7 +2,7 @@
  *
  * Copyright 2017 The Android Open Source Project.
 
-USE_MICROCOM(NEWTOY(microcom, "<1>1s#=115200X", TOYFLAG_USR|TOYFLAG_BIN))
+USE_MICROCOM(NEWTOY(microcom, "<1>1s#X", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_NOBUF))
 
 config MICROCOM
   bool "microcom"
@@ -12,7 +12,7 @@ config MICROCOM
 
     Simple serial console. Hit CTRL-] for menu.
 
-    -s	Set baud rate to SPEED (default 115200)
+    -s	Set baud rate to SPEED
     -X	Ignore ^] menu escape
 */
 
@@ -29,10 +29,11 @@ GLOBALS(
 // TODO: tty_sigreset outputs ansi escape sequences, how to disable?
 static void restore_states(int i)
 {
-  if (TT.stok) tcsetattr(0, TCSAFLUSH, &TT.old_stdin);
-  tcsetattr(TT.fd, TCSAFLUSH, &TT.old_fd);
+  if (TT.stok) tcsetattr(0, TCSANOW, &TT.old_stdin);
+  tcsetattr(TT.fd, FLAG(s)*TCSAFLUSH, &TT.old_fd);
 }
 
+// TODO bookmark, jump to bottom line (if !end), clear and return afterwards
 static void handle_esc(void)
 {
   char input;
@@ -54,7 +55,8 @@ static void handle_esc(void)
     while (1) {
       xprintf("\r\e[2K\e[1mFilename: \e[0m%s", toybuf);
       if (read(0, &input, 1) <= 0 || input == CTRL('[')) {
-        return;
+        len = 0;
+        break;
       }
       if (input == '\r') break;
       if (input == 0x7f && len > 0) toybuf[--len] = 0;
@@ -62,10 +64,17 @@ static void handle_esc(void)
       else if (input >= ' ' && input <= 0x7f && len < sizeof(toybuf))
         toybuf[len++] = input;
     }
+    xputsn("\r\e[2K");
     toybuf[len] = 0;
     if (!len) return;
+    if ((fd = xopen(toybuf, O_RDONLY | WARN_ONLY)) < 0) {
+      // xopen() warning message ends with a LF without CR, so manually print a
+      // CR here to move the cursor back to the front.
+      fputc('\r', stderr);
+      return;
+    }
+    // TODO xsendfile with progress indicator
     filename = xstrdup(toybuf);
-    fd = xopen(filename, O_RDONLY);
     size = fdlength(fd);
     // The alternative would be to just feed this fd into the usual loop,
     // so we're reading back these characters if they're being echoed, but
@@ -79,9 +88,8 @@ static void handle_esc(void)
     }
     free(filename);
     close(fd);
-  } else {
-    xprintf("Ignoring unknown command.");
-  }
+  } else xprintf("Ignoring unknown command.");
+
   xprintf("\r\n");
 }
 
@@ -100,8 +108,8 @@ void microcom_main(void)
   // Set both input and output to raw mode.
   memcpy(&tio, &TT.old_fd, sizeof(struct termios));
   cfmakeraw(&tio);
-  xsetspeed(&tio, TT.s);
-  if (tcsetattr(TT.fd, TCSAFLUSH, &tio)) perror_exit("set speed");
+  if (FLAG(s)) xsetspeed(&tio, TT.s);
+  if (tcsetattr(TT.fd, FLAG(s)*TCSAFLUSH, &tio)) perror_exit("set speed");
   if (!set_terminal(0, 1, 0, &TT.old_stdin)) TT.stok++;
   // ...and arrange to restore things, however we may exit.
   sigatexit(restore_states);

@@ -214,7 +214,7 @@ CONFIG_MKTEMP=y
 # CONFIG_MODINFO is not set
 # CONFIG_MODPROBE is not set
 # CONFIG_MORE is not set
-# CONFIG_MOUNT is not set
+CONFIG_MOUNT=y
 # CONFIG_MOUNTPOINT is not set
 CONFIG_MV=y
 # CONFIG_NBD_CLIENT is not set
@@ -322,13 +322,13 @@ CONFIG_TR=y
 # CONFIG_TUNCTL is not set
 # CONFIG_UCLAMPSET is not set
 # CONFIG_ULIMIT is not set
-# CONFIG_UMOUNT is not set
+CONFIG_UMOUNT=y
 CONFIG_UNAME=y
 # CONFIG_UNICODE is not set
 CONFIG_UNIQ=y
 CONFIG_UNIX2DOS=y
 # CONFIG_UNLINK is not set
-# CONFIG_UNSHARE is not set
+CONFIG_UNSHARE=y
 # CONFIG_UPTIME is not set
 # CONFIG_USERADD is not set
 # CONFIG_USERDEL is not set

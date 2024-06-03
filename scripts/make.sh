@@ -69,6 +69,9 @@ LIBRARIES=$(
       echo -l$i &
   done | sort | xargs
 )
+# Actually resolve dangling dependencies in extra libraries when static linking
+[ -n "$LIBRARIES" ] && [ "$LDFLAGS" != "${LDFLAGS/-static/}" ] &&
+  LIBRARIES="-Wl,--start-group $LIBRARIES -Wl,--end-group"
 
 [ -z "$VERSION" ] && [ -d ".git" ] && [ -n "$(which git 2>/dev/null)" ] &&
   VERSION="$(git describe --tags --abbrev=12 2>/dev/null)"
@@ -147,9 +150,9 @@ fi
 
 # Rebuild config.h from .config
 $SED -En $KCONFIG_CONFIG > "$GENDIR"/config.h \
-  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)/p' \
-  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__/p'\
-  || exit 1
+  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)/p;t' \
+  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__/p;t'\
+  -e 's/^CONFIG_(.*)=/#define CFG_\1 /p' || exit 1
 
 # Process config.h and newtoys.h to generate FLAG_x macros. Note we must
 # always #define the relevant macro, even when it's disabled, because we
@@ -209,12 +212,18 @@ fi
   echo "} this;"
 } > "$GENDIR"/globals.h || exit 1
 
-hostcomp mktags
-if isnewer tags.h toys
-then
-  $SED -n '/TAGGED_ARRAY(/,/^)/{s/.*TAGGED_ARRAY[(]\([^,]*\),/\1/;p}' \
-    toys/*/*.c lib/*.c | "$UNSTRIPPED"/mktags > "$GENDIR"/tags.h
-fi
+# Recreate tags.h
+$SED -ne '/TAGGED_ARRAY(/,/^)/{s/.*TAGGED_ARRAY[(]\([^,]*\),/\1/p' \
+  -e 's/[^{]*{"\([^"]*\)"[^{]*/ _\1/gp}' toys/*/*.c | tr '[:punct:]' _ | \
+while read i; do
+  [ "$i" = "${i#_}" ] && { HEAD="$i"; X=0; LL=; continue;}
+  for j in $i; do
+    [ $X -eq 32 ] && LL=LL
+    NAME="$HEAD$j"
+    printf "#define $NAME %*s%s\n#define _$NAME %*s%s\n" \
+      $((32-${#NAME})) "" "$X" $((31-${#NAME})) "" "(1$LL<<$((X++)))" || exit 1
+  done
+done > "$GENDIR"/tags.h || exit 1
 
 # Create help.h, and zhelp.h if zcat enabled
 hostcomp config2help

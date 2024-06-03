@@ -133,8 +133,11 @@ all_srcs = [
 ]
 
 linux_srcs = [
+    "toys/lsb/mount.c",
+    "toys/lsb/umount.c",
     "toys/posix/ps.c",
     "toys/other/flock.c",
+    "toys/other/nsenter.c",
     "toys/other/taskset.c",
 ]
 
@@ -149,10 +152,8 @@ device_srcs = [
     "toys/lsb/dmesg.c",
     "toys/lsb/killall.c",
     "toys/lsb/mknod.c",
-    "toys/lsb/mount.c",
     "toys/lsb/pidof.c",
     "toys/lsb/sync.c",
-    "toys/lsb/umount.c",
     "toys/net/ifconfig.c",
     "toys/net/netcat.c",
     "toys/net/netstat.c",
@@ -192,7 +193,6 @@ device_srcs = [
     "toys/other/modinfo.c",
     "toys/other/mountpoint.c",
     "toys/other/nbd_client.c",
-    "toys/other/nsenter.c",
     "toys/other/partprobe.c",
     "toys/other/pivot_root.c",
     "toys/other/pmap.c",
@@ -294,6 +294,7 @@ toybox_symlinks = [
     "getconf",
     "getenforce",
     "getfattr",
+    "getopt",
     "gpiodetect",
     "gpiofind",
     "gpioget",

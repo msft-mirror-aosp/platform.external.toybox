@@ -843,15 +843,16 @@
 #undef FLAG_s
 #endif
 
-// env ^i0u* ^i0u*
+// env ^e:i0u* ^e:i0u*
 #undef OPTSTR_env
-#define OPTSTR_env "^i0u*"
+#define OPTSTR_env "^e:i0u*"
 #ifdef CLEANUP_env
 #undef CLEANUP_env
 #undef FOR_env
 #undef FLAG_u
 #undef FLAG_0
 #undef FLAG_i
+#undef FLAG_e
 #endif
 
 // eval    
@@ -2021,9 +2022,9 @@
 #undef FLAG_M
 #endif
 
-// microcom <1>1s#=115200X <1>1s#=115200X
+// microcom <1>1s#X <1>1s#X
 #undef OPTSTR_microcom
-#define OPTSTR_microcom "<1>1s#=115200X"
+#define OPTSTR_microcom "<1>1s#X"
 #ifdef CLEANUP_microcom
 #undef CLEANUP_microcom
 #undef FOR_microcom
@@ -2162,7 +2163,7 @@
 #undef FOR_more
 #endif
 
-// mount   ?RO:afnrvwt:o*[-rw]
+// mount ?RO:afnrvwt:o*[-rw] ?RO:afnrvwt:o*[-rw]
 #undef OPTSTR_mount
 #define OPTSTR_mount "?RO:afnrvwt:o*[-rw]"
 #ifdef CLEANUP_mount
@@ -2227,14 +2228,13 @@
 #undef FLAG_r
 #endif
 
-// netcat   ^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]
+// netcat   ^tElLw#<1W#<1p#<1>65535q#<1O:o:s:f:46uUnz[!tlL][!Lw][!Lu][!46U][!oO]
 #undef OPTSTR_netcat
-#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1s:f:46uUnvz[!tlL][!Lw][!Lu][!46U]"
+#define OPTSTR_netcat "^tElLw#<1W#<1p#<1>65535q#<1O:o:s:f:46uUnz[!tlL][!Lw][!Lu][!46U][!oO]"
 #ifdef CLEANUP_netcat
 #undef CLEANUP_netcat
 #undef FOR_netcat
 #undef FLAG_z
-#undef FLAG_v
 #undef FLAG_n
 #undef FLAG_U
 #undef FLAG_u
@@ -2242,6 +2242,8 @@
 #undef FLAG_4
 #undef FLAG_f
 #undef FLAG_s
+#undef FLAG_o
+#undef FLAG_O
 #undef FLAG_q
 #undef FLAG_p
 #undef FLAG_W
@@ -2711,6 +2713,14 @@
 #undef FLAG_n
 #undef FLAG_F
 #undef FLAG_D
+#endif
+
+// return   >1
+#undef OPTSTR_return
+#define OPTSTR_return ">1"
+#ifdef CLEANUP_return
+#undef CLEANUP_return
+#undef FOR_return
 #endif
 
 // rev    
@@ -3569,7 +3579,7 @@
 #undef FLAG_P
 #endif
 
-// umount   cndDflrat*v[!na]
+// umount cndDflrat*v[!na] cndDflrat*v[!na]
 #undef OPTSTR_umount
 #define OPTSTR_umount "cndDflrat*v[!na]"
 #ifdef CLEANUP_umount
@@ -3654,7 +3664,7 @@
 #undef FLAG_f
 #endif
 
-// unshare   <1^a(all)f(fork)r(map-root-user)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):; 
+// unshare <1^a(all)f(fork)r(map-root-user)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):;  <1^a(all)f(fork)r(map-root-user)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):; 
 #undef OPTSTR_unshare
 #define OPTSTR_unshare "<1^a(all)f(fork)r(map-root-user)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):; "
 #ifdef CLEANUP_unshare
@@ -4709,6 +4719,7 @@
 #define FLAG_u (1LL<<0)
 #define FLAG_0 (1LL<<1)
 #define FLAG_i (1LL<<2)
+#define FLAG_e (1LL<<3)
 #endif
 
 #ifdef FOR_eval
@@ -5912,16 +5923,16 @@
 #ifndef TT
 #define TT this.mount
 #endif
-#define FLAG_o (FORCED_FLAG<<0)
-#define FLAG_t (FORCED_FLAG<<1)
-#define FLAG_w (FORCED_FLAG<<2)
-#define FLAG_v (FORCED_FLAG<<3)
-#define FLAG_r (FORCED_FLAG<<4)
-#define FLAG_n (FORCED_FLAG<<5)
-#define FLAG_f (FORCED_FLAG<<6)
-#define FLAG_a (FORCED_FLAG<<7)
-#define FLAG_O (FORCED_FLAG<<8)
-#define FLAG_R (FORCED_FLAG<<9)
+#define FLAG_o (1LL<<0)
+#define FLAG_t (1LL<<1)
+#define FLAG_w (1LL<<2)
+#define FLAG_v (1LL<<3)
+#define FLAG_r (1LL<<4)
+#define FLAG_n (1LL<<5)
+#define FLAG_f (1LL<<6)
+#define FLAG_a (1LL<<7)
+#define FLAG_O (1LL<<8)
+#define FLAG_R (1LL<<9)
 #endif
 
 #ifdef FOR_mountpoint
@@ -5973,22 +5984,23 @@
 #define TT this.netcat
 #endif
 #define FLAG_z (FORCED_FLAG<<0)
-#define FLAG_v (FORCED_FLAG<<1)
-#define FLAG_n (FORCED_FLAG<<2)
-#define FLAG_U (FORCED_FLAG<<3)
-#define FLAG_u (FORCED_FLAG<<4)
-#define FLAG_6 (FORCED_FLAG<<5)
-#define FLAG_4 (FORCED_FLAG<<6)
-#define FLAG_f (FORCED_FLAG<<7)
-#define FLAG_s (FORCED_FLAG<<8)
-#define FLAG_q (FORCED_FLAG<<9)
-#define FLAG_p (FORCED_FLAG<<10)
-#define FLAG_W (FORCED_FLAG<<11)
-#define FLAG_w (FORCED_FLAG<<12)
-#define FLAG_L (FORCED_FLAG<<13)
-#define FLAG_l (FORCED_FLAG<<14)
-#define FLAG_E (FORCED_FLAG<<15)
-#define FLAG_t (FORCED_FLAG<<16)
+#define FLAG_n (FORCED_FLAG<<1)
+#define FLAG_U (FORCED_FLAG<<2)
+#define FLAG_u (FORCED_FLAG<<3)
+#define FLAG_6 (FORCED_FLAG<<4)
+#define FLAG_4 (FORCED_FLAG<<5)
+#define FLAG_f (FORCED_FLAG<<6)
+#define FLAG_s (FORCED_FLAG<<7)
+#define FLAG_o (FORCED_FLAG<<8)
+#define FLAG_O (FORCED_FLAG<<9)
+#define FLAG_q (FORCED_FLAG<<10)
+#define FLAG_p (FORCED_FLAG<<11)
+#define FLAG_W (FORCED_FLAG<<12)
+#define FLAG_w (FORCED_FLAG<<13)
+#define FLAG_L (FORCED_FLAG<<14)
+#define FLAG_l (FORCED_FLAG<<15)
+#define FLAG_E (FORCED_FLAG<<16)
+#define FLAG_t (FORCED_FLAG<<17)
 #endif
 
 #ifdef FOR_netstat
@@ -6417,6 +6429,13 @@
 #define FLAG_n (FORCED_FLAG<<3)
 #define FLAG_F (FORCED_FLAG<<4)
 #define FLAG_D (FORCED_FLAG<<5)
+#endif
+
+#ifdef FOR_return
+#define CLEANUP_return
+#ifndef TT
+#define TT this.return
+#endif
 #endif
 
 #ifdef FOR_rev
@@ -7215,16 +7234,16 @@
 #ifndef TT
 #define TT this.umount
 #endif
-#define FLAG_v (FORCED_FLAG<<0)
-#define FLAG_t (FORCED_FLAG<<1)
-#define FLAG_a (FORCED_FLAG<<2)
-#define FLAG_r (FORCED_FLAG<<3)
-#define FLAG_l (FORCED_FLAG<<4)
-#define FLAG_f (FORCED_FLAG<<5)
-#define FLAG_D (FORCED_FLAG<<6)
-#define FLAG_d (FORCED_FLAG<<7)
-#define FLAG_n (FORCED_FLAG<<8)
-#define FLAG_c (FORCED_FLAG<<9)
+#define FLAG_v (1LL<<0)
+#define FLAG_t (1LL<<1)
+#define FLAG_a (1LL<<2)
+#define FLAG_r (1LL<<3)
+#define FLAG_l (1LL<<4)
+#define FLAG_f (1LL<<5)
+#define FLAG_D (1LL<<6)
+#define FLAG_d (1LL<<7)
+#define FLAG_n (1LL<<8)
+#define FLAG_c (1LL<<9)
 #endif
 
 #ifdef FOR_uname
@@ -7293,16 +7312,16 @@
 #ifndef TT
 #define TT this.unshare
 #endif
-#define FLAG_U (FORCED_FLAG<<0)
-#define FLAG_u (FORCED_FLAG<<1)
-#define FLAG_p (FORCED_FLAG<<2)
-#define FLAG_n (FORCED_FLAG<<3)
-#define FLAG_m (FORCED_FLAG<<4)
-#define FLAG_i (FORCED_FLAG<<5)
-#define FLAG_C (FORCED_FLAG<<6)
-#define FLAG_r (FORCED_FLAG<<7)
-#define FLAG_f (FORCED_FLAG<<8)
-#define FLAG_a (FORCED_FLAG<<9)
+#define FLAG_U (1LL<<0)
+#define FLAG_u (1LL<<1)
+#define FLAG_p (1LL<<2)
+#define FLAG_n (1LL<<3)
+#define FLAG_m (1LL<<4)
+#define FLAG_i (1LL<<5)
+#define FLAG_C (1LL<<6)
+#define FLAG_r (1LL<<7)
+#define FLAG_f (1LL<<8)
+#define FLAG_a (1LL<<9)
 #endif
 
 #ifdef FOR_uptime
