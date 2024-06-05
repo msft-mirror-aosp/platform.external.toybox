@@ -12,13 +12,13 @@
  * -ifv -p [IP:]PORT -u [USER][:GRP] -c CFGFILE
  * cgi: SERVER_PORT SERVER_NAME REMOTE_ADDR REMOTE_HOST REQUEST_METHOD
 
-USE_HTTPD(NEWTOY(httpd, ">1v", TOYFLAG_USR|TOYFLAG_BIN))
+USE_HTTPD(NEWTOY(httpd, ">1v", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LINEBUF))
 
 config HTTPD
   bool "httpd"
   default y
   help
-    usage: httpd [-e STR] [DIR]
+    usage: httpd [-de STR] [-v] [DIR]
 
     Serve contents of directory as static web pages.
 

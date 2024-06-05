@@ -215,8 +215,7 @@ static int do_find(struct dirtree *new)
   struct double_list *argdata = TT.argdata;
   char *s, **ss, *arg;
 
-  recurse = DIRTREE_STATLESS|DIRTREE_COMEAGAIN|
-    (DIRTREE_SYMFOLLOW*!!(toys.optflags&FLAG_L));
+  recurse = DIRTREE_STATLESS|DIRTREE_COMEAGAIN|DIRTREE_SYMFOLLOW*FLAG(L);
 
   // skip . and .. below topdir, handle -xdev and -depth
   if (new) {
@@ -235,7 +234,7 @@ static int do_find(struct dirtree *new)
 
     if (S_ISDIR(new->st.st_mode)) {
       // Descending into new directory
-      if (!new->again) {
+      if (!(new->again&DIRTREE_COMEAGAIN)) {
         struct dirtree *n;
 
         for (n = new->parent; n; n = n->parent) {
@@ -439,7 +438,8 @@ static int do_find(struct dirtree *new)
           if (*ss != arg) free(arg);
         }
       } else if (!strcmp(s, "size")) {
-        if (check) test = compare_numsign(new->st.st_size, 512, arg);
+        if (check) test = compare_numsign(new->st.st_size, -512, arg) &&
+                          S_ISREG(new->st.st_mode);
       } else if (!strcmp(s, "links")) {
         if (check) test = compare_numsign(new->st.st_nlink, 0, arg);
       } else if (!strcmp(s, "inum")) {
@@ -687,6 +687,7 @@ cont:
   return recurse;
 
 error:
+  if (!*ss) --ss;
   error_exit("bad arg '%s'", *ss);
 }
 

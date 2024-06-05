@@ -57,22 +57,38 @@ hostcomp()
   fi
 }
 
+# --as-needed removes libraries we don't use any symbols out of, but the
+# compiler has no way to ignore a library that doesn't exist, so detect
+# and skip nonexistent libraries for it (probing in parallel).
+LIBRARIES=$(
+  [ -z "$V" ] && X=/dev/null || X=/dev/stderr
+  for i in util crypt m resolv selinux smack attr crypto z log iconv tls ssl
+  do
+    do_loudly ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -l$i >>$X 2>&1 \
+      -o /dev/null <<<"int main(int argc,char*argv[]){return 0;}" &&
+      echo -l$i &
+  done | sort | xargs
+)
+# Actually resolve dangling dependencies in extra libraries when static linking
+[ -n "$LIBRARIES" ] && [ "$LDFLAGS" != "${LDFLAGS/-static/}" ] &&
+  LIBRARIES="-Wl,--start-group $LIBRARIES -Wl,--end-group"
+
+[ -z "$VERSION" ] && [ -d ".git" ] && [ -n "$(which git 2>/dev/null)" ] &&
+  VERSION="$(git describe --tags --abbrev=12 2>/dev/null)"
+
 # Set/record build environment information
 compflags()
 {
-  [ -z "$VERSION" ] && [ -d ".git" ] && [ -n "$(which git 2>/dev/null)" ] &&
-   VERSION="-DTOYBOX_VERSION=\"$(git describe --tags --abbrev=12 2>/dev/null)\""
-
-  # VERSION and LIBRARIES volatile, changing either does not require a rebuild
+  # The #d lines tag dependencies that force full rebuild if changed
   echo '#!/bin/sh'
   echo
   echo "VERSION='$VERSION'"
-  echo "LIBRARIES='$(xargs 2>/dev/null < "$GENDIR/optlibs.dat")'"
-  echo "BUILD='${CROSS_COMPILE}${CC} $CFLAGS -I . $OPTIMIZE '\"\$VERSION\""
-  echo "LINK='$LDOPTIMIZE $LDFLAGS '\"\$LIBRARIES\""
-  echo "PATH='$PATH'"
-  echo "# Built from $KCONFIG_CONFIG"
-  echo
+  echo "LIBRARIES='$LIBRARIES'"
+  echo "BUILD='${CROSS_COMPILE}${CC} $CFLAGS -I . $OPTIMIZE" \
+       "'\"\${VERSION:+-DTOYBOX_VERSION=\\\"$VERSION\\\"}\" #d"
+  echo "LINK='$LDOPTIMIZE $LDFLAGS '\"\$LIBRARIES\" #d"
+  echo "#d Config was $KCONFIG_CONFIG"
+  echo "#d PATH was '$PATH'"
 }
 
 # Make sure rm -rf isn't gonna go funny
@@ -82,7 +98,7 @@ B="$(readlink -f "$PWD")/" A="$(readlink -f "$GENDIR")" A="${A%/}"/
 unset A B DOTPROG DIDNEWER
 
 # Force full rebuild if our compiler/linker options changed
-cmp -s <(compflags|sed '5,8!d') <($SED '5,8!d' "$GENDIR"/build.sh 2>/dev/null)||
+cmp -s <(compflags | grep '#d') <(grep '%d' "$GENDIR"/build.sh 2>/dev/null) ||
   rm -rf "$GENDIR"/* # Keep symlink, delete contents
 mkdir -p "$UNSTRIPPED"  "$(dirname $OUTNAME)" || exit 1
 
@@ -90,40 +106,21 @@ mkdir -p "$UNSTRIPPED"  "$(dirname $OUTNAME)" || exit 1
 # (First command names, then filenames with relevant {NEW,OLD}TOY() macro.)
 
 [ -n "$V" ] && echo -e "\nWhich C files to build..."
-TOYFILES="$($SED -n 's/^CONFIG_\([^=]*\)=.*/\1/p' "$KCONFIG_CONFIG" | xargs | tr ' [A-Z]' '|[a-z]')"
-TOYFILES="main.c $(egrep -l "TOY[(]($TOYFILES)[ ,]" toys/*/*.c | xargs)"
+TOYFILES="$($SED -n 's/^CONFIG_\([^=]*\)=.*/\1/p' "$KCONFIG_CONFIG" | xargs | tr ' ' '|')"
+TOYFILES="main.c $(egrep -l "^USE_($TOYFILES)[(]...TOY[(]" toys/*/*.c | xargs)"
 
 if [ "${TOYFILES/pending//}" != "$TOYFILES" ]
 then
   echo -e "\n\033[1;31mwarning: using unfinished code from toys/pending\033[0m"
 fi
 
-# Probe library list if our compiler/linker options changed
-if [ ! -e "$GENDIR"/optlibs.dat ]
-then
-  echo -n "Library probe"
-
-  # --as-needed removes libraries we don't use any symbols out of, but the
-  # compiler has no way to ignore a library that doesn't exist, so detect
-  # and skip nonexistent libraries for it.
-
-  > "$GENDIR"/optlibs.new
-  [ -z "$V" ] && X=/dev/null || X=/dev/stderr
-  for i in util crypt m resolv selinux smack attr crypto z log iconv tls ssl
-  do
-    do_loudly ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc - -l$i >>$X 2>&1 \
-      -o "$UNSTRIPPED"/libprobe <<<"int main(int argc,char*argv[]){return 0;}"&&
-      do_loudly echo -n ' '-l$i >> "$GENDIR"/optlibs.new
-  done
-  unset X
-  rm -f "$UNSTRIPPED"/libprobe
-  mv "$GENDIR"/optlibs.{new,dat} || exit 1
-  echo
-fi
-
 # Write build variables (and set them locally), then append build invocation.
 compflags > "$GENDIR"/build.sh && source "$GENDIR/build.sh" &&
-  echo -e "\$BUILD lib/*.c $TOYFILES \$LINK -o $OUTNAME" >> "$GENDIR"/build.sh&&
+  {
+    echo FILES=$'"\n'"$(fold -s <<<"$TOYFILES")"$'\n"' &&
+    echo &&
+    echo -e "\$BUILD lib/*.c \$FILES \$LINK -o $OUTNAME"
+  } >> "$GENDIR"/build.sh &&
   chmod +x "$GENDIR"/build.sh || exit 1
 
 if isnewer Config.in toys || isnewer Config.in Config.in
@@ -151,34 +148,11 @@ then
   [ $? -ne 0 ] && exit 1
 fi
 
-#TODO: "make $SED && make" doesn't regenerate config.h because diff .config
-if true #isnewer config.h "$KCONFIG_CONFIG"
-then
-  # This long and roundabout sed invocation is to make old versions of sed
-  # happy. New ones have '\n' so can replace one line with two without all
-  # the branches and tedious mucking about with hyperspace.
-  # TODO: clean this up to use modern stuff.
-
-  $SED -n \
-    -e 's/^# CONFIG_\(.*\) is not set.*/\1/' \
-    -e 't notset' \
-    -e 's/^CONFIG_\(.*\)=y.*/\1/' \
-    -e 't isset' \
-    -e 's/^CONFIG_\([^=]*\)=\(.*\)/#define CFG_\1 \2/p' \
-    -e 'd' \
-    -e ':notset' \
-    -e 'h' \
-    -e 's/.*/#define CFG_& 0/p' \
-    -e 'g' \
-    -e 's/.*/#define USE_&(...)/p' \
-    -e 'd' \
-    -e ':isset' \
-    -e 'h' \
-    -e 's/.*/#define CFG_& 1/p' \
-    -e 'g' \
-    -e 's/.*/#define USE_&(...) __VA_ARGS__/p' \
-    $KCONFIG_CONFIG > "$GENDIR"/config.h || exit 1
-fi
+# Rebuild config.h from .config
+$SED -En $KCONFIG_CONFIG > "$GENDIR"/config.h \
+  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)/p;t' \
+  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__/p;t'\
+  -e 's/^CONFIG_(.*)=/#define CFG_\1 /p' || exit 1
 
 # Process config.h and newtoys.h to generate FLAG_x macros. Note we must
 # always #define the relevant macro, even when it's disabled, because we
@@ -227,45 +201,49 @@ fi
 
 # Extract global structure definitions and flag definitions from toys/*/*.c
 
-function getglobals()
 {
-  for i in toys/*/*.c
-  do
-    NAME=${i##*/} NAME=${NAME%\.c}
-    DATA="$($SED -n -e '/^GLOBALS(/,/^)/b got;b;:got' \
-            -e 's/^GLOBALS(/_data {/' \
-            -e 's/^)/};/' -e 'p' $i)"
-    [ -n "$DATA" ] && echo -e "// $i\n\nstruct $NAME$DATA\n"
+  STRUX="$($SED -ne 's/^#define[ \t]*FOR_\([^ \t]*\).*/\1/;T s1;h;:s1' \
+  -e '/^GLOBALS(/,/^)/{s/^GLOBALS(//;T s2;g;s/.*/struct &_data {/;:s2;s/^)/};\n/;p}' \
+  $TOYFILES)"
+  echo "$STRUX" &&
+  echo "extern union global_union {" &&
+  $SED -n 's/^struct \(.*\)_data .*/\1/;T;s/.*/\tstruct &_data &;/p' \
+    <<<"$STRUX" &&
+  echo "} this;"
+} > "$GENDIR"/globals.h || exit 1
+
+# Recreate tags.h
+$SED -ne '/TAGGED_ARRAY(/,/^)/{s/.*TAGGED_ARRAY[(]\([^,]*\),/\1/p' \
+  -e 's/[^{]*{"\([^"]*\)"[^{]*/ _\1/gp}' toys/*/*.c | tr '[:punct:]' _ | \
+while read i; do
+  [ "$i" = "${i#_}" ] && { HEAD="$i"; X=0; LL=; continue;}
+  for j in $i; do
+    [ $X -eq 32 ] && LL=LL
+    NAME="$HEAD$j"
+    printf "#define $NAME %*s%s\n#define _$NAME %*s%s\n" \
+      $((32-${#NAME})) "" "$X" $((31-${#NAME})) "" "(1$LL<<$((X++)))" || exit 1
   done
-}
+done > "$GENDIR"/tags.h || exit 1
 
-if isnewer globals.h toys
-then
-  GLOBSTRUCT="$(getglobals)"
-  (
-    echo "$GLOBSTRUCT"
-    echo
-    echo "extern union global_union {"
-    echo "$GLOBSTRUCT" | \
-      $SED -n 's/struct \(.*\)_data {/	struct \1_data \1;/p'
-    echo "} this;"
-  ) > "$GENDIR"/globals.h
-fi
-
-hostcomp mktags
-if isnewer tags.h toys
-then
-  $SED -n '/TAGGED_ARRAY(/,/^)/{s/.*TAGGED_ARRAY[(]\([^,]*\),/\1/;p}' \
-    toys/*/*.c lib/*.c | "$UNSTRIPPED"/mktags > "$GENDIR"/tags.h
-fi
-
+# Create help.h, and zhelp.h if zcat enabled
 hostcomp config2help
 if isnewer help.h "$GENDIR"/Config.in
 then
-  "$UNSTRIPPED"/config2help Config.in $KCONFIG_CONFIG > "$GENDIR"/help.h || exit 1
+  "$UNSTRIPPED"/config2help Config.in $KCONFIG_CONFIG > "$GENDIR"/help.h||exit 1
 fi
-[ -z "$DIDNEWER" ] || echo }
 
+if grep -qx 'CONFIG_TOYBOX_ZHELP=y' "$KCONFIG_CONFIG"
+then
+  do_loudly $HOSTCC -I . scripts/install.c -o "$UNSTRIPPED"/instlist || exit 1
+  { echo "#define ZHELP_LEN $("$UNSTRIPPED"/instlist --help | wc -c)" &&
+    "$UNSTRIPPED"/instlist --help | gzip -9 | od -Anone -vtx1 | \
+    sed 's/ /,0x/g;1s/^,/static char zhelp_data[] = {\n /;$s/.*/&};/'
+  } > "$GENDIR"/zhelp.h || exit 1
+else
+  rm -f "$GENDIR"/zhelp.h
+fi
+
+[ -z "$DIDNEWER" ] || echo }
 [ -n "$NOBUILD" ] && exit 0
 
 echo "Compile $OUTNAME"

@@ -6,14 +6,14 @@
  * See http://opengroup.org/onlinepubs/9699919799/utilities/ls.html
  *
  * Deviations from posix:
- *   add -b (and default to it instead of -q for an unambiguous representation
- *   that doesn't cause collisions)
+ *   add -b (as default instead of -q: -b is unambiguous without collisions)
  *   add -Z -ll --color
  *   Posix says the -l date format should vary based on how recent it is
  *   and we do --time-style=long-iso instead
- *   ignore -k because we default to 1024 byte blocks
+ * Deviations from gnu: -N switches off -q (no --show-control-chars)
+ *   No --quoting-style=shell-escape, mostly because no short or long opt for it
 
-USE_LS(NEWTOY(ls, "(sort):(color):;(full-time)(show-control-chars)\241(group-directories-first)\376ZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb]", TOYFLAG_BIN|TOYFLAG_LOCALE))
+USE_LS(NEWTOY(ls, "(sort):(color):;(full-time)(show-control-chars)\377(block-size)#=1024<1\241(group-directories-first)\376ZgoACFHLNRSUXabcdfhikl@mnpqrstuw#=80<0x1[-Cxm1][-Cxml][-Cxmo][-Cxmg][-cu][-ftS][-HL][-Nqb][-k\377]", TOYFLAG_BIN))
 
 config LS
   bool "ls"
@@ -30,21 +30,23 @@ config LS
     -H  follow command line symlinks   -i  inode number
     -L  follow symlinks                -N  no escaping, even on tty
     -p  put '/' after dir names        -q  unprintable chars as '?'
-    -R  recursively list in subdirs    -s  storage used (1024 byte units)
+    -R  recursively list in subdirs    -s  storage used (in --block-size)
     -Z  security context
 
     output formats:
     -1  list one file per line         -C  columns (sorted vertically)
     -g  like -l but no owner           -h  human readable sizes
-    -l  long (show full details)       -ll long with nanoseconds (--full-time)
-    -m  comma separated                -n  long with numeric uid/gid
-    -o  long without group column      -r  reverse order
-    -w  set column width               -x  columns (horizontal sort)
+    -k  reset --block-size to default  -l  long (show full details)
+    -m  comma separated                -ll long with nanoseconds (--full-time)
+    -n  long with numeric uid/gid      -o  long without group column
+    -r  reverse order                  -w  set column width
+    -x  columns (horizontal sort)
 
     sort by:  (also --sort=longname,longname... ends with alphabetical)
     -c  ctime      -r  reverse    -S  size     -t  time    -u  atime    -U  none
     -X  extension  -!  dirfirst   -~  nocase
 
+    --block-size N	block size (default 1024, -k resets to 1024)
     --color  =always (default)  =auto (when stdout is tty) =never
         exe=green  suid=red  suidfile=redback  stickydir=greenback
         device=yellow  symlink=turquoise/red  dir=blue  socket=purple
@@ -60,7 +62,7 @@ config LS
 // ls -lR starts .: then ./subdir:
 
 GLOBALS(
-  long w, l;
+  long w, l, block_size;
   char *color, *sort;
 
   struct dirtree *files, *singledir;
@@ -126,9 +128,10 @@ static int numlen(long long ll)
   return snprintf(0, 0, "%llu", ll);
 }
 
-static int print_with_h(char *s, long long value, int units)
+static int print_with_h(char *s, long long value, int blocks)
 {
-  if (FLAG(h)) return human_readable(s, value*units, 0);
+  if (blocks) value = (value * 1024) / TT.block_size;
+  if (FLAG(h)) return human_readable(s, value, 0);
   else return sprintf(s, "%lld", value);
 }
 
@@ -152,16 +155,16 @@ static void entrylen(struct dirtree *dt, unsigned *len)
       // cheating slightly here: assuming minor is always 3 digits to avoid
       // tracking another column
       len[5] = numlen(dev_major(st->st_rdev))+5;
-    } else len[5] = print_with_h(tmp, st->st_size, 1);
+    } else len[5] = print_with_h(tmp, st->st_size, 0);
   }
 
-  len[6] = FLAG(s) ? print_with_h(tmp, st->st_blocks, 1024) : 0;
+  len[6] = FLAG(s) ? print_with_h(tmp, st->st_blocks, 1) : 0;
   len[7] = FLAG(Z) ? strwidth((char *)dt->extra) : 0;
 }
 
 // Perform one or more comparisons on a pair of files.
 // Reused FLAG_a to mean "alphabetical"
-static int do_compare(struct dirtree *a, struct dirtree *b, long flags)
+static int do_compare(struct dirtree *a, struct dirtree *b, long long flags)
 {
   struct timespec *ts1 = 0, *ts2;
   char *s1, *s2;
@@ -173,11 +176,11 @@ static int do_compare(struct dirtree *a, struct dirtree *b, long flags)
     if (a->st.st_size > b->st.st_size) return -1;
     else if (a->st.st_size < b->st.st_size) return 1;
   }
-
   if (flags&FLAG_t) ts1 = &a->st.st_mtim, ts2 = &b->st.st_mtim;
   if (flags&FLAG_u) ts1 = &a->st.st_atim, ts2 = &b->st.st_atim;
   if (flags&FLAG_c) ts1 = &a->st.st_ctim, ts2 = &b->st.st_ctim;
   if (ts1) {
+    // Newest is first by default, so return values are backwards
     if (ts1->tv_sec > ts2->tv_sec) return -1;
     else if (ts1->tv_sec < ts2->tv_sec) return 1;
     else if (ts1->tv_nsec > ts2->tv_nsec) return -1;
@@ -188,9 +191,15 @@ static int do_compare(struct dirtree *a, struct dirtree *b, long flags)
       return S_ISDIR(a->st.st_mode) ? -1 : 1;
 
   // -X is a form of alphabetical sort, without -~ do case sensitive comparison
-  if ((flags&FLAG_X) && (s1 = strrchr(a->name, '.')) && (s2 = strrchr(b->name, '.'))) {
+  s1 = 0;
+  if (flags&FLAG_X) {
+    s1 = strrchr(a->name, '.');
+    s2 = strrchr(b->name, '.');
+    if (s2 && !s1) return -1;
+    if (s1 && !s2) return 1;
     if (!(flags&FLAG_X7E)) flags |= FLAG_a;
-  } else {
+  }
+  if (!s1) {
     s1 = a->name;
     s2 = b->name;
   }
@@ -215,13 +224,13 @@ static int compare(void *a, void *b)
   char *ss = TT.sort;
   long long ll = 0;
   int ret = 0;
-
 // TODO: test --sort=reverse with fallback alphabetical
 
-  if (ss) while (*ss) {
+  if (ss) for (;;) {
+    while (*ss==',') ss++;
+    if (!*ss) break;
     if (comma_start(&ss, "reverse")) toys.optflags |= FLAG_r;
     else if (comma_start(&ss, "none")) goto skip;
-    else if (ret) continue;
     else if (comma_start(&ss, "ctime")) ll = FLAG_c;
     else if (comma_start(&ss, "size")) ll = FLAG_S;
     else if (comma_start(&ss, "time")) ll = FLAG_t;
@@ -231,10 +240,19 @@ static int compare(void *a, void *b)
     else if (comma_start(&ss, "dirfirst")) ll = FLAG_X21;
     else error_exit("bad --sort %s", ss);
 
-    ret = do_compare(dta, dtb, ll);
+    if (!ret) ret = do_compare(dta, dtb, ll);
   }
 
-  if (!ret) ret = do_compare(dta, dtb, toys.optflags|FLAG_a);
+  // Alpha fallback sort, and handle short opts
+  if (!ret) {
+    ll = toys.optflags|FLAG_a;
+    // historical nonsense: -lc displays -c but doesn't sort, -ltc sorts.
+    if (FLAG(o)|FLAG(l)) {
+      if (!FLAG(t)) ll &= ~(FLAG_c|FLAG_u);
+      else if (FLAG(c)||FLAG(u)) ll &= ~FLAG_t;
+    }
+    ret = do_compare(dta, dtb, ll);
+  }
 skip:
   if (FLAG(r)) ret *= -1;
 
@@ -391,7 +409,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
     totpad = totals[1]+!!totals[1]+totals[6]+!!totals[6]+totals[7]+!!totals[7];
     if ((FLAG(h)||FLAG(l)||FLAG(o)||FLAG(n)||FLAG(g)||FLAG(s)) && indir->parent)
     {
-      print_with_h(tmp, blocks, 1024);
+      print_with_h(tmp, blocks, 1);
       xprintf("total %s\n", tmp);
     }
   }
@@ -465,7 +483,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
     if (FLAG(i)) zprint(zap, "lu ", totals[1], st->st_ino);
 
     if (FLAG(s)) {
-      print_with_h(tmp, st->st_blocks, 1024);
+      print_with_h(tmp, st->st_blocks, 1);
       zprint(zap, "s ", totals[6], (unsigned long)tmp);
     }
 
@@ -503,7 +521,7 @@ static void listfiles(int dirfd, struct dirtree *indir)
         printf("% *d,% 4d", totals[5]-4, dev_major(st->st_rdev),
           dev_minor(st->st_rdev));
       else {
-        print_with_h(tmp, st->st_size, 1);
+        print_with_h(tmp, st->st_size, 0);
         zprint(zap, "s", totals[5]+1, (unsigned long)tmp);
       }
 

@@ -30,6 +30,8 @@
 #define USE_TOYBOX_SUID(...)
 #define CFG_TOYBOX_UID_SYS 100
 #define CFG_TOYBOX_UID_USR 500
+#define CFG_TOYBOX_ZHELP 0
+#define USE_TOYBOX_ZHELP(...)
 #define CFG_ACPI 1
 #define USE_ACPI(...) __VA_ARGS__
 #define CFG_ARCH 0
@@ -106,6 +108,8 @@
 #define USE_CROND(...)
 #define CFG_CRONTAB 0
 #define USE_CRONTAB(...)
+#define CFG_CSPLIT 0
+#define USE_CSPLIT(...)
 #define CFG_CUT 1
 #define USE_CUT(...) __VA_ARGS__
 #define CFG_DATE 1
@@ -220,16 +224,16 @@
 #define USE_GITINIT(...)
 #define CFG_GITREMOTE 0
 #define USE_GITREMOTE(...)
-#define CFG_GPIODETECT 0
-#define USE_GPIODETECT(...)
-#define CFG_GPIOFIND 0
-#define USE_GPIOFIND(...)
-#define CFG_GPIOGET 0
-#define USE_GPIOGET(...)
-#define CFG_GPIOINFO 0
-#define USE_GPIOINFO(...)
-#define CFG_GPIOSET 0
-#define USE_GPIOSET(...)
+#define CFG_GPIODETECT 1
+#define USE_GPIODETECT(...) __VA_ARGS__
+#define CFG_GPIOFIND 1
+#define USE_GPIOFIND(...) __VA_ARGS__
+#define CFG_GPIOGET 1
+#define USE_GPIOGET(...) __VA_ARGS__
+#define CFG_GPIOINFO 1
+#define USE_GPIOINFO(...) __VA_ARGS__
+#define CFG_GPIOSET 1
+#define USE_GPIOSET(...) __VA_ARGS__
 #define CFG_GREP 1
 #define USE_GREP(...) __VA_ARGS__
 #define CFG_GROUPADD 0
@@ -272,6 +276,8 @@
 #define USE_I2CGET(...) __VA_ARGS__
 #define CFG_I2CSET 1
 #define USE_I2CSET(...) __VA_ARGS__
+#define CFG_I2CTRANSFER 1
+#define USE_I2CTRANSFER(...) __VA_ARGS__
 #define CFG_ICONV 1
 #define USE_ICONV(...) __VA_ARGS__
 #define CFG_ID 1
@@ -356,6 +362,8 @@
 #define USE_MDEV_CONF(...)
 #define CFG_MDEV 0
 #define USE_MDEV(...)
+#define CFG_MEMEATER 1
+#define USE_MEMEATER(...) __VA_ARGS__
 #define CFG_MICROCOM 1
 #define USE_MICROCOM(...) __VA_ARGS__
 #define CFG_MIX 0
@@ -596,6 +604,10 @@
 #define USE_TRUNCATE(...) __VA_ARGS__
 #define CFG_TR 1
 #define USE_TR(...) __VA_ARGS__
+#define CFG_TS 0
+#define USE_TS(...)
+#define CFG_TSORT 0
+#define USE_TSORT(...)
 #define CFG_TTY 1
 #define USE_TTY(...) __VA_ARGS__
 #define CFG_TUNCTL 1

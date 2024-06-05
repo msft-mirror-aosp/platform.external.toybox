@@ -6,13 +6,13 @@
  *
  * Deviations from posix: -c
 
-USE_HEAD(NEWTOY(head, "?n(lines)#<0=10c(bytes)#<0qv[-nc]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_HEAD(NEWTOY(head, "?n(lines)#<0=10c(bytes)#<0qv[-nc]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LINEBUF))
 
 config HEAD
   bool "head"
   default y
   help
-    usage: head [-n NUM] [FILE...]
+    usage: head [-cn NUM] [-qv] [FILE...]
 
     Copy first lines from files to stdout. If no files listed, copy from
     stdin. Filename "-" is a synonym for stdin.

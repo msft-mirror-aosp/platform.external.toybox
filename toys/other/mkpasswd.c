@@ -14,11 +14,10 @@ config MKPASSWD
   help
     usage: mkpasswd [-P FD] [-m TYPE] [-S SALT] [PASSWORD] [SALT]
 
-    Crypt PASSWORD using crypt(3)
+    Encrypt PASSWORD using crypt(3), with either random or provided SALT.
 
     -P FD	Read password from file descriptor FD
     -m TYPE	Encryption method (des, md5, sha256, or sha512; default is des)
-    -S SALT
 */
 
 #define FOR_mkpasswd
@@ -31,24 +30,29 @@ GLOBALS(
 
 void mkpasswd_main(void)
 {
-  char salt[MAX_SALT_LEN] = {0,};
-  int i;
+  char salt[32] = {0,};
+  int ii, jj, kk;
 
-  if (!TT.m) TT.m = "des";
   if (toys.optc == 2) {
     if (TT.S) error_exit("duplicate salt");
     TT.S = toys.optargs[1];
   }
 
-  if (-1 == (i = get_salt(salt, TT.m))) error_exit("bad -m");
+  if (-1 == get_salt(salt, TT.m ? : "des", !TT.S)) error_exit("bad -m");
   if (TT.S) {
-    char *s = TT.S;
+    char *mirv = strrchr(salt, '$'), *s = TT.S;
 
-    // In C locale, isalnum() means [A-Za-Z0-0]
+    if (mirv) mirv++;
+    else mirv = salt;
+    ii = strlen(mirv);
+
+    // In C locale, isalnum() means [a-zA-Z0-9]
     while (isalnum(*s) || *s == '.' || *s == '/') s++;
-    if (*s) error_exit("salt not in [./A-Za-z0-9]");
-
-    snprintf(salt+i, sizeof(salt)-i, "%s", TT.S);
+    jj = s-TT.S;
+    kk = ii==16 ? 8 : ii;
+    if (*s || jj>ii || jj<kk)
+      error_exit("bad SALT (need [a-zA-Z0-9] len %d-%d)", ii, kk);
+    strcpy(mirv, TT.S);
   }
 
   // Because read_password() doesn't have an fd argument
@@ -61,17 +65,17 @@ void mkpasswd_main(void)
   if (!*toys.optargs) {
     // Prompt and read interactively?
     if (isatty(0)) {
-      if (read_password(toybuf, sizeof(toybuf), "Password: ")) 
+      if (read_password(toybuf, sizeof(toybuf), "Password: "))
         perror_exit("password read failed");
     } else {
-      for (i = 0; i<sizeof(toybuf)-1; i++) {
-        if (!xread(0, toybuf+i, 1)) break;
-        if (toybuf[i] == '\n' || toybuf[i] == '\r') break;
+      for (ii = 0; ii<sizeof(toybuf)-1; ii++) {
+        if (!xread(0, toybuf+ii, 1)) break;
+        if (toybuf[ii] == '\n' || toybuf[ii] == '\r') break;
       }
-      toybuf[i] = 0;
+      toybuf[ii] = 0;
     }
   }
 
   // encrypt & print the password
-  xprintf("%s\n",crypt(*toys.optargs ? *toys.optargs : toybuf, salt));
+  xprintf("%s\n", crypt(*toys.optargs ? *toys.optargs : toybuf, salt));
 }

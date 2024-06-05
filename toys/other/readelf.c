@@ -4,17 +4,18 @@
  *
  * See http://pubs.opengroup.org/onlinepubs/9699919799/utilities/nm.html
 
-USE_READELF(NEWTOY(readelf, "<1(dyn-syms)adehlnp:SsWx:", TOYFLAG_USR|TOYFLAG_BIN))
+USE_READELF(NEWTOY(readelf, "<1(dyn-syms)Aadehlnp:SsWx:", TOYFLAG_USR|TOYFLAG_BIN))
 
 config READELF
   bool "readelf"
   default y
   help
-    usage: readelf [-adehlnSs] [-p SECTION] [-x SECTION] [file...]
+    usage: readelf [-AadehlnSs] [-p SECTION] [-x SECTION] [file...]
 
     Displays information about ELF files.
 
-    -a	Equivalent to -dhlnSs
+    -A	Show architecture-specific info
+    -a	Equivalent to -AdhlnSs
     -d	Show dynamic section
     -e	Headers (equivalent to -hlS)
     -h	Show ELF header
@@ -79,6 +80,18 @@ static unsigned short elf_short(char **p)
   return elf_get(p, 2);
 }
 
+static int fits(char *what, int n, unsigned long long off, unsigned long long size)
+{
+  if (off > TT.size || size > TT.size || off > TT.size-size) {
+    if (n == -1) *toybuf = 0;
+    else snprintf(toybuf, sizeof(toybuf), " %d", n);
+    printf("%s%s's offset %llu + size %llu > file size %llu\n",
+      what, toybuf, off, size, TT.size);
+    return 0;
+  }
+  return 1;
+}
+
 static int get_sh(unsigned i, struct sh *s)
 {
   char *shdr = TT.elf+TT.shoff+i*TT.shentsize;
@@ -100,12 +113,7 @@ static int get_sh(unsigned i, struct sh *s)
   s->addralign = elf_long(&shdr);
   s->entsize = elf_long(&shdr);
 
-  if (s->type != 8) {
-    if (s->offset>TT.size || s->size>TT.size || s->offset>TT.size-s->size) {
-      printf("Bad offset/size %llu/%llu for sh %d\n", s->offset, s->size, i);
-      return 0;
-    }
-  }
+  if (s->type != 8 && !fits("section header", i, s->offset, s->size)) return 0;
 
   if (!TT.shstrtab) s->name = "?";
   else {
@@ -167,11 +175,7 @@ static int get_ph(int i, struct ph *ph)
     ph->align = elf_int(&phdr);
   }
 
-  if (ph->offset >= TT.size-ph->filesz) {
-    printf("phdr %d has bad offset/size %llu/%llu", i, ph->offset, ph->filesz);
-    return 0;
-  }
-
+  if (!fits("program header", i, ph->offset, ph->filesz)) return 0;
   return 1;
 }
 
@@ -232,7 +236,7 @@ DECODER(sh_type, MAP({{0,"NULL"},{1,"PROGBITS"},{2,"SYMTAB"},{3,"STRTAB"},
   {0x6fffff00,"ANDROID_RELR"},{0x6ffffff6,"GNU_HASH"},
   {0x6ffffffd,"VERDEF"},{0x6ffffffe,"VERNEED"},
   {0x6fffffff,"VERSYM"},{0x70000001,"ARM_EXIDX"},
-  {0x70000003,"ARM_ATTRIBUTES"}}))
+  {0x70000003,"ATTRIBUTES"}}))
 
 DECODER(stb_type, MAP({{0,"LOCAL"},{1,"GLOBAL"},{2,"WEAK"}}))
 
@@ -241,6 +245,10 @@ DECODER(stt_type, MAP({{0,"NOTYPE"},{1,"OBJECT"},{2,"FUNC"},{3,"SECTION"},
 
 DECODER(stv_type, MAP({{0,"DEFAULT"},{1,"INTERNAL"},{2,"HIDDEN"},
   {3,"PROTECTED"}}))
+
+DECODER(riscv_attr_tag, MAP({{4,"stack_align"},{5,"arch"},
+  {6,"unaligned_access"},{8,"priv_spec"},{10,"priv_spec_minor"},
+  {12,"priv_spec_revision"},{14,"atomic_abi"},{16,"x3_reg_usage"}}))
 
 static void show_symbols(struct sh *table, struct sh *strtab)
 {
@@ -297,20 +305,79 @@ static int notematch(int namesz, char **p, char *expected)
   return 1;
 }
 
+static unsigned long long uleb(char **ptr, char *end)
+{
+  unsigned long long result = 0;
+  int shift = 0;
+  unsigned char b;
+
+  do {
+    if (*ptr >= end) error_exit("EOF in uleb128");
+    b = **ptr;
+    *ptr = *ptr + 1;
+    result |= (b & 0x7f) << shift;
+    shift += 7;
+    if (shift > 56) error_exit("uleb128 too long");
+  } while ((b & 0x80));
+  return result;
+}
+
+static void show_attributes(unsigned long offset, unsigned long size)
+{
+  char *attr = TT.elf + offset, *end = TT.elf + offset + size;
+  unsigned long long tag;
+  unsigned len;
+
+  // Attributes sections start with an 'A'...
+  if (offset == size || *attr++ != 'A')
+    return error_msg("%s: bad attributes @%lu", TT.f, offset);
+
+  // ...followed by vendor-specific subsections.
+  // TODO: there's a loop implied there, but i've never seen >1 subsection.
+
+  // A subsection starts with a uint32 length and ASCII vendor name.
+  len = elf_int(&attr);
+  if (!memchr(attr, 0, 32)) return error_msg("%s: bad vendor name", TT.f);
+  printf("\nAttribute Section: %s\n", attr);
+  attr += strlen(attr) + 1;
+
+  // ...followed by one or more sub-subsections.
+  // TODO: there's a loop implied there, but i've never seen >1 sub-subsection.
+  // A sub-subsection starts with a uleb128 tag and uint32 length.
+  tag = uleb(&attr, end);
+  len = elf_int(&attr);
+  if (tag == 1) {
+    printf("File Attributes\n");
+
+    // ...followed by actual attribute tag/value pairs.
+    while (attr < end) {
+      tag = uleb(&attr, end);
+
+      // TODO: arm tags don't seem to follow any pattern?
+      printf("  Tag_RISCV_%s: ", riscv_attr_tag(tag));
+      // Even riscv tags have uleb128 values, odd ones strings.
+      if (!(tag & 1)) printf("%lld\n", uleb(&attr, end));
+      else {
+        printf("%s\n", attr);
+        attr += strlen(attr) + 1;
+      }
+    }
+  } else {
+    // Do other tags exist?
+    error_msg("%s: unknown attributes tag=%llx (size=%u)\n", TT.f, tag, len);
+  }
+}
+
 static void show_notes(unsigned long offset, unsigned long size)
 {
-  char *note = TT.elf + offset;
+  char *note = TT.elf + offset, *end = TT.elf + offset + size;
 
-  if (size > TT.size || offset > TT.size-size) {
-    printf("Bad note bounds %lu/%lu\n", offset, size);
-
-    return;
-  }
+  if (!fits("note", -1, offset, size)) return;
 
   printf("  %-20s%11s\tDescription\n", "Owner", "Data size");
-  while (note < TT.elf+offset+size) {
+  while (note < end) {
     char *p = note, *desc;
-    unsigned namesz=elf_int(&p), descsz=elf_int(&p), type=elf_int(&p), j=0;
+    unsigned namesz=elf_int(&p),descsz=elf_int(&p),type=elf_int(&p),j=0;
 
     if (namesz > size || descsz > size)
       return error_msg("%s: bad note @%lu", TT.f, offset);
@@ -320,23 +387,56 @@ static void show_notes(unsigned long offset, unsigned long size)
         printf("NT_GNU_ABI_TAG\tOS: %s, ABI: %u.%u.%u",
           !elf_int(&p)?"Linux":"?", elf_int(&p), elf_int(&p), elf_int(&p)), j=1;
       } else if (type == 3) {
-// TODO should this set j=1?
         printf("NT_GNU_BUILD_ID\t");
         for (;j<descsz;j++) printf("%02x", *p++);
       } else if (type == 4) {
         printf("NT_GNU_GOLD_VERSION\t%.*s", descsz, p), j=1;
+      } else if (type == 5) {
+        printf("NT_GNU_PROPERTY_TYPE_0\n    Properties:");
+        while (descsz - j > 0) {
+          int pr_type = elf_int(&p);
+          int pr_size = elf_int(&p), k, pr_data;
+
+          j += 8;
+          if (p > end) return error_msg("%s: bad property @%lu", TT.f, offset);
+          if (pr_size != 4) {
+            // Just hex dump anything we aren't familiar with.
+            for (k=0;k<pr_size;k++) printf("%02x", *p++);
+            xputc('\n');
+            j += pr_size;
+          } else {
+            pr_data = elf_int(&p);
+            elf_int(&p); // Skip padding.
+            j += 8;
+            if (pr_type == 0xc0000000) {
+              printf("\tarm64 features:");
+              if (pr_data & 1) printf(" bti");
+              if (pr_data & 2) printf(" pac");
+              xputc('\n');
+            } else if (pr_type == 0xc0000002) {
+              printf("\tx86 feature:");
+              if (pr_data & 1) printf(" ibt");
+              if (pr_data & 2) printf(" shstk");
+              xputc('\n');
+            } else if (pr_type == 0xc0008002) {
+              printf("\tx86 isa needed: x86-64v%d", ffs(pr_data));
+            } else {
+              printf("\tother (%#x): %#x", pr_type, pr_data);
+            }
+          }
+        }
       } else p -= 4;
     } else if (notematch(namesz, &p, "Android")) {
       if (type == 1) {
         printf("NT_VERSION\tAPI level %u", elf_int(&p)), j=1;
         if (descsz>=132) printf(", NDK %.64s (%.64s)", p, p+64);
+      } else if (type == 5) {
+        printf("NT_PAD_SEGMENT\tpad_segment=%u", elf_int(&p)), j=1;
       } else p -= 8;
     } else if (notematch(namesz, &p, "CORE")) {
       if (*(desc = nt_type_core(type)) != '0') printf("%s", desc), j=1;
-// TODO else p -= 5?
     } else if (notematch(namesz, &p, "LINUX")) {
       if (*(desc = nt_type_linux(type)) != '0') printf("%s", desc), j=1;
-// TODO else p -= 6?
     }
 
     // If we didn't do custom output above, show a hex dump.
@@ -400,7 +500,8 @@ static void scan_elf()
            TT.phoff);
     printf("  Start of section headers:          %llu (bytes into file)\n",
            TT.shoff);
-    printf("  Flags:                             0x%x\n", flags);
+    printf("  Flags:                             0x%x", flags);
+    elf_print_flags(machine, flags); putchar('\n');
     printf("  Size of this header:               %d (bytes)\n", ehsize);
     printf("  Size of program headers:           %d (bytes)\n", TT.phentsize);
     printf("  Number of program headers:         %d\n", phnum);
@@ -449,7 +550,7 @@ static void scan_elf()
     if (FLAG(S)) {
       char sh_flags[12] = {}, *p = sh_flags;
 
-      for (j=0; j<12; j++) if (s.flags&(1<<j)) *p++ = "WAXxMSILOTC"[j];
+      for (j=0; j<12; j++) if (s.flags&(1<<j)) *p++ = "WAXxMSILOGTC"[j];
       printf("  [%2d] %-17s %-15s %0*llx %06llx %06llx %02llx %3s %2d %2d %2lld\n",
              i, s.name, sh_type(s.type), w, s.addr, s.offset, s.size,
              s.entsize, sh_flags, s.link, s.info, s.addralign);
@@ -576,6 +677,16 @@ static void scan_elf()
     }
   }
 
+  // TODO: ARC/ARM/CSKY have these too.
+  if (FLAG(A) && machine == 243) { // RISCV
+    for (i=0; i<TT.shnum; i++) {
+      if (!get_sh(i, &s)) continue;
+      if (s.type == 0x70000003 /*SHT_RISCV_ATTRIBUTES*/) {
+        show_attributes(s.offset, s.size);
+      }
+    }
+  }
+
   if (find_section(TT.x, &s)) {
     char *p = TT.elf+s.offset;
     long offset = 0;
@@ -615,7 +726,7 @@ static void scan_elf()
 void readelf_main(void)
 {
   char **arg;
-  int all = FLAG_d|FLAG_h|FLAG_l|FLAG_n|FLAG_S|FLAG_s|FLAG_dyn_syms;
+  int all = FLAG_A|FLAG_d|FLAG_h|FLAG_l|FLAG_n|FLAG_S|FLAG_s|FLAG_dyn_syms;
 
   if (FLAG(a)) toys.optflags |= all;
   if (FLAG(e)) toys.optflags |= FLAG_h|FLAG_l|FLAG_S;
@@ -626,9 +737,9 @@ void readelf_main(void)
     int fd = open(TT.f = *arg, O_RDONLY);
     struct stat sb;
 
-    if (fd == -1) perror_msg("%s", TT.f);
+    if (fd == -1) perror_msg_raw(TT.f);
     else {
-      if (fstat(fd, &sb)) perror_msg("%s", TT.f);
+      if (fstat(fd, &sb)) perror_msg_raw(TT.f);
       else if (!sb.st_size) error_msg("%s: empty", TT.f);
       else if (!S_ISREG(sb.st_mode)) error_msg("%s: not a regular file",TT.f);
       else {

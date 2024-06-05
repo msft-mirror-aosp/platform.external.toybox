@@ -11,25 +11,25 @@ config SYSLOGD
   bool "syslogd"
   default n
   help
-  usage: syslogd  [-a socket] [-O logfile] [-f config file] [-m interval]
-                  [-p socket] [-s SIZE] [-b N] [-R HOST] [-l N] [-nSLKD]
+    usage: syslogd  [-a socket] [-O logfile] [-f config file] [-m interval]
+                    [-p socket] [-s SIZE] [-b N] [-R HOST] [-l N] [-nSLKD]
 
-  System logging utility
+    System logging utility
 
-  -a      Extra unix socket for listen
-  -O FILE Default log file <DEFAULT: /var/log/messages>
-  -f FILE Config file <DEFAULT: /etc/syslog.conf>
-  -p      Alternative unix domain socket <DEFAULT : /dev/log>
-  -n      Avoid auto-backgrounding
-  -S      Smaller output
-  -m MARK interval <DEFAULT: 20 minutes> (RANGE: 0 to 71582787)
-  -R HOST Log to IP or hostname on PORT (default PORT=514/UDP)"
-  -L      Log locally and via network (default is network only if -R)"
-  -s SIZE Max size (KB) before rotation (default:200KB, 0=off)
-  -b N    rotated logs to keep (default:1, max=99, 0=purge)
-  -K      Log to kernel printk buffer (use dmesg to read it)
-  -l N    Log only messages more urgent than prio(default:8 max:8 min:1)
-  -D      Drop duplicates
+    -a      Extra unix socket for listen
+    -O FILE Default log file <DEFAULT: /var/log/messages>
+    -f FILE Config file <DEFAULT: /etc/syslog.conf>
+    -p      Alternative unix domain socket <DEFAULT : /dev/log>
+    -n      Avoid auto-backgrounding
+    -S      Smaller output
+    -m MARK interval <DEFAULT: 20 minutes> (RANGE: 0 to 71582787)
+    -R HOST Log to IP or hostname on PORT (default PORT=514/UDP)"
+    -L      Log locally and via network (default is network only if -R)"
+    -s SIZE Max size (KB) before rotation (default:200KB, 0=off)
+    -b N    rotated logs to keep (default:1, max=99, 0=purge)
+    -K      Log to kernel printk buffer (use dmesg to read it)
+    -l N    Log only messages more urgent than prio(default:8 max:8 min:1)
+    -D      Drop duplicates
 */
 
 #define FOR_syslogd
@@ -84,7 +84,7 @@ int logger_lookup(int where, char *key)
 //search the given name and return its value
 static char *dec(int val, CODE *clist, char *buf)
 {
-  for (; clist->c_name; clist++) 
+  for (; clist->c_name; clist++)
     if (val == clist->c_val) return clist->c_name;
   sprintf(buf, "%u", val);
 
@@ -258,7 +258,7 @@ static void open_logfiles(void)
       rp.ai_socktype = SOCK_DGRAM;
       rp.ai_protocol = IPPROTO_UDP;
 
-      if (getaddrinfo(tmpfile, NULL, &rp, &info) || !info) 
+      if (getaddrinfo(tmpfile, NULL, &rp, &info) || !info)
         perror_exit("BAD ADDRESS: can't find : %s ", tmpfile);
       ((struct sockaddr_in*)info->ai_addr)->sin_port = htons(port);
       memcpy(&tfd->saddr, info->ai_addr, info->ai_addrlen);

@@ -19,19 +19,20 @@
  * TODO: hardlink support, -A, -0, -a, -L, --sparse
  * TODO: --renumber-archives (probably always?) --ignore-devno --reproducible
 
-USE_CPIO(NEWTOY(cpio, "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]", TOYFLAG_BIN))
+USE_CPIO(NEWTOY(cpio, "(ignore-devno)(renumber-inodes)(quiet)(no-preserve-owner)R(owner):md(make-directories)uLH:p|i|t|F:v(verbose)o|[!pio][!pot][!pF]", TOYFLAG_BIN))
 
 config CPIO
   bool "cpio"
   default y
   help
-    usage: cpio -{o|t|i|p DEST} [-v] [--verbose] [-F FILE] [-R [USER][:GROUP] [--no-preserve-owner]
+    usage: cpio -{o|t|i|p DEST} [-dLtuv] [--verbose] [-F FILE] [-R [USER][:GROUP] [--no-preserve-owner]
 
     Copy files into and out of a "newc" format cpio archive.
 
     -d	Create directories if needed
     -F FILE	Use archive FILE instead of stdin/stdout
     -i	Extract from archive into file system (stdin=archive)
+    -L	Follow symlinks
     -o	Create archive (stdin=list of files, stdout=archive)
     -p DEST	Copy-pass mode, copy stdin file list to directory DEST
     -R USER	Replace owner with USER[:GROUP]
@@ -264,8 +265,9 @@ void cpio_main(void)
       len = getline(&name, &size, stdin);
       if (len<1) break;
       if (name[len-1] == '\n') name[--len] = 0;
+      if (!len) continue;
       nlen = len+1;
-      if (lstat(name, &st) || (S_ISREG(st.st_mode)
+      if ((FLAG(L)?stat:lstat)(name, &st) || (S_ISREG(st.st_mode)
           && st.st_size && (fd = open(name, O_RDONLY))<0)
           || (S_ISLNK(st.st_mode) && !(link = xreadlink(name))))
       {

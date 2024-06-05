@@ -41,19 +41,18 @@ GLOBALS(
 
 static void do_xxd(int fd, char *name)
 {
+  FILE *fp = xfdopen(xdup(fd), "r");
   long long pos = 0;
   long long limit = TT.l;
   int i, j, k, len, space, c = TT.c ? : sizeof(toybuf);
 
   if (FLAG(s)) {
-    xlseek(fd, TT.s, SEEK_SET);
+    if (fseek(fp, TT.s, SEEK_SET)) perror_exit("seek %ld", TT.s);
     pos = TT.s;
     if (limit) limit += TT.s;
   }
 
-  while (0<(len = readall(fd, toybuf,
-                          (limit && limit-pos<c)?limit-pos:c)))
-  {
+  while ((len=fread(toybuf, 1, (limit && limit-pos<c) ? limit-pos : c, fp))>0){
     if (!FLAG(p)) printf("%08llx: ", TT.o + pos);
     pos += len;
     space = 2*TT.c;
@@ -70,7 +69,7 @@ static void do_xxd(int fd, char *name)
 
       space -= printf("%02x", toybuf[FLAG(e) ? (i + TT.g - j) : i]);
       i++,j+=2;
-      if (TT.g && !(i%TT.g)) {
+      if (!FLAG(p) && TT.g && !(i%TT.g)) {
         putchar(' ');
         space--;
         j=1;
@@ -86,6 +85,7 @@ static void do_xxd(int fd, char *name)
   }
   if (!TT.c && FLAG(p)) putchar('\n');
   if (len<0) perror_exit("read");
+  fclose(fp);
 }
 
 static void do_xxd_include(int fd, char *name)
@@ -125,13 +125,17 @@ static void do_xxd_reverse(int fd, char *name)
   if (FLAG(i)) while (fscanf(fp, " 0x%02x,", &tmp) == 1) xputc(tmp);
   else while (!feof(fp)) {
     int col = 0;
+    char ch;
 
     // Each line of a regular hexdump starts with an offset/address.
     // Each line of a plain hexdump just goes straight into the bytes.
-    if (!FLAG(p) && fscanf(fp, "%llx: ", &pos) == 1) {
+    if (!FLAG(p) && fscanf(fp, "%llx%c ", &pos, &ch) == 2) {
+      if (ch != ':' && ch != ' ')
+        error_exit("%s: no separator between offset/address and bytes "
+            "(missing -p?)", name);
       if (pos != current_pos && fseek(stdout, pos, SEEK_SET)) {
         // TODO: just write out zeros if non-seekable?
-        perror_exit("%s: seek failed", name);
+        perror_exit("%s: seek %llx failed", name, pos);
       }
     }
 

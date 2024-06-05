@@ -105,6 +105,16 @@ static struct config sysconfs[] = {
   CONF(STREAM_MAX), CONF(SYMLOOP_MAX), CONF(TIMER_MAX), CONF(TTY_NAME_MAX),
   CONF(TZNAME_MAX), CONF(UIO_MAXIOV),
 
+  /* bionic and glibc have these; macOS and musl don't. */
+#ifdef _SC_LEVEL1_ICACHE_SIZE
+  CONF(LEVEL1_ICACHE_SIZE), CONF(LEVEL1_ICACHE_ASSOC),
+  CONF(LEVEL1_ICACHE_LINESIZE), CONF(LEVEL1_DCACHE_SIZE),
+  CONF(LEVEL1_DCACHE_ASSOC), CONF(LEVEL1_DCACHE_LINESIZE),
+  CONF(LEVEL2_CACHE_SIZE),CONF(LEVEL2_CACHE_ASSOC),CONF(LEVEL2_CACHE_LINESIZE),
+  CONF(LEVEL3_CACHE_SIZE),CONF(LEVEL3_CACHE_ASSOC),CONF(LEVEL3_CACHE_LINESIZE),
+  CONF(LEVEL4_CACHE_SIZE),CONF(LEVEL4_CACHE_ASSOC),CONF(LEVEL4_CACHE_LINESIZE),
+#endif
+
   /* Names that just don't match the symbol, do it by hand */
   {"_AVPHYS_PAGES", _SC_AVPHYS_PAGES}, {"_PHYS_PAGES", _SC_PHYS_PAGES},
   {"_NPROCESSORS_CONF", _SC_NPROCESSORS_CONF},
@@ -190,14 +200,14 @@ static void show_conf(int i, struct config *c, const char *path)
 void getconf_main(void)
 {
   struct config *configs[] = {sysconfs, pathconfs, confstrs, limits, others},
-    *c = NULL;
+    *c = 0;
   int i, j, lens[] = {ARRAY_LEN(sysconfs), ARRAY_LEN(pathconfs),
     ARRAY_LEN(confstrs), ARRAY_LEN(limits), ARRAY_LEN(others)};
   char *name, *path = (toys.optc==2) ? toys.optargs[1] : "/",
     *config_names[] = {"sysconf(3)", "pathconf(3)", "confstr(3)",
     "<limits.h>", "Misc"};
 
-  if (toys.optflags&FLAG_a) {
+  if (FLAG(a)) {
     for (i = 0; i<5; i++) {
       for (j = 0; j<lens[i]; j++) {
         c = &configs[i][j];
@@ -208,7 +218,7 @@ void getconf_main(void)
     return;
   }
 
-  if (toys.optflags&FLAG_l) {
+  if (FLAG(l)) {
     for (i = 0; i<5; i++) {
       printf("%s\n", config_names[i]);
       for (j = 0; j<lens[i]; j++) printf("  %s\n", configs[i][j].name);

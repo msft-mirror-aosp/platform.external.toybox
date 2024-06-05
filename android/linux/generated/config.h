@@ -30,6 +30,8 @@
 #define USE_TOYBOX_SUID(...)
 #define CFG_TOYBOX_UID_SYS 100
 #define CFG_TOYBOX_UID_USR 500
+#define CFG_TOYBOX_ZHELP 0
+#define USE_TOYBOX_ZHELP(...)
 #define CFG_ACPI 0
 #define USE_ACPI(...)
 #define CFG_ARCH 0
@@ -106,6 +108,8 @@
 #define USE_CROND(...)
 #define CFG_CRONTAB 0
 #define USE_CRONTAB(...)
+#define CFG_CSPLIT 0
+#define USE_CSPLIT(...)
 #define CFG_CUT 1
 #define USE_CUT(...) __VA_ARGS__
 #define CFG_DATE 1
@@ -176,8 +180,8 @@
 #define USE_FILE(...) __VA_ARGS__
 #define CFG_FIND 1
 #define USE_FIND(...) __VA_ARGS__
-#define CFG_FLOCK 0
-#define USE_FLOCK(...)
+#define CFG_FLOCK 1
+#define USE_FLOCK(...) __VA_ARGS__
 #define CFG_FMT 0
 #define USE_FMT(...)
 #define CFG_FOLD 0
@@ -272,6 +276,8 @@
 #define USE_I2CGET(...)
 #define CFG_I2CSET 0
 #define USE_I2CSET(...)
+#define CFG_I2CTRANSFER 0
+#define USE_I2CTRANSFER(...)
 #define CFG_ICONV 0
 #define USE_ICONV(...)
 #define CFG_ID 1
@@ -356,6 +362,8 @@
 #define USE_MDEV_CONF(...)
 #define CFG_MDEV 0
 #define USE_MDEV(...)
+#define CFG_MEMEATER 0
+#define USE_MEMEATER(...)
 #define CFG_MICROCOM 1
 #define USE_MICROCOM(...) __VA_ARGS__
 #define CFG_MIX 0
@@ -394,8 +402,8 @@
 #define USE_MODPROBE(...)
 #define CFG_MORE 0
 #define USE_MORE(...)
-#define CFG_MOUNT 0
-#define USE_MOUNT(...)
+#define CFG_MOUNT 1
+#define USE_MOUNT(...) __VA_ARGS__
 #define CFG_MOUNTPOINT 0
 #define USE_MOUNTPOINT(...)
 #define CFG_MV 1
@@ -598,6 +606,10 @@
 #define USE_TRUNCATE(...) __VA_ARGS__
 #define CFG_TR 1
 #define USE_TR(...) __VA_ARGS__
+#define CFG_TS 0
+#define USE_TS(...)
+#define CFG_TSORT 0
+#define USE_TSORT(...)
 #define CFG_TTY 0
 #define USE_TTY(...)
 #define CFG_TUNCTL 0
@@ -606,8 +618,8 @@
 #define USE_UCLAMPSET(...)
 #define CFG_ULIMIT 0
 #define USE_ULIMIT(...)
-#define CFG_UMOUNT 0
-#define USE_UMOUNT(...)
+#define CFG_UMOUNT 1
+#define USE_UMOUNT(...) __VA_ARGS__
 #define CFG_UNAME 1
 #define USE_UNAME(...) __VA_ARGS__
 #define CFG_UNICODE 0
@@ -618,8 +630,8 @@
 #define USE_UNIX2DOS(...) __VA_ARGS__
 #define CFG_UNLINK 0
 #define USE_UNLINK(...)
-#define CFG_UNSHARE 0
-#define USE_UNSHARE(...)
+#define CFG_UNSHARE 1
+#define USE_UNSHARE(...) __VA_ARGS__
 #define CFG_UPTIME 0
 #define USE_UPTIME(...)
 #define CFG_USERADD 0
