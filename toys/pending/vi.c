@@ -1099,6 +1099,7 @@ static int vi_push(char reg, int count0, int count1)
   //if yank ends with \n push is linemode else push in place+1
   size_t history = TT.cursor;
   char *start = TT.yank.data, *eol = strchr(start, '\n');
+  if (strlen(start) == 0) return 1;
 
   if (start[strlen(start)-1] == '\n') {
     if ((TT.cursor = text_strchr(TT.cursor, '\n')) == SIZE_MAX)
@@ -1384,23 +1385,23 @@ static int run_ex_cmd(char *cmd)
     else if (cmd[1] == 'g' || cmd[1] == 'v') {
       char *rgx = xmalloc(strlen(cmd));
       int el = get_endline(), ln = 0, vorg = (cmd[1] == 'v' ? REG_NOMATCH : 0);
-      regex_t rgxc;
+      if (sscanf(cmd+2, "/%[^/]/%[^\ng]", rgx, cmd+1) == 2) {
+        regex_t rgxc;
+        if (!regcomp(&rgxc, rgx, 0)) {
+          cmd[0] = ':';
 
-      if (!sscanf(cmd+2, "/%[^/]/%[^\ng]", rgx, cmd+1) ||
-          regcomp(&rgxc, rgx, 0)) goto gcleanup;
+          for (; ln < el; ln++) {
+            run_vi_cmd("yy");
+            if (regexec(&rgxc, TT.yank.data, 0, 0, 0) == vorg) run_ex_cmd(cmd);
+            cur_down(1, 1, 0);
+          }
 
-      cmd[0] = ':';
-
-      for (; ln < el; ln++) {
-        run_vi_cmd("yy");
-        if (regexec(&rgxc, TT.yank.data, 0, 0, 0) == vorg) run_ex_cmd(cmd);
-        cur_down(1, 1, 0);
+          // Reset Frame
+          TT.vi_mov_flag |= 0x30000000;
+        }
+        regfree(&rgxc);
       }
-
-      // Reset Frame
-      TT.vi_mov_flag |= 0x30000000;
-gcleanup:
-      regfree(&rgxc); free(rgx);
+      free(rgx);
     }
 
     // Line Ranges
@@ -1746,7 +1747,7 @@ void vi_main(void)
               memset(vi_buf, 0, 16);
               vi_buf_pos = 0;
             }
-            else if (vi_buf_pos == 16) {
+            else if (vi_buf_pos == 15) {
               vi_buf_pos = 0;
               memset(vi_buf, 0, 16);
             }
