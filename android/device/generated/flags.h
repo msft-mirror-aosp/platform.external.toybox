@@ -1941,9 +1941,9 @@
 #undef FLAG_l
 #endif
 
-// lspci emkn@x@i: emkn@x@i:
+// lspci eDmkn@x@i: eDmkn@x@i:
 #undef OPTSTR_lspci
-#define OPTSTR_lspci "emkn@x@i:"
+#define OPTSTR_lspci "eDmkn@x@i:"
 #ifdef CLEANUP_lspci
 #undef CLEANUP_lspci
 #undef FOR_lspci
@@ -1952,6 +1952,7 @@
 #undef FLAG_n
 #undef FLAG_k
 #undef FLAG_m
+#undef FLAG_D
 #undef FLAG_e
 #endif
 
@@ -3760,12 +3761,13 @@
 #undef FOR_vconfig
 #endif
 
-// vi >1s: >1s:
+// vi >1s:c: >1s:c:
 #undef OPTSTR_vi
-#define OPTSTR_vi ">1s:"
+#define OPTSTR_vi ">1s:c:"
 #ifdef CLEANUP_vi
 #undef CLEANUP_vi
 #undef FOR_vi
+#undef FLAG_c
 #undef FLAG_s
 #endif
 
@@ -5726,7 +5728,8 @@
 #define FLAG_n (1LL<<2)
 #define FLAG_k (1LL<<3)
 #define FLAG_m (1LL<<4)
-#define FLAG_e (1LL<<5)
+#define FLAG_D (1LL<<5)
+#define FLAG_e (1LL<<6)
 #endif
 
 #ifdef FOR_lsusb
@@ -7399,7 +7402,8 @@
 #ifndef TT
 #define TT this.vi
 #endif
-#define FLAG_s (1LL<<0)
+#define FLAG_c (1LL<<0)
+#define FLAG_s (1LL<<1)
 #endif
 
 #ifdef FOR_vmstat
