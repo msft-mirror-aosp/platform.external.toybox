@@ -4,7 +4,7 @@
  * Copyright 2013 Isaac Dunham <ibid.ag@gmail.com>
 
 USE_LSUSB(NEWTOY(lsusb, "i:", TOYFLAG_USR|TOYFLAG_BIN))
-USE_LSPCI(NEWTOY(lspci, "emkn@x@i:", TOYFLAG_USR|TOYFLAG_BIN))
+USE_LSPCI(NEWTOY(lspci, "eDmkn@x@i:", TOYFLAG_USR|TOYFLAG_BIN))
 
 config LSPCI
   bool "lspci"
@@ -19,6 +19,7 @@ config LSPCI
     -k	Show kernel driver
     -m	Machine readable
     -n	Numeric output (-nn for both)
+    -D	Print domain numbers
     -x	Hex dump of config space (64 bytes; -xxx for 256, -xxxx for 4096)
 
 config LSUSB
@@ -192,11 +193,13 @@ static int list_pci(struct dirtree *new)
   char *driver = 0, buf[16], *ss, *names[3];
   int cvd[3] = {0}, ii, revision = 0;
   off_t len = sizeof(toybuf);
+  /* skip 0000: part by default */
+  char *bus = strchr(new->name, ':') + 1;
 
 // Output formats: -n, -nn, -m, -nm, -nnm, -k
 
   if (!new->parent) return DIRTREE_RECURSE;
-  if (strlen(new->name)<6) return 0;
+  if (!bus || strlen(new->name)<6) return 0;
   TT.count = 0;
 
   // Load revision
@@ -214,11 +217,12 @@ static int list_pci(struct dirtree *new)
   if (!FLAG(e)) cvd[0] >>= 8;
 
   // Output line according to flags
-  printf("%s", new->name+5);
+  if (FLAG(D) || strncmp(new->name, "0000:", bus-new->name)) bus = new->name;
+  printf("%s", bus);
   for (ii = 0; ii<3; ii++) {
     sprintf(buf, "%0*x", 6-2*(ii||!FLAG(e)), cvd[ii]);
     if (!TT.n) printf(FLAG(m) ? " \"%s\"" : ": %s"+(ii!=1), names[ii] ? : buf);
-    else if (TT.n==1) printf(FLAG(m) ? " \"%s\"" : (ii==2) ? "%s " : " %s:", buf);
+    else if (TT.n==1) printf(FLAG(m) ? " \"%s\"" : (ii==2)?"%s ":" %s:", buf);
     else if (!FLAG(m)) {
       // This one permutes the order, so do it all first time and abort loop
       printf(" %s [%s]: %s %s [%04x:%04x]", names[0], buf, names[1], names[2],
@@ -234,9 +238,7 @@ static int list_pci(struct dirtree *new)
     FILE *fp;
     int b, col = 0, max = (TT.x >= 4) ? 4096 : ((TT.x >= 3) ? 256 : 64);
 
-    // TODO: where does the "0000:" come from?
-    snprintf(toybuf, sizeof(toybuf), "/sys/bus/pci/devices/0000:%s/config",
-      new->name+5);
+    snprintf(toybuf, sizeof(toybuf), "/sys/bus/pci/devices/%s/config", new->name);
     fp = xfopen(toybuf, "r");
     while ((b = fgetc(fp)) != EOF) {
       if ((col % 16) == 0) printf("%02x: ", col & 0xf0);
