@@ -42,6 +42,8 @@
 #define USE_ARP(...)
 #define CFG_ASCII 0
 #define USE_ASCII(...)
+#define CFG_AWK 0
+#define USE_AWK(...)
 #define CFG_BASE32 0
 #define USE_BASE32(...)
 #define CFG_BASE64 0
