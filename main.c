@@ -132,9 +132,10 @@ static void unknown(char *name)
 // Parse --help and --version for (almost) all commands
 void check_help(char **arg)
 {
+  long flags = toys.which->flags;
+
   if (!CFG_TOYBOX_HELP_DASHDASH || !*arg) return;
-  if (!CFG_TOYBOX || toys.which != toy_list)
-    if (toys.which->flags&TOYFLAG_NOHELP) return;
+  if (!CFG_TOYBOX || toys.which!=toy_list) if (flags&TOYFLAG_NOHELP) return;
 
   if (!strcmp(*arg, "--help")) {
     if (CFG_TOYBOX && toys.which == toy_list && arg[1]) {
@@ -146,7 +147,13 @@ void check_help(char **arg)
   }
 
   if (!strcmp(*arg, "--version")) {
-    xprintf("toybox %s\n", toybox_version);
+    // Lie to autoconf when it asks stupid questions, so configure regexes
+    // that look for "GNU sed version %f" greater than some old buggy number
+    // don't fail us for not matching their narrow expectations.
+    *toybuf = 0;
+    if (flags&TOYFLAG_AUTOCONF)
+      sprintf(toybuf, " (is not GNU %s 9.0)", toys.which->name);
+    xprintf("toybox %s%s\n", toybox_version, toybuf);
     xexit();
   }
 }
@@ -154,8 +161,6 @@ void check_help(char **arg)
 // Setup toybox global state for this command.
 void toy_singleinit(struct toy_list *which, char *argv[])
 {
-  char *buf;
-
   toys.which = which;
   toys.argv = argv;
   toys.toycount = ARRAY_LEN(toy_list);
@@ -168,6 +173,9 @@ void toy_singleinit(struct toy_list *which, char *argv[])
 
   // Setup we only want to do once: skip for multiplexer or NOFORK reentry
   if (!(CFG_TOYBOX && which == toy_list) && !(which->flags & TOYFLAG_NOFORK)) {
+    char *buf = 0;
+    int btype = _IOFBF;
+
     toys.old_umask = umask(0);
     if (!(which->flags & TOYFLAG_UMASK)) umask(toys.old_umask);
 
@@ -178,8 +186,10 @@ void toy_singleinit(struct toy_list *which, char *argv[])
       uselocale(newlocale(LC_CTYPE_MASK, "C.UTF-8", 0) ? :
         newlocale(LC_CTYPE_MASK, "en_US.UTF-8", 0));
 
-    buf = (which->flags & TOYFLAG_LINEBUF) ? 0 : xmalloc(4096);
-    setvbuf(stdout, buf, buf ? _IOFBF : _IOLBF, buf ? 4096 : 0);
+    if (which->flags & TOYFLAG_LINEBUF) btype = _IOLBF;
+    else if (which->flags & TOYFLAG_NOBUF) btype = _IONBF;
+    else buf = xmalloc(4096);
+    setvbuf(stdout, buf, btype, buf ? 4096 : 0);
   }
 }
 

@@ -28,6 +28,8 @@
 #define USE_TOYBOX_SMACK(...)
 #define CFG_TOYBOX_SUID 0
 #define USE_TOYBOX_SUID(...)
+#define CFG_TOYBOX_UID_SYS 100
+#define CFG_TOYBOX_UID_USR 500
 #define CFG_TOYBOX_ZHELP 0
 #define USE_TOYBOX_ZHELP(...)
 #define CFG_ACPI 0
@@ -40,6 +42,8 @@
 #define USE_ARP(...)
 #define CFG_ASCII 0
 #define USE_ASCII(...)
+#define CFG_AWK 0
+#define USE_AWK(...)
 #define CFG_BASE32 0
 #define USE_BASE32(...)
 #define CFG_BASE64 0

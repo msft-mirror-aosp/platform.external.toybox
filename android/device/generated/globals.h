@@ -78,8 +78,11 @@ struct microcom_data {
 };
 
 struct netcat_data {
-  char *f, *s;
+  char *f, *s, *o, *O;
   long q, p, W, w;
+
+  unsigned ofd, olast, opos, ocount[2];
+  char obuf[16];
 };
 
 struct netstat_data {
@@ -118,7 +121,7 @@ struct blkid_data {
 };
 
 struct blockdev_data {
-  long setbsz, setra;
+  long setra, setbsz;
 };
 
 struct chrt_data {
@@ -143,6 +146,11 @@ struct free_data {
   unsigned bits;
   unsigned long long units;
   char *buf;
+};
+
+struct getopt_data {
+  struct arg_list *l;
+  char *o, *n;
 };
 
 struct gpiodetect_data {
@@ -316,11 +324,6 @@ struct getfattr_data {
   char *n;
 };
 
-struct getopt_data {
-  struct arg_list *l;
-  char *o, *n;
-};
-
 struct lsof_data {
   struct arg_list *p;
 
@@ -376,18 +379,15 @@ struct traceroute_data {
 };
 
 struct vi_data {
-  char *s;
+  char *c, *s;
 
   char *filename;
-  int vi_mode, tabstop, list;
-  int cur_col, cur_row, scr_row;
-  int drawn_row, drawn_col;
-  int count0, count1, vi_mov_flag;
+  int vi_mode, tabstop, list, cur_col, cur_row, scr_row, drawn_row, drawn_col,
+      count0, count1, vi_mov_flag;
   unsigned screen_height, screen_width;
   char vi_reg, *last_search;
   struct str_line {
-    int alloc;
-    int len;
+    int alloc, len;
     char *data;
   } *il;
   size_t screen, cursor; //offsets
@@ -395,7 +395,7 @@ struct vi_data {
   struct yank_buf {
     char reg;
     int alloc;
-    char* data;
+    char *data;
   } yank;
 
   size_t filesize;
@@ -404,8 +404,7 @@ struct vi_data {
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
-      size_t size;
-      size_t len;
+      size_t size, len;
       enum alloc_flag {
         MMAP,  //can be munmap() before exit()
         HEAP,  //can be free() before exit()
@@ -518,6 +517,7 @@ struct du_data {
 
 struct env_data {
   struct arg_list *u;
+  char *e;
 };
 
 struct expand_data {
@@ -597,8 +597,7 @@ struct mkdir_data {
 };
 
 struct mkfifo_data {
-  char *m;
-  char *Z;
+  char *m, *Z;
 
   mode_t mode;
 };
@@ -826,6 +825,7 @@ extern union global_union {
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
 	struct free_data free;
+	struct getopt_data getopt;
 	struct gpiodetect_data gpiodetect;
 	struct hwclock_data hwclock;
 	struct i2cdetect_data i2cdetect;
@@ -855,7 +855,6 @@ extern union global_union {
 	struct diff_data diff;
 	struct expr_data expr;
 	struct getfattr_data getfattr;
-	struct getopt_data getopt;
 	struct lsof_data lsof;
 	struct modprobe_data modprobe;
 	struct more_data more;

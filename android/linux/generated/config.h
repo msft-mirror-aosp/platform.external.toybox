@@ -28,6 +28,8 @@
 #define USE_TOYBOX_SMACK(...)
 #define CFG_TOYBOX_SUID 0
 #define USE_TOYBOX_SUID(...)
+#define CFG_TOYBOX_UID_SYS 100
+#define CFG_TOYBOX_UID_USR 500
 #define CFG_TOYBOX_ZHELP 0
 #define USE_TOYBOX_ZHELP(...)
 #define CFG_ACPI 0
@@ -40,6 +42,8 @@
 #define USE_ARP(...)
 #define CFG_ASCII 0
 #define USE_ASCII(...)
+#define CFG_AWK 0
+#define USE_AWK(...)
 #define CFG_BASE32 0
 #define USE_BASE32(...)
 #define CFG_BASE64 0
@@ -400,8 +404,8 @@
 #define USE_MODPROBE(...)
 #define CFG_MORE 0
 #define USE_MORE(...)
-#define CFG_MOUNT 0
-#define USE_MOUNT(...)
+#define CFG_MOUNT 1
+#define USE_MOUNT(...) __VA_ARGS__
 #define CFG_MOUNTPOINT 0
 #define USE_MOUNTPOINT(...)
 #define CFG_MV 1
@@ -616,8 +620,8 @@
 #define USE_UCLAMPSET(...)
 #define CFG_ULIMIT 0
 #define USE_ULIMIT(...)
-#define CFG_UMOUNT 0
-#define USE_UMOUNT(...)
+#define CFG_UMOUNT 1
+#define USE_UMOUNT(...) __VA_ARGS__
 #define CFG_UNAME 1
 #define USE_UNAME(...) __VA_ARGS__
 #define CFG_UNICODE 0
@@ -628,8 +632,8 @@
 #define USE_UNIX2DOS(...) __VA_ARGS__
 #define CFG_UNLINK 0
 #define USE_UNLINK(...)
-#define CFG_UNSHARE 0
-#define USE_UNSHARE(...)
+#define CFG_UNSHARE 1
+#define USE_UNSHARE(...) __VA_ARGS__
 #define CFG_UPTIME 0
 #define USE_UPTIME(...)
 #define CFG_USERADD 0
