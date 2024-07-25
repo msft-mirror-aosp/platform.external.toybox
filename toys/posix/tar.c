@@ -20,7 +20,7 @@
  * No --no-null because the args infrastructure isn't ready.
  * Until args.c learns about no- toggles, --no-thingy always wins over --thingy
 
-USE_TAR(NEWTOY(tar, "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TAR(NEWTOY(tar, "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_UMASK))
 
 config TAR
   bool "tar"
@@ -84,7 +84,7 @@ GLOBALS(
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size, ssize;
+    long long size, ssize, oldsparse;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -526,6 +526,12 @@ static void wsettime(char *s, long long sec)
     perror_msg("settime %lld %s", sec, s);
 }
 
+static void freedup(char **to, char *from)
+{
+  free(*to);
+  *to = xstrdup(from);
+}
+
 // Do pending directory utimes(), NULL to flush all.
 static int dirflush(char *name, int isdir)
 {
@@ -547,8 +553,7 @@ static int dirflush(char *name, int isdir)
 
     // --restrict means first entry extracted is what everything must be under
     if (FLAG(restrict)) {
-      free(TT.cwd);
-      TT.cwd = xstrdup(s);
+      freedup(&TT.cwd, s);
       toys.optflags ^= FLAG_restrict;
     }
     // use resolved name so trailing / is stripped
@@ -590,7 +595,7 @@ static void sendfile_sparse(int fd)
         }
       } else {
         sent = len;
-        if (!(len = TT.sparse[i*2+1]) && ftruncate(fd, sent+len))
+        if (!(len = TT.sparse[i*2+1]) && ftruncate(fd, sent))
           perror_msg("ftruncate");
       }
       if (len+used>TT.hdr.size) error_exit("sparse overflow");
@@ -637,7 +642,7 @@ static void extract_to_disk(char *name)
     } else {
       int fd = WARN_ONLY|O_WRONLY|O_CREAT|(FLAG(overwrite) ? O_TRUNC : O_EXCL);
 
-      if ((fd = xcreate(name, fd, ala&07777)) != -1) sendfile_sparse(fd);
+      if ((fd = xcreate(name, fd, 0700)) != -1) sendfile_sparse(fd);
       else return skippy(TT.hdr.size);
     }
   } else if (S_ISDIR(ala)) {
@@ -646,7 +651,7 @@ static void extract_to_disk(char *name)
   } else if (S_ISLNK(ala)) {
     if (symlink(TT.hdr.link_target, name))
       return perror_msg("can't link '%s' -> '%s'", name, TT.hdr.link_target);
-  } else if (mknod(name, ala, TT.hdr.device))
+  } else if (mknod(name, ala&~toys.old_umask, TT.hdr.device))
     return perror_msg("can't create '%s'", name);
 
   // Set ownership
@@ -668,7 +673,7 @@ static void extract_to_disk(char *name)
     if (lchown(name, u, g)) perror_msg("chown %d:%d '%s'", u, g, name);;
   }
 
-  if (!S_ISLNK(ala)) chmod(name, FLAG(p) ? ala : ala&0777);
+  if (!S_ISLNK(ala)) chmod(name, FLAG(p) ? ala : ala&0777&~toys.old_umask);
 
   // Apply mtime.
   if (!FLAG(m)) {
@@ -752,11 +757,11 @@ static void unpack_tar(char *first)
             sefd = xopen("/proc/self/attr/fscreate", O_WRONLY|WARN_ONLY);
             if (sefd==-1 ||  i!=write(sefd, pp, i))
               perror_msg("setfscreatecon %s", pp);
-          } else if (strstart(&pp, "path=")) {
-            free(TT.hdr.name);
-            TT.hdr.name = xstrdup(pp);
-            break;
-          }
+          } else if (strstart(&pp, "path=")) freedup(&TT.hdr.name, pp);
+          // legacy sparse format circa 2005
+          else if (strstart(&pp, "GNU.sparse.name=")) freedup(&TT.hdr.name, pp);
+          else if (strstart(&pp, "GNU.sparse.realsize="))
+            TT.hdr.oldsparse = atoll(pp);
         }
         free(buf);
       }
@@ -795,7 +800,38 @@ static void unpack_tar(char *first)
       TT.sparselen /= 2;
       if (TT.sparselen)
         TT.hdr.ssize = TT.sparse[2*TT.sparselen-1]+TT.sparse[2*TT.sparselen-2];
-    } else TT.hdr.ssize = TT.hdr.size;
+    } else {
+      TT.hdr.ssize = TT.hdr.size;
+
+      // Handle obsolete sparse format
+      if (TT.hdr.oldsparse>0) {
+        char sparse[512], c;
+        long long ll = 0;
+
+        s = sparse+512;
+        for (i = 0;;) {
+          if (s == sparse+512) {
+            if (TT.hdr.size<512) break;
+            xreadall(TT.fd, s = sparse, 512);
+            TT.hdr.size -= 512;
+          } else if (!(c = *s++)) break;
+          else if (isdigit(c)) ll = (10*ll)+c-'0';
+          else {
+            if (!TT.sparselen)
+              TT.sparse = xzalloc(((TT.sparselen = ll)+1)*2*sizeof(long long));
+            else TT.sparse[i++] = ll;
+            ll = 0;
+            if (i == TT.sparselen*2) break;
+          }
+        }
+        if (TT.sparselen) {
+          ll = TT.sparse[2*(TT.sparselen-1)]+TT.sparse[2*TT.sparselen-1];
+          if (TT.hdr.oldsparse>ll)
+            TT.sparse[2*TT.sparselen++] = TT.hdr.oldsparse;
+        }
+        TT.hdr.oldsparse = 0;
+      }
+    }
 
     // At this point, we have something to output. Convert metadata.
     TT.hdr.mode = OTOI(tar.mode)&0xfff;
@@ -1033,7 +1069,8 @@ void tar_main(void)
   // nommu reentry for nonseekable input skips this, parent did it for us
   if (toys.stacktop) {
     if (TT.f && strcmp(TT.f, "-"))
-      TT.fd = xcreate(TT.f, TT.fd*(O_WRONLY|O_CREAT|O_TRUNC), 0666);
+      TT.fd = xcreate(TT.f, TT.fd*(O_WRONLY|O_CREAT|O_TRUNC),
+                      0666&~toys.old_umask);
     // Get destination directory
     if (TT.C) xchdir(TT.C);
   }
