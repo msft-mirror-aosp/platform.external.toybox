@@ -753,7 +753,7 @@ struct tar_data {
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size, ssize;
+    long long size, ssize, oldsparse;
     uid_t uid;
     gid_t gid;
     mode_t mode;
