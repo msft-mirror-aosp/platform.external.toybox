@@ -34,6 +34,7 @@ CONFIG_TOYBOX_UID_USR=500
 # CONFIG_ARPING is not set
 # CONFIG_ARP is not set
 # CONFIG_ASCII is not set
+# CONFIG_AWK is not set
 # CONFIG_BASE32 is not set
 # CONFIG_BASE64 is not set
 CONFIG_BASENAME=y
