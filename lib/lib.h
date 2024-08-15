@@ -262,7 +262,7 @@ struct group *bufgetgrgid(gid_t gid);
 int readlinkat0(int dirfd, char *path, char *buf, int len);
 int readlink0(char *path, char *buf, int len);
 int regexec0(regex_t *preg, char *string, long len, int nmatch,
-  regmatch_t pmatch[], int eflags);
+  regmatch_t *pmatch, int eflags);
 char *getusername(uid_t uid);
 char *getgroupname(gid_t gid);
 void do_lines(int fd, char delim, void (*call)(char **pline, long len));
@@ -410,8 +410,8 @@ void exit_signal(int signal);
 void sigatexit(void *handler);
 void list_signals(void);
 
-mode_t string_to_mode(char *mode_str, mode_t base);
-void mode_to_string(mode_t mode, char *buf);
+unsigned string_to_mode(char *mode_str, unsigned base);
+void mode_to_string(unsigned mode, char *buf);
 char *getbasename(char *name);
 char *fileunderdir(char *file, char *dir);
 void *mepcpy(void *from, void *to, unsigned long len);
