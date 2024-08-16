@@ -70,6 +70,19 @@
 #undef FOR_ascii
 #endif
 
+// awk   F:v*f*bc
+#undef OPTSTR_awk
+#define OPTSTR_awk "F:v*f*bc"
+#ifdef CLEANUP_awk
+#undef CLEANUP_awk
+#undef FOR_awk
+#undef FLAG_c
+#undef FLAG_b
+#undef FLAG_f
+#undef FLAG_v
+#undef FLAG_F
+#endif
+
 // base32   diw#<0=76[!dw]
 #undef OPTSTR_base32
 #define OPTSTR_base32 "diw#<0=76[!dw]"
@@ -628,12 +641,14 @@
 #undef FOR_demo_utf8towc
 #endif
 
-// devmem   <1>3
+// devmem   <1(no-sync)f:
 #undef OPTSTR_devmem
-#define OPTSTR_devmem "<1>3"
+#define OPTSTR_devmem "<1(no-sync)f:"
 #ifdef CLEANUP_devmem
 #undef CLEANUP_devmem
 #undef FOR_devmem
+#undef FLAG_f
+#undef FLAG_no_sync
 #endif
 
 // df   HPkhit*a[-HPh]
@@ -3996,6 +4011,18 @@
 #endif
 #endif
 
+#ifdef FOR_awk
+#define CLEANUP_awk
+#ifndef TT
+#define TT this.awk
+#endif
+#define FLAG_c (FORCED_FLAG<<0)
+#define FLAG_b (FORCED_FLAG<<1)
+#define FLAG_f (FORCED_FLAG<<2)
+#define FLAG_v (FORCED_FLAG<<3)
+#define FLAG_F (FORCED_FLAG<<4)
+#endif
+
 #ifdef FOR_base32
 #define CLEANUP_base32
 #ifndef TT
@@ -4517,6 +4544,8 @@
 #ifndef TT
 #define TT this.devmem
 #endif
+#define FLAG_f (FORCED_FLAG<<0)
+#define FLAG_no_sync (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_df

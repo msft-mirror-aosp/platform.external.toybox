@@ -128,6 +128,10 @@ struct chrt_data {
   long p;
 };
 
+struct devmem_data {
+  char *f;
+};
+
 struct dos2unix_data {
   char *tempfile;
 };
@@ -753,7 +757,7 @@ struct tar_data {
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size, ssize;
+    long long size, ssize, oldsparse;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -821,6 +825,7 @@ extern union global_union {
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
+	struct devmem_data devmem;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
