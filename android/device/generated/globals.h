@@ -128,6 +128,10 @@ struct chrt_data {
   long p;
 };
 
+struct devmem_data {
+  char *f;
+};
+
 struct dos2unix_data {
   char *tempfile;
 };
@@ -379,18 +383,15 @@ struct traceroute_data {
 };
 
 struct vi_data {
-  char *s;
+  char *c, *s;
 
   char *filename;
-  int vi_mode, tabstop, list;
-  int cur_col, cur_row, scr_row;
-  int drawn_row, drawn_col;
-  int count0, count1, vi_mov_flag;
+  int vi_mode, tabstop, list, cur_col, cur_row, scr_row, drawn_row, drawn_col,
+      count0, count1, vi_mov_flag;
   unsigned screen_height, screen_width;
   char vi_reg, *last_search;
   struct str_line {
-    int alloc;
-    int len;
+    int alloc, len;
     char *data;
   } *il;
   size_t screen, cursor; //offsets
@@ -398,7 +399,7 @@ struct vi_data {
   struct yank_buf {
     char reg;
     int alloc;
-    char* data;
+    char *data;
   } yank;
 
   size_t filesize;
@@ -407,8 +408,7 @@ struct vi_data {
   struct block_list {
     struct block_list *next, *prev;
     struct mem_block {
-      size_t size;
-      size_t len;
+      size_t size, len;
       enum alloc_flag {
         MMAP,  //can be munmap() before exit()
         HEAP,  //can be free() before exit()
@@ -757,7 +757,7 @@ struct tar_data {
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size, ssize;
+    long long size, ssize, oldsparse;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -825,6 +825,7 @@ extern union global_union {
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
+	struct devmem_data devmem;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
