@@ -508,7 +508,6 @@ cc_defaults {
             shared_libs: [
                 "libcrypto",
                 "liblog",
-                "libprocessgroup",
                 "libselinux",
                 "libz",
             ],
@@ -560,11 +559,8 @@ cc_binary {
         "libm",
         "libz",
         "libbase",
-        "libcgrouprc",
-        "libcgrouprc_format",
         "libcrypto_static",
         "liblog",
-        "libprocessgroup",
         "libselinux",
     ],
     dist: {
