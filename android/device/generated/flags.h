@@ -641,12 +641,14 @@
 #undef FOR_demo_utf8towc
 #endif
 
-// devmem <1>3 <1>3
+// devmem <1(no-sync)f: <1(no-sync)f:
 #undef OPTSTR_devmem
-#define OPTSTR_devmem "<1>3"
+#define OPTSTR_devmem "<1(no-sync)f:"
 #ifdef CLEANUP_devmem
 #undef CLEANUP_devmem
 #undef FOR_devmem
+#undef FLAG_f
+#undef FLAG_no_sync
 #endif
 
 // df HPkhit*a[-HPh] HPkhit*a[-HPh]
@@ -769,9 +771,9 @@
 #undef FOR_dirname
 #endif
 
-// dmesg w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw] w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]
+// dmesg w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw] w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]
 #undef OPTSTR_dmesg
-#define OPTSTR_dmesg "w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]"
+#define OPTSTR_dmesg "w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]"
 #ifdef CLEANUP_dmesg
 #undef CLEANUP_dmesg
 #undef FOR_dmesg
@@ -783,6 +785,7 @@
 #undef FLAG_T
 #undef FLAG_S
 #undef FLAG_C
+#undef FLAG_W
 #undef FLAG_w
 #endif
 
@@ -4542,6 +4545,8 @@
 #ifndef TT
 #define TT this.devmem
 #endif
+#define FLAG_f (1LL<<0)
+#define FLAG_no_sync (1LL<<1)
 #endif
 
 #ifdef FOR_df
@@ -4671,7 +4676,8 @@
 #define FLAG_T (1LL<<5)
 #define FLAG_S (1LL<<6)
 #define FLAG_C (1LL<<7)
-#define FLAG_w (1LL<<8)
+#define FLAG_W (1LL<<8)
+#define FLAG_w (1LL<<9)
 #endif
 
 #ifdef FOR_dnsdomainname
