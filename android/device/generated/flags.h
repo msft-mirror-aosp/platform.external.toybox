@@ -771,9 +771,9 @@
 #undef FOR_dirname
 #endif
 
-// dmesg w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw] w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]
+// dmesg w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw] w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]
 #undef OPTSTR_dmesg
-#define OPTSTR_dmesg "w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]"
+#define OPTSTR_dmesg "w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]"
 #ifdef CLEANUP_dmesg
 #undef CLEANUP_dmesg
 #undef FOR_dmesg
@@ -785,6 +785,7 @@
 #undef FLAG_T
 #undef FLAG_S
 #undef FLAG_C
+#undef FLAG_W
 #undef FLAG_w
 #endif
 
@@ -4675,7 +4676,8 @@
 #define FLAG_T (1LL<<5)
 #define FLAG_S (1LL<<6)
 #define FLAG_C (1LL<<7)
-#define FLAG_w (1LL<<8)
+#define FLAG_W (1LL<<8)
+#define FLAG_w (1LL<<9)
 #endif
 
 #ifdef FOR_dnsdomainname
