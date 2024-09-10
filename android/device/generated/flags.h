@@ -70,6 +70,19 @@
 #undef FOR_ascii
 #endif
 
+// awk   F:v*f*bc
+#undef OPTSTR_awk
+#define OPTSTR_awk "F:v*f*bc"
+#ifdef CLEANUP_awk
+#undef CLEANUP_awk
+#undef FOR_awk
+#undef FLAG_c
+#undef FLAG_b
+#undef FLAG_f
+#undef FLAG_v
+#undef FLAG_F
+#endif
+
 // base32   diw#<0=76[!dw]
 #undef OPTSTR_base32
 #define OPTSTR_base32 "diw#<0=76[!dw]"
@@ -628,12 +641,14 @@
 #undef FOR_demo_utf8towc
 #endif
 
-// devmem <1>3 <1>3
+// devmem <1(no-sync)f: <1(no-sync)f:
 #undef OPTSTR_devmem
-#define OPTSTR_devmem "<1>3"
+#define OPTSTR_devmem "<1(no-sync)f:"
 #ifdef CLEANUP_devmem
 #undef CLEANUP_devmem
 #undef FOR_devmem
+#undef FLAG_f
+#undef FLAG_no_sync
 #endif
 
 // df HPkhit*a[-HPh] HPkhit*a[-HPh]
@@ -718,9 +733,9 @@
 #undef FLAG_P
 #endif
 
-// diff <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3
+// diff <2>2(unchanged-line-format):;(old-line-format):;(no-dereference);(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3 <2>2(unchanged-line-format):;(old-line-format):;(no-dereference);(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3
 #undef OPTSTR_diff
-#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3"
+#define OPTSTR_diff "<2>2(unchanged-line-format):;(old-line-format):;(no-dereference);(new-line-format):;(color)(strip-trailing-cr)B(ignore-blank-lines)d(minimal)b(ignore-space-change)ut(expand-tabs)w(ignore-all-space)i(ignore-case)T(initial-tab)s(report-identical-files)q(brief)a(text)S(starting-file):F(show-function-line):;L(label)*N(new-file)r(recursive)U(unified)#<0=3"
 #ifdef CLEANUP_diff
 #undef CLEANUP_diff
 #undef FOR_diff
@@ -744,6 +759,7 @@
 #undef FLAG_strip_trailing_cr
 #undef FLAG_color
 #undef FLAG_new_line_format
+#undef FLAG_no_dereference
 #undef FLAG_old_line_format
 #undef FLAG_unchanged_line_format
 #endif
@@ -756,9 +772,9 @@
 #undef FOR_dirname
 #endif
 
-// dmesg w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw] w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]
+// dmesg w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw] w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]
 #undef OPTSTR_dmesg
-#define OPTSTR_dmesg "w(follow)CSTtrs#<1n#c[!Ttr][!Cc][!Sw]"
+#define OPTSTR_dmesg "w(follow)W(follow-new)CSTtrs#<1n#c[!Ttr][!Cc][!SWw]"
 #ifdef CLEANUP_dmesg
 #undef CLEANUP_dmesg
 #undef FOR_dmesg
@@ -770,6 +786,7 @@
 #undef FLAG_T
 #undef FLAG_S
 #undef FLAG_C
+#undef FLAG_W
 #undef FLAG_w
 #endif
 
@@ -3996,6 +4013,18 @@
 #endif
 #endif
 
+#ifdef FOR_awk
+#define CLEANUP_awk
+#ifndef TT
+#define TT this.awk
+#endif
+#define FLAG_c (FORCED_FLAG<<0)
+#define FLAG_b (FORCED_FLAG<<1)
+#define FLAG_f (FORCED_FLAG<<2)
+#define FLAG_v (FORCED_FLAG<<3)
+#define FLAG_F (FORCED_FLAG<<4)
+#endif
+
 #ifdef FOR_base32
 #define CLEANUP_base32
 #ifndef TT
@@ -4517,6 +4546,8 @@
 #ifndef TT
 #define TT this.devmem
 #endif
+#define FLAG_f (1LL<<0)
+#define FLAG_no_sync (1LL<<1)
 #endif
 
 #ifdef FOR_df
@@ -4622,8 +4653,9 @@
 #define FLAG_strip_trailing_cr (1LL<<17)
 #define FLAG_color (1LL<<18)
 #define FLAG_new_line_format (1LL<<19)
-#define FLAG_old_line_format (1LL<<20)
-#define FLAG_unchanged_line_format (1LL<<21)
+#define FLAG_no_dereference (1LL<<20)
+#define FLAG_old_line_format (1LL<<21)
+#define FLAG_unchanged_line_format (1LL<<22)
 #endif
 
 #ifdef FOR_dirname
@@ -4646,7 +4678,8 @@
 #define FLAG_T (1LL<<5)
 #define FLAG_S (1LL<<6)
 #define FLAG_C (1LL<<7)
-#define FLAG_w (1LL<<8)
+#define FLAG_W (1LL<<8)
+#define FLAG_w (1LL<<9)
 #endif
 
 #ifdef FOR_dnsdomainname

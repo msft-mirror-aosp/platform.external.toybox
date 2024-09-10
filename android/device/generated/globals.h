@@ -128,6 +128,10 @@ struct chrt_data {
   long p;
 };
 
+struct devmem_data {
+  char *f;
+};
+
 struct dos2unix_data {
   char *tempfile;
 };
@@ -304,7 +308,7 @@ struct diff_data {
   struct arg_list *L;
   char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
-  int dir_num, size, is_binary, differ, change, len[2], *offset[2];
+  int dir_num, size, is_binary, is_symlink, differ, change, len[2], *offset[2];
   struct stat st[2];
   struct {
     char **list;
@@ -314,6 +318,10 @@ struct diff_data {
     FILE *fp;
     int len;
   } file[2];
+  struct {
+    char *name;
+    int len;
+  } link[2];
 };
 
 struct expr_data {
@@ -753,7 +761,7 @@ struct tar_data {
   // Parsed information about a tar header.
   struct tar_header {
     char *name, *link_target, *uname, *gname;
-    long long size, ssize;
+    long long size, ssize, oldsparse;
     uid_t uid;
     gid_t gid;
     mode_t mode;
@@ -821,6 +829,7 @@ extern union global_union {
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
+	struct devmem_data devmem;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
 	struct fmt_data fmt;
