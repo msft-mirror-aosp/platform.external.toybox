@@ -202,7 +202,7 @@ get_target_config()
   if [ "$CROSS" == armv5l ] || [ "$CROSS" == armv4l ]; then
     # This could use the same VIRT board as armv7, but let's demonstrate a
     # different one requiring a separate device tree binary.
-    KARCH=arm KARGS=ttyAMA0 VMLINUX=arch/arm/boot/zImage
+    KARCH=arm KARGS=ttyAMA0 VMLINUX=zImage
     QEMU="arm -M versatilepb -net nic,model=rtl8139 -net user"
     KCONF="$(be2csv CPU_ARM926T MMU VFP ARM_THUMB AEABI ARCH_VERSATILE ATAGS \
       DEPRECATED_PARAM_STRUCT BLK_DEV_SD NET_VENDOR_REALTEK 8139CP \
@@ -212,10 +212,9 @@ get_target_config()
     DTB=versatile-pb.dtb
   elif [ "$CROSS" == armv7l ] || [ "$CROSS" == aarch64 ]; then
     if [ "$CROSS" == aarch64 ]; then
-      QEMU="aarch64 -M virt -cpu cortex-a57"
-      KARCH=arm64 VMLINUX=arch/arm64/boot/Image
+      QEMU="aarch64 -M virt -cpu cortex-a57" KARCH=arm64 VMLINUX=Image
     else
-      QEMU="arm -M virt" KARCH=arm VMLINUX=arch/arm/boot/zImage
+      QEMU="arm -M virt" KARCH=arm VMLINUX=zImage
     fi
     KARGS=ttyAMA0
     KCONF="$(be2csv MMU SOC_DRA7XX VDSO CPU_IDLE KERNEL_MODE_NEON \
@@ -236,7 +235,7 @@ get_target_config()
       QEMU=x86_64 KCONF=64BIT
       [ "$CROSS" == x32 ] && KCONF=X86_X32
     fi
-    KARCH=x86 VMLINUX=arch/x86/boot/bzImage
+    KARCH=x86 VMLINUX=bzImage
     KCONF+=,"$(be2csv UNWINDER_FRAME_POINTER PCI BLK_DEV_SD NET_VENDOR_INTEL \
       E1000 RTC_CLASS ATA{,_SFF,_BMDMA,_PIIX} SERIAL_8250{,_CONSOLE})"
   elif [ "$CROSS" == m68k ]; then
@@ -270,8 +269,19 @@ get_target_config()
       PPC_{PSERIES,OF_BOOT_TRAMPOLINE,TRANSACTIONAL_MEM,DISABLE_WERROR} \
       SCSI_{LOWLEVEL,IBMVSCSI})"
     [ "$CROSS" == powerpc64le ] && KCONF=$KCONF,CPU_LITTLE_ENDIAN
+  elif [ "$CROSS" = riscv32 ]; then
+    # Note: -hda file.img doesn't work, but this insane overcomplicated pile:
+    # -drive file=file.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0
+    QEMU="riscv32 -M virt -netdev user,id=net0 -device virtio-net-device,netdev=net0"
+    KARCH=riscv VMLINUX=Image
+    # Probably only about half of these kernel symbols are actually needed?
+    KCONF="$(be2csv MMU SOC_VIRT NONPORTABLE ARCH_RV32I CMODEL_MEDANY \
+      RISCV_ISA_{ZICBO{M,Z},FALLBACK} FPU PCI{,_HOST_GENERIC} BLK_DEV_SD \
+      SCSI_{PROC_FS,LOWLEVEL,VIRTIO} VIRTIO_{MENU,NET,BLK,PCI} SERIO_SERPORT \
+      SERIAL_{EARLYCON,8250{,_CONSOLE,_PCI},OF_PLATFORM} HW_RANDOM{,_VIRTIO} \
+      RTC_{CLASS,HCTOSYS} DMADEVICES VIRTIO_{MENU,PCI{,_LEGACY},INPUT,MMIO})"
   elif [ "$CROSS" = s390x ]; then
-    QEMU="s390x" KARCH=s390 VMLINUX=arch/s390/boot/bzImage
+    QEMU="s390x" KARCH=s390 VMLINUX=bzImage
     KCONF="$(be2csv MARCH_Z900 PACK_STACK S390_GUEST VIRTIO_{NET,BLK} \
       SCLP_VT220_{TTY,CONSOLE})"
   elif [ "$CROSS" == sh2eb ]; then
@@ -284,7 +294,7 @@ get_target_config()
     KCONF+=,CMDLINE=\"console=ttyUL0\ earlycon\"
   elif [ "$CROSS" == sh4 ] || [ "$CROSS" == sh4eb ]; then
     QEMU="$CROSS -M r2d -serial null -serial mon:stdio" KARCH=sh
-    KARGS="ttySC1 noiotrap" VMLINUX=arch/sh/boot/zImage
+    KARGS="ttySC1 noiotrap" VMLINUX=zImage
     KCONF="$(be2csv CPU_SUBTYPE_SH7751R MMU VSYSCALL SH_{FPU,RTS7751R2D} PCI \
       RTS7751R2D_PLUS SERIAL_SH_SCI{,_CONSOLE} NET_VENDOR_REALTEK 8139CP \
       BLK_DEV_SD ATA{,_SFF,_BMDMA} PATA_PLATFORM BINFMT_ELF_FDPIC \
@@ -362,6 +372,7 @@ else
       (cd modz && find lib/modules | cpio -o -H newc -R +0:+0 ) | gzip \
        > "$OUTDOC/modules.cpio.gz" || exit 1
   fi
+  [ ! -e "$VMLINUX" ] && VMLINUX=arch/$KARCH/boot/$VMLINUX
   cp "$VMLINUX" "$OUTPUT"/linux-kernel && cd .. && rm -rf linux && popd ||exit 1
 fi
 
