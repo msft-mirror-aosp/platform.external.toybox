@@ -5,7 +5,7 @@
  *
  * See https://pubs.opengroup.org/onlinepubs/9699919799/utilities/awk.html
 
-USE_AWK(NEWTOY(awk, "F:v*f*bc", TOYFLAG_USR|TOYFLAG_BIN))
+USE_AWK(NEWTOY(awk, "F:v*f*bc", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LINEBUF))
 
 config AWK
   bool "awk"
@@ -86,16 +86,11 @@ GLOBALS(
 
   struct runtime_globals {
     struct zvalue cur_arg;
-    //char *filename;     // UNUSED
     FILE *fp;           // current data file
     int narg;           // cmdline arg index
     int nfiles;         // num of cmdline data file args processed
     int eof;            // all cmdline files (incl. stdin) read
     char *recptr;
-    char *recbuf;
-    size_t recbufsize;
-    char *recbuf_multx;
-    size_t recbufsize_multx;
     struct zstring *zspr;      // Global to receive sprintf() string value
   } rgl;
 
@@ -132,7 +127,8 @@ GLOBALS(
     char *fn;
     FILE *fp;
     char mode;  // w, a, or r
-    char file_or_pipe;  // f or p
+    char file_or_pipe;  // 1 if file, 0 if pipe
+    char is_tty;
     char is_std_file;
     char *recbuf;
     size_t recbufsize;
@@ -144,6 +140,11 @@ GLOBALS(
   } *zfiles, *cfile, *zstdout;
 )
 
+static void awk_exit(int status)
+{
+  toys.exitval = status;
+  xexit();
+}
 #ifdef __GNUC__
 #define ATTR_FALLTHROUGH_INTENDED __attribute__ ((fallthrough))
 #else
@@ -212,7 +213,6 @@ enum spec_var_names { ARGC=1, ARGV, CONVFMT, ENVIRON, FILENAME, FNR, FS, NF,
 
 struct symtab_slot {    // global symbol table entry
   unsigned flags;
-  int slotnum;
   char *name;
 };
 
@@ -265,7 +265,6 @@ struct zstring {
 
 struct functab_slot {    // function symbol table entry
   unsigned flags;
-  int slotnum;
   char *name;
   struct zlist function_locals;
   int zcode_addr;
@@ -356,7 +355,7 @@ static void zzerr(char *format, ...)
   va_end(args);
   if (format[strlen(format)-1] != '\n') fputc('\n', stderr); // TEMP FIXME !!!
   fflush(stderr);
-  if (fatal_sw) exit(2);
+  if (fatal_sw) awk_exit(2);
         // Don't bump error count for warnings
   else if (!strstr(format, "arning")) TT.cgl.compile_error_count++;
 }
@@ -1112,15 +1111,15 @@ static int havetok(int tk)
 }
 
 //// code and "literal" emitters
-static void gen2cd(int op, int n)
-{
-  zlist_append(&TT.zcode, &op);
-  TT.zcode_last = zlist_append(&TT.zcode, &n);
-}
-
 static void gencd(int op)
 {
   TT.zcode_last = zlist_append(&TT.zcode, &op);
+}
+
+static void gen2cd(int op, int n)
+{
+  gencd(op);
+  gencd(n);
 }
 
 static int make_literal_str_val(char *s)
@@ -1150,8 +1149,7 @@ static int make_literal_num_val(double num)
 
 static int make_uninit_val(void)
 {
-  struct zvalue v = uninit_zvalue;
-  return zlist_append(&TT.literals, &v);
+  return zlist_append(&TT.literals, &uninit_zvalue);
 }
 //// END code and "literal" emitters
 
@@ -1165,10 +1163,9 @@ static int find_func_def_entry(char *s)
 
 static int add_func_def_entry(char *s)
 {
-  struct functab_slot ent = {0, 0, 0, {0, 0, 0, 0}, 0};
+  struct functab_slot ent = {0, 0, {0, 0, 0, 0}, 0};
   ent.name = xstrdup(s);
   int slotnum = zlist_append(&TT.func_def_table, &ent);
-  FUNC_DEF[slotnum].slotnum = slotnum;
   return slotnum;
 }
 
@@ -1181,10 +1178,9 @@ static int find_global(char *s)
 
 static int add_global(char *s)
 {
-  struct symtab_slot ent = {0, 0, 0};
+  struct symtab_slot ent = {0, 0};
   ent.name = xstrdup(s);
   int slotnum = zlist_append(&TT.globals_table, &ent);
-  GLOBAL[slotnum].slotnum = slotnum;
   return slotnum;
 }
 
@@ -1197,10 +1193,9 @@ static int find_local_entry(char *s)
 
 static int add_local_entry(char *s)
 {
-  struct symtab_slot ent = {0, 0, 0};
+  struct symtab_slot ent = {0, 0};
   ent.name = xstrdup(s);
   int slotnum = zlist_append(&TT.locals_table, &ent);
-  LOCAL[slotnum].slotnum = slotnum;
   return slotnum;
 }
 
@@ -1210,11 +1205,11 @@ static int find_or_add_var_name(void)
   int globals_ent = 0;
   int locals_ent = find_local_entry(TT.tokstr);   // in local symbol table?
   if (locals_ent) {
-    slotnum = -LOCAL[locals_ent].slotnum;
+    slotnum = -locals_ent;
   } else {
     globals_ent = find_global(TT.tokstr);
     if (!globals_ent) globals_ent = add_global(TT.tokstr);
-    slotnum = GLOBAL[globals_ent].slotnum;
+    slotnum = globals_ent;
     if (find_func_def_entry(TT.tokstr))
       // POSIX: The same name shall not be used both as a variable name
       // with global scope and as the name of a function.
@@ -1527,9 +1522,7 @@ static void function_call(void)
   //  push placeholder for return value, push placeholder for return addr,
   //  push args, then push number of args, then:
   //      for builtins: gen opcode (e.g. tkgsub)
-  //      for user func: gen (tkfunc, function location)
-  //      if function not yet defined, location will be filled in when defined
-  //          the location slots will be chained from the symbol table
+  //      for user func: gen (tkfunc, number-of-args)
   int functk = 0, funcnum = 0;
   char builtin_name[16];  // be sure it's long enough for all builtins
   if (ISTOK(tkbuiltin)) {
@@ -2743,14 +2736,27 @@ static int splitter(void (*setter)(struct zmap *, int, char *, size_t), struct z
 {
   regex_t *rx;
   regoff_t offs, end;
+  int multiline_null_rs = !ENSURE_STR(&STACK[RS])->vst->str[0];
   if (!IS_RX(zvfs)) to_str(zvfs);
-  char *fs = IS_STR(zvfs) ? zvfs->vst->str : "";
+  char *s0 = s, *fs = IS_STR(zvfs) ? zvfs->vst->str : "";
+  int one_char_fs = utf8cnt(zvfs->vst->str, zvfs->vst->size) == 1;
   int nf = 0, r = 0, eflag = 0;
   // Empty string or empty fs (regex).
   // Need to include !*s b/c empty string, otherwise
   // split("", a, "x") splits to a 1-element (empty element) array
   if (!*s || (IS_STR(zvfs) && !*fs) || IS_EMPTY_RX(zvfs)) {
-    for ( ; *s; s++) setter(m, ++nf, s, 1);
+    while (*s) {
+      if (*s < 128) setter(m, ++nf, s++, 1);
+      else {        // Handle UTF-8
+        char cbuf[8];
+        unsigned wc;
+        int nc = utf8towc(&wc, s, strlen(s));
+        if (nc < 2) FATAL("bad string for split: \"%s\"\n", s0);
+        s += nc;
+        nc = wctoutf8(cbuf, wc);
+        setter(m, ++nf, cbuf, nc);
+      }
+    }
     return nf;
   }
   if (IS_RX(zvfs)) rx = zvfs->rx;
@@ -2760,7 +2766,9 @@ static int splitter(void (*setter)(struct zmap *, int, char *, size_t), struct z
     // rx_find_FS() returns 0 if found. If nonzero, the field will
     // be the rest of the record (all of it if first time through).
     if ((r = rx_find_FS(rx, s, &offs, &end, eflag))) offs = end = strlen(s);
-    else {
+    else if (setter == set_field && multiline_null_rs && one_char_fs) {
+      // Contra POSIX, if RS=="" then newline is always also a
+      // field separator only if FS is a single char (see gawk manual)
       int k = strcspn(s, "\n");
       if (k < offs) offs = k, end = k + 1;
     }
@@ -2998,12 +3006,12 @@ static struct zvalue *setup_lvalue(int ref_stack_ptr, int parmbase, int *field_n
   return v; // order FATAL() and return to mute warning
 }
 
-
-static struct zfile *new_file(char *fn, FILE *fp, char mode, char file_or_pipe)
+static struct zfile *new_file(char *fn, FILE *fp, char mode, char file_or_pipe,
+                              char is_std_file)
 {
   struct zfile *f = xzalloc(sizeof(struct zfile));
   *f = (struct zfile){TT.zfiles, xstrdup(fn), fp, mode, file_or_pipe,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0};
+                isatty(fileno(fp)), is_std_file, 0, 0, 0, 0, 0, 0, 0, 0};
   return TT.zfiles = f;
 }
 
@@ -3068,7 +3076,7 @@ static struct zfile *setup_file(char file_or_pipe, char *mode)
     }
   FILE *fp = (file_or_pipe ? fopen : popen)(fn, mode);
   if (fp) {
-    struct zfile *p = new_file(fn, fp, *mode, file_or_pipe);
+    struct zfile *p = new_file(fn, fp, *mode, file_or_pipe, 0);
     drop();
     return p;
   }
@@ -3285,16 +3293,20 @@ static int next_fp(void)
   if (TT.cfile->fp && TT.cfile->fp != stdin) fclose(TT.cfile->fp);
   if ((!fn && !TT.rgl.nfiles && TT.cfile->fp != stdin) || (fn && !strcmp(fn, "-"))) {
     TT.cfile->fp = stdin;
+    TT.cfile->fn = "<stdin>";
     zvalue_release_zstring(&STACK[FILENAME]);
     STACK[FILENAME].vst = new_zstring("<stdin>", 7);
   } else if (fn) {
     if (!(TT.cfile->fp = fopen(fn, "r"))) FFATAL("can't open %s\n", fn);
+    TT.cfile->fn = fn;
     zvalue_copy(&STACK[FILENAME], &TT.rgl.cur_arg);
-    set_num(&STACK[FNR], 0);
   } else {
     TT.rgl.eof = 1;
     return 0;
   }
+  set_num(&STACK[FNR], 0);
+  TT.cfile->recoffs = TT.cfile->endoffs = 0;  // reset record buffer
+  TT.cfile->is_tty = isatty(fileno(TT.cfile->fp));
   return 1;
 }
 
@@ -3334,10 +3346,11 @@ static int rx_findx(regex_t *rx, char *s, long len, regoff_t *start, regoff_t *e
   return 0;
 }
 
+// get a record; return length, or 0 at EOF
 static ssize_t getrec_f(struct zfile *zfp)
 {
-  int r = 0, rs = ENSURE_STR(&STACK[RS])->vst->str[0] & 0xff;
-  if (!rs) return getrec_multiline(zfp);
+  int r = 0;
+  if (!ENSURE_STR(&STACK[RS])->vst->str[0]) return getrec_multiline(zfp);
   regex_t rsrx, *rsrxp = &rsrx;
   // TEMP!! FIXME Need to cache and avoid too-frequent rx compiles
   rx_zvalue_compile(&rsrxp, &STACK[RS]);
@@ -3349,28 +3362,35 @@ static ssize_t getrec_f(struct zfile *zfp)
 #define RS_LENGTH_MARGIN    (INIT_RECBUF_LEN / 8)
       if (!zfp->recbuf)
         zfp->recbuf = xmalloc((zfp->recbufsize = INIT_RECBUF_LEN) + 1);
-      zfp->endoffs = fread(zfp->recbuf, 1, zfp->recbufsize, zfp->fp);
+      if (zfp->is_tty && !memcmp(STACK[RS].vst->str, "\n", 2)) {
+        zfp->endoffs = 0;
+        if (fgets(zfp->recbuf, zfp->recbufsize, zfp->fp))
+          zfp->endoffs = strlen(zfp->recbuf);
+      } else zfp->endoffs = fread(zfp->recbuf, 1, zfp->recbufsize, zfp->fp);
       zfp->recoffs = 0;
       zfp->recbuf[zfp->endoffs] = 0;
       if (!zfp->endoffs) break;
     }
     TT.rgl.recptr = zfp->recbuf + zfp->recoffs;
     r = rx_findx(rsrxp, TT.rgl.recptr, zfp->endoffs - zfp->recoffs, &so, &eo, 0);
-    // if not found, or found "near" end of buffer...
+    if (!r && so == eo) r = 1;  // RS was empty, so fake not found
     if (r || zfp->recoffs + eo > (int)zfp->recbufsize - RS_LENGTH_MARGIN) {
-      // if at end of data, and (not found or found at end of data)
+      // not found, or found "near" end of buffer...
       if (zfp->endoffs < (int)zfp->recbufsize &&
           (r || zfp->recoffs + eo == zfp->endoffs)) {
+        // at end of data, and (not found or found at end of data)
         ret = zfp->endoffs - zfp->recoffs;
         zfp->recoffs = zfp->endoffs;
         break;
       }
       if (zfp->recoffs) {
+        // room to move data up: move remaining data in buffer to low end
         memmove(zfp->recbuf, TT.rgl.recptr, zfp->endoffs - zfp->recoffs);
         zfp->endoffs -= zfp->recoffs;
         zfp->recoffs = 0;
-      } else zfp->recbuf =
+      } else zfp->recbuf =    // enlarge buffer
         xrealloc(zfp->recbuf, (zfp->recbufsize = zfp->recbufsize * 3 / 2) + 1);
+      // try to read more into buffer past current data
       zfp->endoffs += fread(zfp->recbuf + zfp->endoffs,
                       1, zfp->recbufsize - zfp->endoffs, zfp->fp);
       zfp->recbuf[zfp->endoffs] = 0;
@@ -3538,13 +3558,6 @@ static void gsub(int opcode, int nargs, int parmbase)
   drop_n(3);
   push_int_val(nhits);
   if (field_num >= 0) fixup_fields(field_num);
-}
-
-static long millinow(void)
-{
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  return ts.tv_sec*1000+ts.tv_nsec/1000000;
 }
 
 // Initially set stackp_needmore at MIN_STACK_LEFT before limit.
@@ -4310,7 +4323,7 @@ static int interpx(int start, int *status)
         nargs = *ip++;
         if (nargs == 1) {
           STKP->num = seedrand(to_num(STKP));
-        } else push_int_val(seedrand(millinow()));
+        } else push_int_val(seedrand(time(0)));
         break;
       case tkcos: case tksin: case tkexp: case tklog: case tksqrt: case tkint:
         nargs = *ip++;
@@ -4469,12 +4482,12 @@ static void run(int optind, int argc, char **argv, char *sepstring,
   xregcomp(&TT.rx_default, "[ \t\n]+", REG_EXTENDED);
   xregcomp(&TT.rx_last, "[ \t\n]+", REG_EXTENDED);
   xregcomp(&TT.rx_printf_fmt, printf_fmt_rx, REG_EXTENDED);
-  new_file("-", stdin, 'r', 'f')->is_std_file = 1;
-  new_file("/dev/stdin", stdin, 'r', 'f')->is_std_file = 1;
-  new_file("/dev/stdout", stdout, 'w', 'f')->is_std_file = 1;
+  new_file("-", stdin, 'r', 1, 1);
+  new_file("/dev/stdin", stdin, 'r', 1, 1);
+  new_file("/dev/stdout", stdout, 'w', 1, 1);
   TT.zstdout = TT.zfiles;
-  new_file("/dev/stderr", stderr, 'w', 'f')->is_std_file = 1;
-  seedrand(123);
+  new_file("/dev/stderr", stderr, 'w', 1, 1);
+  seedrand(1);
   int status = -1, r = 0;
   if (TT.cgl.first_begin) r = interp(TT.cgl.first_begin, &status);
   if (r != tkexit)
@@ -4485,7 +4498,7 @@ static void run(int optind, int argc, char **argv, char *sepstring,
   regfree(&TT.rx_last);
   free_literal_regex();
   close_file(0);    // close all files
-  if (status >= 0) exit(status);
+  if (status >= 0) awk_exit(status);
 }
 
 ////////////////////
