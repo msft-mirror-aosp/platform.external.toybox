@@ -9,12 +9,12 @@ third_party {
   last_upgrade_date {
     year: 2024
     month: 9
-    day: 5
+    day: 13
   }
   homepage: "https://landley.net/toybox/"
   identifier {
     type: "Git"
     value: "https://github.com/landley/toybox"
-    version: "aea95681c27f80d2caa0acec56f982308d1fc067"
+    version: "9cde5834249786ba5239774c787b5db3de1b6d97"
   }
 }
