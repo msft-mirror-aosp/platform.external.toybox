@@ -308,7 +308,7 @@ struct diff_data {
   struct arg_list *L;
   char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
 
-  int dir_num, size, is_binary, differ, change, len[2], *offset[2];
+  int dir_num, size, is_binary, is_symlink, differ, change, len[2], *offset[2];
   struct stat st[2];
   struct {
     char **list;
@@ -318,6 +318,10 @@ struct diff_data {
     FILE *fp;
     int len;
   } file[2];
+  struct {
+    char *name;
+    int len;
+  } link[2];
 };
 
 struct expr_data {
