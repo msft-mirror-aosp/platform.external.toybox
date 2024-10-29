@@ -1744,12 +1744,13 @@
 #undef FLAG_o
 #endif
 
-// klogd   c#<1>8n
+// klogd   c#<1>8ns
 #undef OPTSTR_klogd
-#define OPTSTR_klogd "c#<1>8n"
+#define OPTSTR_klogd "c#<1>8ns"
 #ifdef CLEANUP_klogd
 #undef CLEANUP_klogd
 #undef FOR_klogd
+#undef FLAG_s
 #undef FLAG_n
 #undef FLAG_c
 #endif
@@ -5559,8 +5560,9 @@
 #ifndef TT
 #define TT this.klogd
 #endif
-#define FLAG_n (FORCED_FLAG<<0)
-#define FLAG_c (FORCED_FLAG<<1)
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_n (FORCED_FLAG<<1)
+#define FLAG_c (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_last
