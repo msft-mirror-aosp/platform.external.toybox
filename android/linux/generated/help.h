@@ -452,7 +452,7 @@
 
 #define HELP_last "usage: last [-W] [-f FILE]\n\nShow listing of last logged in users.\n\n-W      Display the information without host-column truncation\n-f FILE Read from file FILE instead of /var/log/wtmp"
 
-#define HELP_klogd "usage: klogd [-n] [-c N]\n\n-c  N   Print to console messages more urgent than prio N (1-8)\"\n-n    Run in foreground"
+#define HELP_klogd "usage: klogd [-n] [-c PRIORITY]\n\n-c	Print to console messages more urgent than PRIORITY (1-8)\"\n-n	Run in foreground\n-s	Use syscall instead of /proc"
 
 #define HELP_ipcs "usage: ipcs [[-smq] -i shmid] | [[-asmq] [-tcplu]]\n\n-i Show specific resource\nResource specification:\n-a All (default)\n-m Shared memory segments\n-q Message queues\n-s Semaphore arrays\nOutput format:\n-c Creator\n-l Limits\n-p Pid\n-t Time\n-u Summary"
 
@@ -516,7 +516,7 @@
 
 #define HELP_bc "usage: bc [-ilqsw] [file ...]\n\nbc is a command-line calculator with a Turing-complete language.\n\noptions:\n\n  -i  --interactive  force interactive mode\n  -l  --mathlib      use predefined math routines:\n\n                     s(expr)  =  sine of expr in radians\n                     c(expr)  =  cosine of expr in radians\n                     a(expr)  =  arctangent of expr, returning radians\n                     l(expr)  =  natural log of expr\n                     e(expr)  =  raises e to the power of expr\n                     j(n, x)  =  Bessel function of integer order n of x\n\n  -q  --quiet        don't print version and copyright\n  -s  --standard     error if any non-POSIX extensions are used\n  -w  --warn         warn if any non-POSIX extensions are used"
 
-#define HELP_awk "usage:  awk [-F sepstring] [-v assignment]... program [argument...]\n  or:\n        awk [-F sepstring] -f progfile [-f progfile]... [-v assignment]...\n              [argument...]\n  also:\n  -b : use bytes, not characters\n  -c : compile only, do not run"
+#define HELP_awk "usage:  awk [-F sepstring] [-v assignment]... program [argument...]\n  or:\n        awk [-F sepstring] -f progfile [-f progfile]... [-v assignment]...\n              [argument...]\n  also:\n  -b : count bytes, not characters (experimental)\n  -c : compile only, do not run"
 
 #define HELP_arping "usage: arping [-fqbDUA] [-c CNT] [-w TIMEOUT] [-I IFACE] [-s SRC_IP] DST_IP\n\nSend ARP requests/replies\n\n-f         Quit on first ARP reply\n-q         Quiet\n-b         Keep broadcasting, don't go unicast\n-D         Duplicated address detection mode\n-U         Unsolicited ARP mode, update your neighbors\n-A         ARP answer mode, update your neighbors\n-c N       Stop after sending N ARP requests\n-w TIMEOUT Time to wait for ARP reply, seconds\n-I IFACE   Interface to use (default eth0)\n-s SRC_IP  Sender IP address\nDST_IP     Target IP address"
 
