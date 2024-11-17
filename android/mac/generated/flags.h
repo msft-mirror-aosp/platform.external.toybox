@@ -190,6 +190,14 @@
 #undef FOR_brctl
 #endif
 
+// break   >1
+#undef OPTSTR_break
+#define OPTSTR_break ">1"
+#ifdef CLEANUP_break
+#undef CLEANUP_break
+#undef FOR_break
+#endif
+
 // bunzip2   cftkv
 #undef OPTSTR_bunzip2
 #define OPTSTR_bunzip2 "cftkv"
@@ -374,6 +382,14 @@
 #undef FLAG_1
 #undef FLAG_2
 #undef FLAG_3
+#endif
+
+// continue   >1
+#undef OPTSTR_continue
+#define OPTSTR_continue ">1"
+#ifdef CLEANUP_continue
+#undef CLEANUP_continue
+#undef FOR_continue
 #endif
 
 // count   <0>0l
@@ -641,13 +657,14 @@
 #undef FOR_demo_utf8towc
 #endif
 
-// devmem   <1(no-sync)f:
+// devmem   <1(no-sync)(no-mmap)f:
 #undef OPTSTR_devmem
-#define OPTSTR_devmem "<1(no-sync)f:"
+#define OPTSTR_devmem "<1(no-sync)(no-mmap)f:"
 #ifdef CLEANUP_devmem
 #undef CLEANUP_devmem
 #undef FOR_devmem
 #undef FLAG_f
+#undef FLAG_no_mmap
 #undef FLAG_no_sync
 #endif
 
@@ -4124,6 +4141,13 @@
 #endif
 #endif
 
+#ifdef FOR_break
+#define CLEANUP_break
+#ifndef TT
+#define TT this.break
+#endif
+#endif
+
 #ifdef FOR_bunzip2
 #define CLEANUP_bunzip2
 #ifndef TT
@@ -4291,6 +4315,13 @@
 #define FLAG_1 (1LL<<0)
 #define FLAG_2 (1LL<<1)
 #define FLAG_3 (1LL<<2)
+#endif
+
+#ifdef FOR_continue
+#define CLEANUP_continue
+#ifndef TT
+#define TT this.continue
+#endif
 #endif
 
 #ifdef FOR_count
@@ -4548,7 +4579,8 @@
 #define TT this.devmem
 #endif
 #define FLAG_f (FORCED_FLAG<<0)
-#define FLAG_no_sync (FORCED_FLAG<<1)
+#define FLAG_no_mmap (FORCED_FLAG<<1)
+#define FLAG_no_sync (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_df
