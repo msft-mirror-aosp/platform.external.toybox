@@ -250,6 +250,7 @@ toybox_symlinks = [
     "acpi",
     "base64",
     "basename",
+    "blkdiscard",
     "blockdev",
     "brctl",
     "cal",
