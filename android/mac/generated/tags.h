@@ -85,7 +85,7 @@
 #define PS_RUID                          30
 #define _PS_RUID                         (1<<30)
 #define PS_RUSER                         31
-#define _PS_RUSER                        (1<<31)
+#define _PS_RUSER                        (1LL<<31)
 #define PS_GID                           32
 #define _PS_GID                          (1LL<<32)
 #define PS_GROUP                         33
