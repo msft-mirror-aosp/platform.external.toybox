@@ -2092,22 +2092,6 @@
 #undef FLAG_Z
 #endif
 
-// mke2fs   <1>2g:Fnqm#N#i#b#
-#undef OPTSTR_mke2fs
-#define OPTSTR_mke2fs "<1>2g:Fnqm#N#i#b#"
-#ifdef CLEANUP_mke2fs
-#undef CLEANUP_mke2fs
-#undef FOR_mke2fs
-#undef FLAG_b
-#undef FLAG_i
-#undef FLAG_N
-#undef FLAG_m
-#undef FLAG_q
-#undef FLAG_n
-#undef FLAG_F
-#undef FLAG_g
-#endif
-
 // mkfifo   <1Z:m:
 #undef OPTSTR_mkfifo
 #define OPTSTR_mkfifo "<1Z:m:"
@@ -5888,21 +5872,6 @@
 #define FLAG_p (1LL<<1)
 #define FLAG_v (1LL<<2)
 #define FLAG_Z (FORCED_FLAG<<3)
-#endif
-
-#ifdef FOR_mke2fs
-#define CLEANUP_mke2fs
-#ifndef TT
-#define TT this.mke2fs
-#endif
-#define FLAG_b (FORCED_FLAG<<0)
-#define FLAG_i (FORCED_FLAG<<1)
-#define FLAG_N (FORCED_FLAG<<2)
-#define FLAG_m (FORCED_FLAG<<3)
-#define FLAG_q (FORCED_FLAG<<4)
-#define FLAG_n (FORCED_FLAG<<5)
-#define FLAG_F (FORCED_FLAG<<6)
-#define FLAG_g (FORCED_FLAG<<7)
 #endif
 
 #ifdef FOR_mkfifo
