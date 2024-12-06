@@ -250,6 +250,7 @@ toybox_symlinks = [
     "acpi",
     "base64",
     "basename",
+    "blkdiscard",
     "blockdev",
     "brctl",
     "cal",
@@ -526,7 +527,6 @@ cc_binary {
     name: "toybox",
     defaults: ["toybox-shared-defaults"],
     host_supported: true,
-    recovery_available: true,
     vendor_ramdisk_available: true,
 }
 
@@ -534,6 +534,13 @@ cc_binary {
     name: "toybox_vendor",
     defaults: ["toybox-shared-defaults"],
     vendor: true,
+}
+
+cc_binary {
+    name: "toybox_recovery",
+    defaults: ["toybox-shared-defaults"],
+    recovery: true,
+    stem: "toybox",
 }
 
 //###########################################
