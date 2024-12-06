@@ -190,6 +190,14 @@
 #undef FOR_brctl
 #endif
 
+// break   >1
+#undef OPTSTR_break
+#define OPTSTR_break ">1"
+#ifdef CLEANUP_break
+#undef CLEANUP_break
+#undef FOR_break
+#endif
+
 // bunzip2   cftkv
 #undef OPTSTR_bunzip2
 #define OPTSTR_bunzip2 "cftkv"
@@ -374,6 +382,14 @@
 #undef FLAG_1
 #undef FLAG_2
 #undef FLAG_3
+#endif
+
+// continue   >1
+#undef OPTSTR_continue
+#define OPTSTR_continue ">1"
+#ifdef CLEANUP_continue
+#undef CLEANUP_continue
+#undef FOR_continue
 #endif
 
 // count   <0>0l
@@ -641,13 +657,14 @@
 #undef FOR_demo_utf8towc
 #endif
 
-// devmem   <1(no-sync)f:
+// devmem   <1(no-sync)(no-mmap)f:
 #undef OPTSTR_devmem
-#define OPTSTR_devmem "<1(no-sync)f:"
+#define OPTSTR_devmem "<1(no-sync)(no-mmap)f:"
 #ifdef CLEANUP_devmem
 #undef CLEANUP_devmem
 #undef FOR_devmem
 #undef FLAG_f
+#undef FLAG_no_mmap
 #undef FLAG_no_sync
 #endif
 
@@ -1744,12 +1761,13 @@
 #undef FLAG_o
 #endif
 
-// klogd   c#<1>8n
+// klogd   c#<1>8ns
 #undef OPTSTR_klogd
-#define OPTSTR_klogd "c#<1>8n"
+#define OPTSTR_klogd "c#<1>8ns"
 #ifdef CLEANUP_klogd
 #undef CLEANUP_klogd
 #undef FOR_klogd
+#undef FLAG_s
 #undef FLAG_n
 #undef FLAG_c
 #endif
@@ -2072,22 +2090,6 @@
 #undef FLAG_p
 #undef FLAG_v
 #undef FLAG_Z
-#endif
-
-// mke2fs   <1>2g:Fnqm#N#i#b#
-#undef OPTSTR_mke2fs
-#define OPTSTR_mke2fs "<1>2g:Fnqm#N#i#b#"
-#ifdef CLEANUP_mke2fs
-#undef CLEANUP_mke2fs
-#undef FOR_mke2fs
-#undef FLAG_b
-#undef FLAG_i
-#undef FLAG_N
-#undef FLAG_m
-#undef FLAG_q
-#undef FLAG_n
-#undef FLAG_F
-#undef FLAG_g
 #endif
 
 // mkfifo   <1Z:m:
@@ -4123,6 +4125,13 @@
 #endif
 #endif
 
+#ifdef FOR_break
+#define CLEANUP_break
+#ifndef TT
+#define TT this.break
+#endif
+#endif
+
 #ifdef FOR_bunzip2
 #define CLEANUP_bunzip2
 #ifndef TT
@@ -4290,6 +4299,13 @@
 #define FLAG_1 (1LL<<0)
 #define FLAG_2 (1LL<<1)
 #define FLAG_3 (1LL<<2)
+#endif
+
+#ifdef FOR_continue
+#define CLEANUP_continue
+#ifndef TT
+#define TT this.continue
+#endif
 #endif
 
 #ifdef FOR_count
@@ -4547,7 +4563,8 @@
 #define TT this.devmem
 #endif
 #define FLAG_f (FORCED_FLAG<<0)
-#define FLAG_no_sync (FORCED_FLAG<<1)
+#define FLAG_no_mmap (FORCED_FLAG<<1)
+#define FLAG_no_sync (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_df
@@ -5559,8 +5576,9 @@
 #ifndef TT
 #define TT this.klogd
 #endif
-#define FLAG_n (FORCED_FLAG<<0)
-#define FLAG_c (FORCED_FLAG<<1)
+#define FLAG_s (FORCED_FLAG<<0)
+#define FLAG_n (FORCED_FLAG<<1)
+#define FLAG_c (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_last
@@ -5854,21 +5872,6 @@
 #define FLAG_p (1LL<<1)
 #define FLAG_v (1LL<<2)
 #define FLAG_Z (FORCED_FLAG<<3)
-#endif
-
-#ifdef FOR_mke2fs
-#define CLEANUP_mke2fs
-#ifndef TT
-#define TT this.mke2fs
-#endif
-#define FLAG_b (FORCED_FLAG<<0)
-#define FLAG_i (FORCED_FLAG<<1)
-#define FLAG_N (FORCED_FLAG<<2)
-#define FLAG_m (FORCED_FLAG<<3)
-#define FLAG_q (FORCED_FLAG<<4)
-#define FLAG_n (FORCED_FLAG<<5)
-#define FLAG_F (FORCED_FLAG<<6)
-#define FLAG_g (FORCED_FLAG<<7)
 #endif
 
 #ifdef FOR_mkfifo
