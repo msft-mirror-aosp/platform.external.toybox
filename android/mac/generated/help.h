@@ -436,16 +436,6 @@
 
 #define HELP_modprobe "usage: modprobe [-alrqvsDb] [-d DIR] MODULE [symbol=value][...]\n\nmodprobe utility - inserts modules and dependencies.\n\n-a  Load multiple MODULEs\n-b  Apply blacklist to module names too\n-D  Show dependencies\n-d  Load modules from DIR, option may be used multiple times\n-l  List (MODULE is a pattern)\n-q  Quiet\n-r  Remove MODULE (stacks) or do autoclean\n-s  Log to syslog\n-v  Verbose"
 
-#define HELP_mke2fs_extended "usage: mke2fs [-E stride=###] [-O option[,option]]\n\n-E stride= Set RAID stripe size (in blocks)\n-O [opts]  Specify fewer ext2 option flags (for old kernels)\n           All of these are on by default (as appropriate)\n   none         Clear default options (all but journaling)\n   dir_index    Use htree indexes for large directories\n   filetype     Store file type info in directory entry\n   has_journal  Set by -j\n   journal_dev  Set by -J device=XXX\n   sparse_super Don't allocate huge numbers of redundant superblocks"
-
-#define HELP_mke2fs_label "usage: mke2fs [-L label] [-M path] [-o string]\n\n-L         Volume label\n-M         Path to mount point\n-o         Created by"
-
-#define HELP_mke2fs_gen "usage: gene2fs [options] device filename\n\nThe [options] are the same as mke2fs."
-
-#define HELP_mke2fs_journal "usage: mke2fs [-j] [-J size=###,device=XXX]\n\n-j         Create journal (ext3)\n-J         Journal options\n           size: Number of blocks (1024-102400)\n           device: Specify an external journal"
-
-#define HELP_mke2fs "usage: mke2fs [-Fnq] [-b ###] [-N|i ###] [-m ###] device\n\nCreate an ext2 filesystem on a block device or filesystem image.\n\n-F         Force to run on a mounted device\n-n         Don't write to device\n-q         Quiet (no output)\n-b size    Block size (1024, 2048, or 4096)\n-N inodes  Allocate this many inodes\n-i bytes   Allocate one inode for every XXX bytes of device\n-m percent Reserve this percent of filesystem space for root user"
-
 #define HELP_mdev_conf "The mdev config file (/etc/mdev.conf) contains lines that look like:\nhd[a-z][0-9]* 0:3 660\n(sd[a-z]) root:disk 660 =usb_storage\n\nEach line must contain three whitespace separated fields. The first\nfield is a regular expression matching one or more device names,\nthe second and third fields are uid:gid and file permissions for\nmatching devices. Fourth field is optional. It could be used to change\ndevice name (prefix '='), path (prefix '=' and postfix '/') or create a\nsymlink (prefix '>')."
 
 #define HELP_mdev "usage: mdev [-s]\n\nCreate devices in /dev using information from /sys.\n\n-s	Scan all entries in /sys to populate /dev"
