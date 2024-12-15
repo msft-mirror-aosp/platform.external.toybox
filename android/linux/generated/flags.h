@@ -2092,22 +2092,6 @@
 #undef FLAG_Z
 #endif
 
-// mke2fs   <1>2g:Fnqm#N#i#b#
-#undef OPTSTR_mke2fs
-#define OPTSTR_mke2fs "<1>2g:Fnqm#N#i#b#"
-#ifdef CLEANUP_mke2fs
-#undef CLEANUP_mke2fs
-#undef FOR_mke2fs
-#undef FLAG_b
-#undef FLAG_i
-#undef FLAG_N
-#undef FLAG_m
-#undef FLAG_q
-#undef FLAG_n
-#undef FLAG_F
-#undef FLAG_g
-#endif
-
 // mkfifo   <1Z:m:
 #undef OPTSTR_mkfifo
 #define OPTSTR_mkfifo "<1Z:m:"
@@ -3255,9 +3239,9 @@
 #undef FLAG_f
 #endif
 
-// tar &(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa] &(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]
+// tar &(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*Z(zstd)o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa] &(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*Z(zstd)o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]
 #undef OPTSTR_tar
-#define OPTSTR_tar "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]"
+#define OPTSTR_tar "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*Z(zstd)o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]"
 #ifdef CLEANUP_tar
 #undef CLEANUP_tar
 #undef FOR_tar
@@ -3283,6 +3267,7 @@
 #undef FLAG_k
 #undef FLAG_p
 #undef FLAG_o
+#undef FLAG_Z
 #undef FLAG_xform
 #undef FLAG_strip
 #undef FLAG_to_command
@@ -5890,21 +5875,6 @@
 #define FLAG_Z (FORCED_FLAG<<3)
 #endif
 
-#ifdef FOR_mke2fs
-#define CLEANUP_mke2fs
-#ifndef TT
-#define TT this.mke2fs
-#endif
-#define FLAG_b (FORCED_FLAG<<0)
-#define FLAG_i (FORCED_FLAG<<1)
-#define FLAG_N (FORCED_FLAG<<2)
-#define FLAG_m (FORCED_FLAG<<3)
-#define FLAG_q (FORCED_FLAG<<4)
-#define FLAG_n (FORCED_FLAG<<5)
-#define FLAG_F (FORCED_FLAG<<6)
-#define FLAG_g (FORCED_FLAG<<7)
-#endif
-
 #ifdef FOR_mkfifo
 #define CLEANUP_mkfifo
 #ifndef TT
@@ -6990,33 +6960,34 @@
 #define FLAG_k (1LL<<19)
 #define FLAG_p (1LL<<20)
 #define FLAG_o (1LL<<21)
-#define FLAG_xform (1LL<<22)
-#define FLAG_strip (1LL<<23)
-#define FLAG_to_command (1LL<<24)
-#define FLAG_owner (1LL<<25)
-#define FLAG_group (1LL<<26)
-#define FLAG_mtime (1LL<<27)
-#define FLAG_mode (1LL<<28)
-#define FLAG_sort (1LL<<29)
-#define FLAG_exclude (1LL<<30)
-#define FLAG_overwrite (1LL<<31)
-#define FLAG_no_same_permissions (1LL<<32)
-#define FLAG_numeric_owner (1LL<<33)
-#define FLAG_null (1LL<<34)
-#define FLAG_no_recursion (1LL<<35)
-#define FLAG_full_time (1LL<<36)
-#define FLAG_restrict (1LL<<37)
-#define FLAG_selinux (1LL<<38)
-#define FLAG_show_transformed_names (1LL<<39)
-#define FLAG_wildcards_match_slash (1LL<<40)
-#define FLAG_no_wildcards_match_slash (1LL<<41)
-#define FLAG_wildcards (1LL<<42)
-#define FLAG_no_wildcards (1LL<<43)
-#define FLAG_anchored (1LL<<44)
-#define FLAG_no_anchored (1LL<<45)
-#define FLAG_ignore_case (1LL<<46)
-#define FLAG_no_ignore_case (1LL<<47)
-#define FLAG_one_file_system (1LL<<48)
+#define FLAG_Z (1LL<<22)
+#define FLAG_xform (1LL<<23)
+#define FLAG_strip (1LL<<24)
+#define FLAG_to_command (1LL<<25)
+#define FLAG_owner (1LL<<26)
+#define FLAG_group (1LL<<27)
+#define FLAG_mtime (1LL<<28)
+#define FLAG_mode (1LL<<29)
+#define FLAG_sort (1LL<<30)
+#define FLAG_exclude (1LL<<31)
+#define FLAG_overwrite (1LL<<32)
+#define FLAG_no_same_permissions (1LL<<33)
+#define FLAG_numeric_owner (1LL<<34)
+#define FLAG_null (1LL<<35)
+#define FLAG_no_recursion (1LL<<36)
+#define FLAG_full_time (1LL<<37)
+#define FLAG_restrict (1LL<<38)
+#define FLAG_selinux (1LL<<39)
+#define FLAG_show_transformed_names (1LL<<40)
+#define FLAG_wildcards_match_slash (1LL<<41)
+#define FLAG_no_wildcards_match_slash (1LL<<42)
+#define FLAG_wildcards (1LL<<43)
+#define FLAG_no_wildcards (1LL<<44)
+#define FLAG_anchored (1LL<<45)
+#define FLAG_no_anchored (1LL<<46)
+#define FLAG_ignore_case (1LL<<47)
+#define FLAG_no_ignore_case (1LL<<48)
+#define FLAG_one_file_system (1LL<<49)
 #endif
 
 #ifdef FOR_taskset
