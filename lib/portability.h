@@ -43,13 +43,10 @@
 // Test for gcc (using compiler builtin #define)
 
 #ifdef __GNUC__
-#ifndef __clang__
 #define QUIET = 0 // shut up false positive "may be used uninitialized" warning
-#else
-#define QUIET
-#endif
 #define printf_format	__attribute__((format(printf, 1, 2)))
 #else
+#define QUIET
 #define printf_format
 #endif
 
@@ -341,20 +338,6 @@ static inline int stub_out_log_write(int pri, const char *tag, const char *msg)
 #define __android_log_write(a, b, c) stub_out_log_write(a, b, c)
 #endif
 
-#endif
-
-// libprocessgroup is an Android platform library not included in the NDK.
-#if defined(__BIONIC__)
-#if __has_include(<processgroup/sched_policy.h>)
-#include <processgroup/sched_policy.h>
-#define GOT_IT
-#endif
-#endif
-#ifdef GOT_IT
-#undef GOT_IT
-#else
-static inline int get_sched_policy(int tid, void *policy) {return 0;}
-static inline char *get_sched_policy_name(int policy) {return "unknown";}
 #endif
 
 #ifndef SYSLOG_NAMES
