@@ -446,7 +446,7 @@
 
 #define HELP_last "usage: last [-W] [-f FILE]\n\nShow listing of last logged in users.\n\n-W      Display the information without host-column truncation\n-f FILE Read from file FILE instead of /var/log/wtmp"
 
-#define HELP_klogd "usage: klogd [-n] [-c PRIORITY]\n\n-c	Print to console messages more urgent than PRIORITY (1-8)\"\n-n	Run in foreground\n-s	Use syscall instead of /proc"
+#define HELP_klogd "usage: klogd [-n] [-c PRIORITY]\n\nForward messages from the kernel ring buffer (read by dmesg) to syslogd.\n\n-c	Print to console messages more urgent than PRIORITY (1-8)\n-n	Run in foreground\n-s	Use syscall instead of /proc"
 
 #define HELP_ipcs "usage: ipcs [[-smq] -i shmid] | [[-asmq] [-tcplu]]\n\n-i Show specific resource\nResource specification:\n-a All (default)\n-m Shared memory segments\n-q Message queues\n-s Semaphore arrays\nOutput format:\n-c Creator\n-l Limits\n-p Pid\n-t Time\n-u Summary"
 
