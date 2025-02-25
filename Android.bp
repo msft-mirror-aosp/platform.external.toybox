@@ -215,6 +215,7 @@ device_srcs = [
     "toys/other/vmstat.c",
     "toys/other/watch.c",
     "toys/pending/brctl.c",
+    "toys/pending/dhcp.c",
     "toys/pending/getfattr.c",
     "toys/pending/lsof.c",
     "toys/pending/modprobe.c",
