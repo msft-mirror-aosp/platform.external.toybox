@@ -410,6 +410,8 @@
 #define USE_NICE(...) __VA_ARGS__
 #define CFG_NL 1
 #define USE_NL(...) __VA_ARGS__
+#define CFG_NOLOGIN 0
+#define USE_NOLOGIN(...)
 #define CFG_NOHUP 1
 #define USE_NOHUP(...) __VA_ARGS__
 #define CFG_NPROC 1
