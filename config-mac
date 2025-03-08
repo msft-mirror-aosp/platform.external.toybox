@@ -219,6 +219,7 @@ CONFIG_MV=y
 # CONFIG_NICE is not set
 CONFIG_NL=y
 # CONFIG_NOHUP is not set
+# CONFIG_NOLOGIN is not set
 # CONFIG_NPROC is not set
 # CONFIG_NSENTER is not set
 CONFIG_OD=y

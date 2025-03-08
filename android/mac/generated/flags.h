@@ -2325,6 +2325,14 @@
 #undef FOR_nohup
 #endif
 
+// nologin    
+#undef OPTSTR_nologin
+#define OPTSTR_nologin 0
+#ifdef CLEANUP_nologin
+#undef CLEANUP_nologin
+#undef FOR_nologin
+#endif
+
 // nproc   (all)
 #undef OPTSTR_nproc
 #define OPTSTR_nproc "(all)"
@@ -6098,6 +6106,13 @@
 #define CLEANUP_nohup
 #ifndef TT
 #define TT this.nohup
+#endif
+#endif
+
+#ifdef FOR_nologin
+#define CLEANUP_nologin
+#ifndef TT
+#define TT this.nologin
 #endif
 #endif
 
