@@ -412,6 +412,8 @@
 #define USE_NL(...) __VA_ARGS__
 #define CFG_NOHUP 0
 #define USE_NOHUP(...)
+#define CFG_NOLOGIN 0
+#define USE_NOLOGIN(...)
 #define CFG_NPROC 1
 #define USE_NPROC(...) __VA_ARGS__
 #define CFG_NSENTER 0
