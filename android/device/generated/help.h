@@ -236,6 +236,8 @@
 
 #define HELP_unshare "usage: unshare [-imnpuUr] COMMAND...\n\nCreate new container namespace(s) for this process and its children, allowing\nthe new set of processes to have a different view of the system than the\nparent process.\n\n-a	Unshare all supported namespaces\n-f	Fork command in the background (--fork)\n-r	Become root (map current euid/egid to 0/0, implies -U) (--map-root-user)\n\nAvailable namespaces:\n-C	Control groups (--cgroup)\n-i	SysV IPC (message queues, semaphores, shared memory) (--ipc)\n-m	Mount/unmount tree (--mount)\n-n	Network address, sockets, routing, iptables (--net)\n-p	Process IDs and init (--pid)\n-u	Host and domain names (--uts)\n-U	UIDs, GIDs, capabilities (--user)\n\nEach namespace can take an optional argument, a persistent mountpoint usable\nby the nsenter command to add new processes to that the namespace. (Specify\nmultiple namespaces to unshare separately, ala -c -i -m because -cim is -c\nwith persistent mount \"im\".)"
 
+#define HELP_nologin "usage: nologin\n\nPrint /etc/nologin.txt and return failure."
+
 #define HELP_nbd_server "usage: nbd-server [-r] FILE\n\nServe a Network Block Device from FILE on stdin/out (ala inetd).\n\n-r	Read only export"
 
 #define HELP_nbd_client "usage: nbd-client [-ns] [-b BLKSZ] HOST PORT DEVICE\n\n-b	Block size (default 4096)\n-n	Do not daemonize\n-s	nbd swap support (lock server into memory)"
