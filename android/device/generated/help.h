@@ -236,6 +236,8 @@
 
 #define HELP_unshare "usage: unshare [-imnpuUr] COMMAND...\n\nCreate new container namespace(s) for this process and its children, allowing\nthe new set of processes to have a different view of the system than the\nparent process.\n\n-a	Unshare all supported namespaces\n-f	Fork command in the background (--fork)\n-r	Become root (map current euid/egid to 0/0, implies -U) (--map-root-user)\n\nAvailable namespaces:\n-C	Control groups (--cgroup)\n-i	SysV IPC (message queues, semaphores, shared memory) (--ipc)\n-m	Mount/unmount tree (--mount)\n-n	Network address, sockets, routing, iptables (--net)\n-p	Process IDs and init (--pid)\n-u	Host and domain names (--uts)\n-U	UIDs, GIDs, capabilities (--user)\n\nEach namespace can take an optional argument, a persistent mountpoint usable\nby the nsenter command to add new processes to that the namespace. (Specify\nmultiple namespaces to unshare separately, ala -c -i -m because -cim is -c\nwith persistent mount \"im\".)"
 
+#define HELP_nologin "usage: nologin\n\nPrint /etc/nologin.txt and return failure."
+
 #define HELP_nbd_server "usage: nbd-server [-r] FILE\n\nServe a Network Block Device from FILE on stdin/out (ala inetd).\n\n-r	Read only export"
 
 #define HELP_nbd_client "usage: nbd-client [-ns] [-b BLKSZ] HOST PORT DEVICE\n\n-b	Block size (default 4096)\n-n	Do not daemonize\n-s	nbd swap support (lock server into memory)"
@@ -395,6 +397,8 @@
 #define HELP_strace "usage: strace [-fv] [-p PID] [-s NUM] COMMAND [ARGS...]\n\nTrace systems calls made by a process.\n\n-s	String length limit.\n-v	Dump all of large structs/arrays."
 
 #define HELP_wait "usage: wait [-n] [ID...]\n\nWait for background processes to exit, returning its exit code.\nID can be PID or job, with no IDs waits for all backgrounded processes.\n\n-n	Wait for next process to exit"
+
+#define HELP_trap "usage: trap [-l] [[COMMAND] SIGNAL]\n\nRun COMMAND as handler for signal. With no arguments, list active handlers.\nThe COMMAND \"-\" resets the signal to default.\n\n-l	List signals.\n\nThe special signal EXIT gets called before the shell exits, RETURN when\na function or source returns, and DEBUG is called before each command."
 
 #define HELP_source "usage: source FILE [ARGS...]\n\nRead FILE and execute commands. Any ARGS become positional parameters."
 
@@ -572,7 +576,7 @@
 
 #define HELP_pkill "usage: pkill [-fnovx] [-SIGNAL|-l SIGNAL] [PATTERN] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]\n\n-l	Send SIGNAL (default SIGTERM)\n-V	Verbose\n-f	Check full command line for PATTERN\n-G	Match real Group ID(s)\n-g	Match Process Group(s) (0 is current user)\n-n	Newest match only\n-o	Oldest match only\n-P	Match Parent Process ID(s)\n-s	Match Session ID(s) (0 for current)\n-t	Match Terminal(s)\n-U	Match real User ID(s)\n-u	Match effective User ID(s)\n-v	Negate the match\n-x	Match whole command (not substring)"
 
-#define HELP_pgrep "usage: pgrep [-clfnovx] [-d DELIM] [-L SIGNAL] [PATTERN] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]\n\nSearch for process(es). PATTERN is an extended regular expression checked\nagainst command names.\n\n-c	Show only count of matches\n-d	Use DELIM instead of newline\n-L	Send SIGNAL instead of printing name\n-l	Show command name\n-f	Check full command line for PATTERN\n-G	Match real Group ID(s)\n-g	Match Process Group(s) (0 is current user)\n-n	Newest match only\n-o	Oldest match only\n-P	Match Parent Process ID(s)\n-s	Match Session ID(s) (0 for current)\n-t	Match Terminal(s)\n-U	Match real User ID(s)\n-u	Match effective User ID(s)\n-v	Negate the match\n-x	Match whole command (not substring)"
+#define HELP_pgrep "usage: pgrep [-aclfnovx] [-d DELIM] [-L SIGNAL] [PATTERN] [-G GID,] [-g PGRP,] [-P PPID,] [-s SID,] [-t TERM,] [-U UID,] [-u EUID,]\n\nSearch for process(es). PATTERN is an extended regular expression checked\nagainst command names.\n\n-a	Show the full command line\n-c	Show only count of matches\n-d	Use DELIM instead of newline\n-L	Send SIGNAL instead of printing name\n-l	Show command name\n-f	Check full command line for PATTERN\n-G	Match real Group ID(s)\n-g	Match Process Group(s) (0 is current user)\n-n	Newest match only\n-o	Oldest match only\n-P	Match Parent Process ID(s)\n-s	Match Session ID(s) (0 for current)\n-t	Match Terminal(s)\n-U	Match real User ID(s)\n-u	Match effective User ID(s)\n-v	Negate the match\n-x	Match whole command (not substring)"
 
 #define HELP_iotop "usage: iotop [-AaKObq] [-n NUMBER] [-d SECONDS] [-p PID,] [-u USER,]\n\nRank processes by I/O.\n\n-A	All I/O, not just disk\n-a	Accumulated I/O (not percentage)\n-H	Show threads\n-K	Kilobytes\n-k	Fallback sort FIELDS (default -[D]IO,-ETIME,-PID)\n-m	Maximum number of tasks to show\n-O	Only show processes doing I/O\n-o	Show FIELDS (default PID,PR,USER,[D]READ,[D]WRITE,SWAP,[D]IO,COMM)\n-s	Sort by field number (0-X, default 6)\n-b	Batch mode (no tty)\n-d	Delay SECONDS between each cycle (default 3)\n-n	Exit after NUMBER iterations\n-p	Show these PIDs\n-u	Show these USERs\n-q	Quiet (no header lines)\n\nCursor LEFT/RIGHT to change sort, UP/DOWN move list, space to force\nupdate, R to reverse sort, Q to exit."
 

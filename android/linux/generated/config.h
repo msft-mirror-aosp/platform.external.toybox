@@ -316,8 +316,6 @@
 #define USE_KILL(...)
 #define CFG_KLOGD 0
 #define USE_KLOGD(...)
-#define CFG_KLOGD_SOURCE_RING_BUFFER 0
-#define USE_KLOGD_SOURCE_RING_BUFFER(...)
 #define CFG_LAST 0
 #define USE_LAST(...)
 #define CFG_LINK 0
@@ -374,16 +372,6 @@
 #define USE_MKDIR(...) __VA_ARGS__
 #define CFG_MKDIR_Z 0
 #define USE_MKDIR_Z(...)
-#define CFG_MKE2FS_EXTENDED 0
-#define USE_MKE2FS_EXTENDED(...)
-#define CFG_MKE2FS_GEN 0
-#define USE_MKE2FS_GEN(...)
-#define CFG_MKE2FS 0
-#define USE_MKE2FS(...)
-#define CFG_MKE2FS_JOURNAL 0
-#define USE_MKE2FS_JOURNAL(...)
-#define CFG_MKE2FS_LABEL 0
-#define USE_MKE2FS_LABEL(...)
 #define CFG_MKFIFO 0
 #define USE_MKFIFO(...)
 #define CFG_MKFIFO_Z 0
@@ -424,6 +412,8 @@
 #define USE_NL(...) __VA_ARGS__
 #define CFG_NOHUP 0
 #define USE_NOHUP(...)
+#define CFG_NOLOGIN 0
+#define USE_NOLOGIN(...)
 #define CFG_NPROC 1
 #define USE_NPROC(...) __VA_ARGS__
 #define CFG_NSENTER 0

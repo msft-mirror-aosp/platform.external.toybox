@@ -171,7 +171,6 @@ CONFIG_INSTALL=y
 # CONFIG_KILLALL is not set
 # CONFIG_KILL is not set
 # CONFIG_KLOGD is not set
-# CONFIG_KLOGD_SOURCE_RING_BUFFER is not set
 # CONFIG_LAST is not set
 # CONFIG_LINK is not set
 # CONFIG_LINUX32 is not set
@@ -200,11 +199,6 @@ CONFIG_MICROCOM=y
 # CONFIG_MIX is not set
 CONFIG_MKDIR=y
 # CONFIG_MKDIR_Z is not set
-# CONFIG_MKE2FS_EXTENDED is not set
-# CONFIG_MKE2FS_GEN is not set
-# CONFIG_MKE2FS is not set
-# CONFIG_MKE2FS_JOURNAL is not set
-# CONFIG_MKE2FS_LABEL is not set
 # CONFIG_MKFIFO is not set
 # CONFIG_MKFIFO_Z is not set
 # CONFIG_MKNOD is not set
@@ -225,6 +219,7 @@ CONFIG_MV=y
 # CONFIG_NICE is not set
 CONFIG_NL=y
 # CONFIG_NOHUP is not set
+# CONFIG_NOLOGIN is not set
 CONFIG_NPROC=y
 # CONFIG_NSENTER is not set
 CONFIG_OD=y

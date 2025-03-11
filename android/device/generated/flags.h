@@ -683,7 +683,7 @@
 #undef FLAG_H
 #endif
 
-// dhcp   V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf
+// dhcp V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf
 #undef OPTSTR_dhcp
 #define OPTSTR_dhcp "V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf"
 #ifdef CLEANUP_dhcp
@@ -2325,6 +2325,14 @@
 #undef FOR_nohup
 #endif
 
+// nologin    
+#undef OPTSTR_nologin
+#define OPTSTR_nologin 0
+#ifdef CLEANUP_nologin
+#undef CLEANUP_nologin
+#undef FOR_nologin
+#endif
+
 // nproc (all) (all)
 #undef OPTSTR_nproc
 #define OPTSTR_nproc "(all)"
@@ -2446,9 +2454,9 @@
 #undef FLAG_no_backup_if_mismatch
 #endif
 
-// pgrep ?cld:u*U*t*s*P*g*G*fnovxL:[-no] ?cld:u*U*t*s*P*g*G*fnovxL:[-no]
+// pgrep acld:u*U*t*s*P*g*G*fnovxL:[-no] acld:u*U*t*s*P*g*G*fnovxL:[-no]
 #undef OPTSTR_pgrep
-#define OPTSTR_pgrep "?cld:u*U*t*s*P*g*G*fnovxL:[-no]"
+#define OPTSTR_pgrep "acld:u*U*t*s*P*g*G*fnovxL:[-no]"
 #ifdef CLEANUP_pgrep
 #undef CLEANUP_pgrep
 #undef FOR_pgrep
@@ -2468,6 +2476,7 @@
 #undef FLAG_d
 #undef FLAG_l
 #undef FLAG_c
+#undef FLAG_a
 #endif
 
 // pidof so:x so:x
@@ -3499,6 +3508,16 @@
 #undef FLAG_z
 #undef FLAG_f
 #undef FLAG_i
+#endif
+
+// trap   lp
+#undef OPTSTR_trap
+#define OPTSTR_trap "lp"
+#ifdef CLEANUP_trap
+#undef CLEANUP_trap
+#undef FOR_trap
+#undef FLAG_p
+#undef FLAG_l
 #endif
 
 // true    
@@ -4587,29 +4606,29 @@
 #ifndef TT
 #define TT this.dhcp
 #endif
-#define FLAG_f (FORCED_FLAG<<0)
-#define FLAG_b (FORCED_FLAG<<1)
-#define FLAG_n (FORCED_FLAG<<2)
-#define FLAG_q (FORCED_FLAG<<3)
-#define FLAG_v (FORCED_FLAG<<4)
-#define FLAG_o (FORCED_FLAG<<5)
-#define FLAG_a (FORCED_FLAG<<6)
-#define FLAG_C (FORCED_FLAG<<7)
-#define FLAG_R (FORCED_FLAG<<8)
-#define FLAG_B (FORCED_FLAG<<9)
-#define FLAG_S (FORCED_FLAG<<10)
-#define FLAG_i (FORCED_FLAG<<11)
-#define FLAG_p (FORCED_FLAG<<12)
-#define FLAG_s (FORCED_FLAG<<13)
-#define FLAG_t (FORCED_FLAG<<14)
-#define FLAG_T (FORCED_FLAG<<15)
-#define FLAG_A (FORCED_FLAG<<16)
-#define FLAG_O (FORCED_FLAG<<17)
-#define FLAG_r (FORCED_FLAG<<18)
-#define FLAG_x (FORCED_FLAG<<19)
-#define FLAG_F (FORCED_FLAG<<20)
-#define FLAG_H (FORCED_FLAG<<21)
-#define FLAG_V (FORCED_FLAG<<22)
+#define FLAG_f (1LL<<0)
+#define FLAG_b (1LL<<1)
+#define FLAG_n (1LL<<2)
+#define FLAG_q (1LL<<3)
+#define FLAG_v (1LL<<4)
+#define FLAG_o (1LL<<5)
+#define FLAG_a (1LL<<6)
+#define FLAG_C (1LL<<7)
+#define FLAG_R (1LL<<8)
+#define FLAG_B (1LL<<9)
+#define FLAG_S (1LL<<10)
+#define FLAG_i (1LL<<11)
+#define FLAG_p (1LL<<12)
+#define FLAG_s (1LL<<13)
+#define FLAG_t (1LL<<14)
+#define FLAG_T (1LL<<15)
+#define FLAG_A (1LL<<16)
+#define FLAG_O (1LL<<17)
+#define FLAG_r (1LL<<18)
+#define FLAG_x (1LL<<19)
+#define FLAG_F (1LL<<20)
+#define FLAG_H (1LL<<21)
+#define FLAG_V (1LL<<22)
 #endif
 
 #ifdef FOR_dhcp6
@@ -6090,6 +6109,13 @@
 #endif
 #endif
 
+#ifdef FOR_nologin
+#define CLEANUP_nologin
+#ifndef TT
+#define TT this.nologin
+#endif
+#endif
+
 #ifdef FOR_nproc
 #define CLEANUP_nproc
 #ifndef TT
@@ -6223,6 +6249,7 @@
 #define FLAG_d (1LL<<13)
 #define FLAG_l (1LL<<14)
 #define FLAG_c (1LL<<15)
+#define FLAG_a (1LL<<16)
 #endif
 
 #ifdef FOR_pidof
@@ -7177,6 +7204,15 @@
 #define FLAG_z (1LL<<17)
 #define FLAG_f (1LL<<18)
 #define FLAG_i (1LL<<19)
+#endif
+
+#ifdef FOR_trap
+#define CLEANUP_trap
+#ifndef TT
+#define TT this.trap
+#endif
+#define FLAG_p (FORCED_FLAG<<0)
+#define FLAG_l (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_true
