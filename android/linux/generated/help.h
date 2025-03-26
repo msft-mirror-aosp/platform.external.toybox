@@ -40,7 +40,7 @@
 
 #define HELP_restorecon "usage: restorecon [-D] [-F] [-R] [-n] [-v] FILE...\n\nRestores the default security contexts for the given files.\n\n-D	Apply to /data/data too\n-F	Force reset\n-R	Recurse into directories\n-n	Don't make any changes; useful with -v to see what would change\n-v	Verbose"
 
-#define HELP_log "usage: log [-p PRI] [-t TAG] [MESSAGE...]\n\nLogs message (or stdin) to logcat.\n\n-p	Use the given priority instead of INFO:\n	d: DEBUG  e: ERROR  f: FATAL  i: INFO  v: VERBOSE  w: WARN  s: SILENT\n-t	Use the given tag instead of \"log\""
+#define HELP_log "usage: log [-b BUFFER] [-p PRI] [-t TAG] [MESSAGE...]\n\nLogs message (or stdin) to logcat.\n\n-b	Use the given log buffer instead of \"main\":\n	\"radio\", \"events\", \"system\", \"crash\", \"stats\", \"security\", \"kernel\"\n-p	Use the given priority instead of INFO:\n	d: DEBUG  e: ERROR  f: FATAL  i: INFO  v: VERBOSE  w: WARN  s: SILENT\n-t	Use the given tag instead of \"log\""
 
 #define HELP_load_policy "usage: load_policy FILE\n\nLoad the specified SELinux policy file."
 
