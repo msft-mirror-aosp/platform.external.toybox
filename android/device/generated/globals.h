@@ -1,7 +1,7 @@
 struct log_data {
-  char *t, *p;
+  char *t, *p, *b;
 
-  int pri;
+  int pri, buf;
 };
 
 struct dmesg_data {
