@@ -305,12 +305,13 @@ typedef enum android_LogPriority {
 #endif
 #if !defined(__BIONIC__) || defined(__ANDROID_NDK__)
 // Android NDKv18 has liblog.so but not liblog.a for static builds.
-static inline int stub_out_log_write(int pri, const char *tag, const char *msg)
+static inline int stub_out_log_buf_write(int log_id, int pri, const char *tag,
+  const char *msg)
 {
   return -1;
 }
 #ifdef __ANDROID_NDK__
-#define __android_log_write(a, b, c) stub_out_log_write(a, b, c)
+#define __android_log_buf_write(a, b, c, d) stub_out_log_buf_write(a, b, c, d)
 #endif
 
 #endif

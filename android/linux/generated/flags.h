@@ -1829,14 +1829,15 @@
 #undef FOR_local
 #endif
 
-// log   p:t:
+// log   b:p:t:
 #undef OPTSTR_log
-#define OPTSTR_log "p:t:"
+#define OPTSTR_log "b:p:t:"
 #ifdef CLEANUP_log
 #undef CLEANUP_log
 #undef FOR_log
 #undef FLAG_t
 #undef FLAG_p
+#undef FLAG_b
 #endif
 
 // logger   t:p:s
@@ -5659,6 +5660,7 @@
 #endif
 #define FLAG_t (FORCED_FLAG<<0)
 #define FLAG_p (FORCED_FLAG<<1)
+#define FLAG_b (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_logger
