@@ -451,6 +451,7 @@ cc_defaults {
         "-Wno-invalid-source-encoding",
         "-Wno-missing-field-initializers",
         "-Wno-pointer-arith",
+        "-Wno-pointer-sign",
         "-Wno-sign-compare",
         "-Wno-string-plus-int",
         "-Wno-unused-parameter",
