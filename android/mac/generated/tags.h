@@ -16,6 +16,8 @@
 #define _DD_conv_notrunc                 (1<<2)
 #define DD_conv_sync                     3
 #define _DD_conv_sync                    (1<<3)
+#define DD_conv_nocreat                  4
+#define _DD_conv_nocreat                 (1<<4)
 #define DD_iflag_count_bytes             0
 #define _DD_iflag_count_bytes            (1<<0)
 #define DD_iflag_skip_bytes              1
