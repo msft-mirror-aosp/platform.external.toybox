@@ -5,8 +5,7 @@
 KCONFIG_TOP = Config.in
 KCONFIG_PROJECT = ToyBox
 obj = ./kconfig
-PHONY += clean help oldconfig menuconfig config silentoldconfig \
-	randconfig allyesconfig allnoconfig allmodconfig defconfig
+PHONY += clean help oldconfig menuconfig config silentoldconfig
 
 menuconfig: $(obj)/mconf $(KCONFIG_TOP)
 	$< $(KCONFIG_TOP)
@@ -20,18 +19,7 @@ oldconfig: $(obj)/conf $(KCONFIG_TOP)
 silentoldconfig: $(obj)/conf $(KCONFIG_TOP)
 	yes '' | $< -o $(KCONFIG_TOP) > /dev/null
 
-randconfig: $(obj)/conf $(KCONFIG_TOP)
-	$< -r $(KCONFIG_TOP) > /dev/null
-
-allyesconfig: $(obj)/conf $(KCONFIG_TOP)
-	$< -y $(KCONFIG_TOP) > /dev/null
-
-allnoconfig: $(obj)/conf $(KCONFIG_TOP)
-	$< -n $(KCONFIG_TOP) > /dev/null
-
 KCONFIG_ALLCONFIG ?= /dev/null
-defconfig: $(obj)/conf $(KCONFIG_TOP)
-	$< -D $(KCONFIG_ALLCONFIG) $(KCONFIG_TOP) > /dev/null
 
 macos_defconfig: $(obj)/conf $(KCONFIG_TOP)
 	KCONFIG_ALLCONFIG=$(obj)/macos_miniconfig $< -n $(KCONFIG_TOP) > /dev/null
@@ -48,8 +36,6 @@ help::
 	@echo  '  oldconfig	  - Update current config utilising a provided .config as base'
 	@echo  '  silentoldconfig - Same as oldconfig, but quietly'
 	@echo  '  randconfig	  - New config with random answer to all options'
-	@echo  '  defconfig	  - New config with default answer to all options'
-	@echo  '                    This is the maximum sane configuration.'
 	@echo  '  allyesconfig	  - New config where all options are accepted with yes'
 	@echo  "                    This may not actually compile, it's a starting point"
 	@echo  '                    for further configuration (probably with menuconfig)'

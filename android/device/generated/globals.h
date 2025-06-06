@@ -665,6 +665,10 @@ struct patch_data {
   char *tempname;
 };
 
+struct printf_data {
+  long r;
+};
+
 struct ps_data {
   union {
     struct {
@@ -918,6 +922,7 @@ extern union global_union {
 	struct od_data od;
 	struct paste_data paste;
 	struct patch_data patch;
+	struct printf_data printf;
 	struct ps_data ps;
 	struct renice_data renice;
 	struct sed_data sed;

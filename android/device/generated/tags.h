@@ -22,8 +22,12 @@
 #define _DD_iflag_count_bytes            (1<<0)
 #define DD_iflag_skip_bytes              1
 #define _DD_iflag_skip_bytes             (1<<1)
-#define DD_oflag_seek_bytes              0
-#define _DD_oflag_seek_bytes             (1<<0)
+#define DD_oflag_append                  0
+#define _DD_oflag_append                 (1<<0)
+#define DD_oflag_direct                  1
+#define _DD_oflag_direct                 (1<<1)
+#define DD_oflag_seek_bytes              2
+#define _DD_oflag_seek_bytes             (1<<2)
 #define PS_PID                           0
 #define _PS_PID                          (1<<0)
 #define PS_PPID                          1

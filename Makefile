@@ -12,12 +12,13 @@ export CROSS_COMPILE CFLAGS OPTIMIZE LDOPTIMIZE CC HOSTCC V STRIP ASAN
 all: toybox
 
 KCONFIG_CONFIG ?= .config
+KCONFIG_TOP ?= Config.in
 
 toybox generated/unstripped/toybox: $(KCONFIG_CONFIG) *.[ch] lib/*.[ch] toys/*/*.c scripts/*.sh Config.in
 	scripts/make.sh
 
 .PHONY: clean distclean baseline bloatcheck install install_flat \
-	uninstall uninstall_flat tests help change \
+	uninstall uninstall_flat tests help change defconfig \
 	list list_example list_pending root run_root
 .SUFFIXES: # Disable legacy behavior
 
@@ -29,10 +30,22 @@ $(KCONFIG_CONFIG): $(KCONFIG_TOP)
 	else echo "Not configured (run '$(MAKE) defconfig' or '$(MAKE) menuconfig')";\
 	exit 1; fi
 
-$(KCONFIG_TOP): generated/Config.in generated/Config.probed
+$(KCONFIG_TOP): generated/Config.in generated/Config.probed generated/unstripped/kconfig
 generated/Config.probed: generated/Config.in
-generated/Config.in: toys/*/*.c scripts/genconfig.sh
+generated/Config.in: toys/*/*.c scripts/genconfig.sh scripts/kconfig.c
 	scripts/genconfig.sh
+
+defconfig: $(KCONFIG_TOP) generated/Config.in
+	generated/unstripped/kconfig -d > $(KCONFIG_CONFIG)
+
+randconfig: $(KCONFIG_TOP) generated/Config.in
+	generated/unstripped/kconfig -r > $(KCONFIG_CONFIG)
+
+allyesconfig: $(KCONFIG_TOP) generated/Config.in
+	generated/unstripped/kconfig -y > $(KCONFIG_CONFIG)
+
+allnoconfig: $(KCONFIG_TOP) generated/Config.in
+	generated/unstripped/kconfig -n > $(KCONFIG_CONFIG)
 
 # Development targets
 baseline: generated/unstripped/toybox
