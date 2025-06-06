@@ -18,6 +18,15 @@
 #undef FLAG_a
 #endif
 
+// alias   p
+#undef OPTSTR_alias
+#define OPTSTR_alias "p"
+#ifdef CLEANUP_alias
+#undef CLEANUP_alias
+#undef FOR_alias
+#undef FLAG_p
+#endif
+
 // arch    
 #undef OPTSTR_arch
 #define OPTSTR_arch 0
@@ -287,15 +296,16 @@
 #undef FLAG_h
 #endif
 
-// chmod <2?vfR[-vf] <2?vfR[-vf]
+// chmod <2?cvfR[-cvf] <2?cvfR[-cvf]
 #undef OPTSTR_chmod
-#define OPTSTR_chmod "<2?vfR[-vf]"
+#define OPTSTR_chmod "<2?cvfR[-cvf]"
 #ifdef CLEANUP_chmod
 #undef CLEANUP_chmod
 #undef FOR_chmod
 #undef FLAG_R
 #undef FLAG_f
 #undef FLAG_v
+#undef FLAG_c
 #endif
 
 // chroot ^<1 ^<1
@@ -1381,6 +1391,14 @@
 #undef FLAG_d
 #undef FLAG_c
 #undef FLAG_n
+#endif
+
+// hd    
+#undef OPTSTR_hd
+#define OPTSTR_hd 0
+#ifdef CLEANUP_hd
+#undef CLEANUP_hd
+#undef FOR_hd
 #endif
 
 // head ?n(lines)#<0=10c(bytes)#<0qv[-nc] ?n(lines)#<0=10c(bytes)#<0qv[-nc]
@@ -2562,12 +2580,13 @@
 #undef FLAG_null
 #endif
 
-// printf <1?^ <1?^
+// printf <1?^r# <1?^r#
 #undef OPTSTR_printf
-#define OPTSTR_printf "<1?^"
+#define OPTSTR_printf "<1?^r#"
 #ifdef CLEANUP_printf
 #undef CLEANUP_printf
 #undef FOR_printf
+#undef FLAG_r
 #endif
 
 // ps k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO] k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]
@@ -3638,6 +3657,15 @@
 #undef FLAG_c
 #endif
 
+// unalias   <1a
+#undef OPTSTR_unalias
+#define OPTSTR_unalias "<1a"
+#ifdef CLEANUP_unalias
+#undef CLEANUP_unalias
+#undef FOR_unalias
+#undef FLAG_a
+#endif
+
 // uname paomvrns paomvrns
 #undef OPTSTR_uname
 #define OPTSTR_uname "paomvrns"
@@ -3988,6 +4016,14 @@
 #define FLAG_a (1LL<<4)
 #endif
 
+#ifdef FOR_alias
+#define CLEANUP_alias
+#ifndef TT
+#define TT this.alias
+#endif
+#define FLAG_p (FORCED_FLAG<<0)
+#endif
+
 #ifdef FOR_arch
 #define CLEANUP_arch
 #ifndef TT
@@ -4242,6 +4278,7 @@
 #define FLAG_R (1LL<<0)
 #define FLAG_f (1LL<<1)
 #define FLAG_v (1LL<<2)
+#define FLAG_c (1LL<<3)
 #endif
 
 #ifdef FOR_chroot
@@ -5244,6 +5281,13 @@
 #define FLAG_d (1LL<<12)
 #define FLAG_c (1LL<<13)
 #define FLAG_n (1LL<<14)
+#endif
+
+#ifdef FOR_hd
+#define CLEANUP_hd
+#ifndef TT
+#define TT this.hd
+#endif
 #endif
 
 #ifdef FOR_head
@@ -6335,6 +6379,7 @@
 #ifndef TT
 #define TT this.printf
 #endif
+#define FLAG_r (1LL<<0)
 #endif
 
 #ifdef FOR_ps
@@ -7323,6 +7368,14 @@
 #define FLAG_d (1LL<<7)
 #define FLAG_n (1LL<<8)
 #define FLAG_c (1LL<<9)
+#endif
+
+#ifdef FOR_unalias
+#define CLEANUP_unalias
+#ifndef TT
+#define TT this.unalias
+#endif
+#define FLAG_a (FORCED_FLAG<<0)
 #endif
 
 #ifdef FOR_uname

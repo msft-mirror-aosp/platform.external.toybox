@@ -150,8 +150,8 @@ fi
 
 # Rebuild config.h from .config
 $SED -En $KCONFIG_CONFIG > "$GENDIR"/config.h \
-  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)/p;t' \
-  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__/p;t'\
+  -e 's/^# CONFIG_(.*) is not set.*/#define CFG_\1 0\n#define USE_\1(...)\n#define SKIP_\1(...) __VA_ARGS__/p;t' \
+  -e 's/^CONFIG_(.*)=y.*/#define CFG_\1 1\n#define USE_\1(...) __VA_ARGS__\n#define SKIP_\1(...)/p;t'\
   -e 's/^CONFIG_(.*)=/#define CFG_\1 /p' || exit 1
 
 # Process config.h and newtoys.h to generate FLAG_x macros. Note we must
@@ -175,7 +175,7 @@ then
     then
       cat "$GENDIR"/config.h
     else
-      $SED '/USE_.*([^)]*)$/s/$/ __VA_ARGS__/' "$GENDIR"/config.h
+      $SED -E '/(USE|SKIP)_.*\([^)]*\)$/s/$/ __VA_ARGS__/' "$GENDIR"/config.h
     fi
     echo '#include "lib/toyflags.h"'
     cat "$GENDIR"/newtoys.h

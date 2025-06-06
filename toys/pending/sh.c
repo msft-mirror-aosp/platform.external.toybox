@@ -14,7 +14,7 @@
  *   redirect+expansion in one pass so we can't report errors between them.
  *   Trailing redirects error at runtime, not parse time.
 
- * builtins: alias bg command fc fg getopts jobs newgrp read umask unalias wait
+ * builtins: bg command fc fg getopts jobs newgrp read umask wait
  *          disown suspend source pushd popd dirs logout times trap cd hash exit
  *           unset local export readonly set : . let history declare ulimit type
  * "special" builtins: break continue eval exec return shift
@@ -44,6 +44,7 @@
  * if/then/elif/else/fi, for select while until/do/done, case/esac,
  * {/}, [[/]], (/), function assignment
 
+USE_SH(NEWTOY(alias, "p", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(break, ">1", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(cd, ">1LP[-LP]", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(continue, ">1", TOYFLAG_NOFORK))
@@ -61,6 +62,7 @@ USE_SH(NEWTOY(shift, ">1", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(source, "<1", TOYFLAG_NOFORK))
 USE_SH(OLDTOY(., source, TOYFLAG_NOFORK))
 USE_SH(NEWTOY(trap, "lp", TOYFLAG_NOFORK))
+USE_SH(NEWTOY(unalias, "<1a", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(unset, "fvn[!fv]", TOYFLAG_NOFORK))
 USE_SH(NEWTOY(wait, "n", TOYFLAG_NOFORK))
 
@@ -137,6 +139,20 @@ config SH
     bg fg jobs kill
 
 # These are here for the help text, they're not selectable and control nothing
+config ALIAS
+  bool
+  default n
+  depends on SH
+  help
+    usage: alias [NAME[=VALUE]...]
+
+    Create or show macro expansions, which replace the name of a command with
+    a string when reading input lines (but only in interactive mode, not when
+    running scripts or -c input). Historical, mostly replaced by functions.
+
+    With no arguments, display all available aliases. Names with no = display
+    that existing alias (error if undefined).
+
 config BREAK
   bool
   default n
@@ -329,6 +345,17 @@ config TRAP
     The special signal EXIT gets called before the shell exits, RETURN when
     a function or source returns, and DEBUG is called before each command.
 
+config UNALIAS
+  bool
+  default n
+  depends on SH
+  help
+    usage: unalias [-a] [NAME...]
+
+    Remove existing alias (error if none).
+
+    -a	Remove all existing aliases.
+
 config WAIT
   bool
   default n
@@ -368,7 +395,7 @@ GLOBALS(
     char *name;
     struct sh_pipeline {  // pipeline segments: linked list of arg w/metadata
       struct sh_pipeline *next, *prev, *end;
-      int count, here, type;
+      short count, here, type, noalias;
       long lineno;
       struct sh_arg {
         char **v;
@@ -378,6 +405,7 @@ GLOBALS(
     unsigned long refcount;
   } **functions;
   long funcslen;
+  struct sh_arg alias;
 
   // runtime function call stack. TT.ff is current function, returns to ->next
   struct sh_fcall {
@@ -422,6 +450,8 @@ GLOBALS(
   // job list, command line for $*, scratch space for do_wildcard_files()
   struct sh_arg jobs, *wcdeck;
 )
+
+#define DEBUG 0
 
 // functions contain pipelines contain functions: prototype because loop
 static void free_pipeline(void *pipeline);
@@ -1212,7 +1242,7 @@ static int save_redirect(int **rd, int from, int to)
 {
   int cnt, hfd, *rr;
 
-//dprintf(2, "%d redir %d to %d\n", getpid(), from, to);
+if (DEBUG) dprintf(2, "%d redir %d to %d\n", getpid(), from, to);
   if (from == to) return 0;
   // save displaced to, copying to high (>=10) file descriptor to undo later
   // except if we're saving to environment variable instead (don't undo that)
@@ -1429,7 +1459,7 @@ static void end_fcall(void)
 static int run_subshell(char *str, int len)
 {
   pid_t pid;
-//dprintf(2, "%d run_subshell %.*s\n", getpid(), len, str); debug_show_fds();
+if (DEBUG) { dprintf(2, "%d run_subshell %.*s\n", getpid(), len, str); debug_show_fds(); }
   // The with-mmu path is significantly faster.
   if (CFG_TOYBOX_FORK) {
     if ((pid = fork())<0) perror_msg("fork");
@@ -1692,6 +1722,7 @@ int do_wildcard_files(struct dirtree *node)
 
   // Top level entry has no pattern in it
   if (!node->parent) return DIRTREE_RECURSE;
+  if (!dirtree_notdotdot(node)) return 0;
 
   // Find active pattern range
   for (nn = node->parent; nn; nn = nn->parent) if (nn->parent) ii++;
@@ -3007,12 +3038,12 @@ static struct sh_process *run_command(void)
       memset(&toys, 0, jj);
 
       // The compiler complains "declaration does not declare anything" if we
-      // name the union in TT, only works WITHOUT name. So we can't
+      // name the union in TT, it only works WITHOUT a name. So we can't
       // sizeof(union) instead offsetof() first thing after union to get size.
       memset(&TT, 0, offsetof(struct sh_data, SECONDS));
       if (!sigsetjmp(rebound, 1)) {
         toys.rebound = &rebound;
-//dprintf(2, "%d builtin", getpid()); for (int xx = 0; xx<=pp->arg.c; xx++) dprintf(2, "{%s}", pp->arg.v[xx]); dprintf(2, "\n");
+if (DEBUG) { dprintf(2, "%d builtin", getpid()); for (int xx = 0; xx<=pp->arg.c; xx++) dprintf(2, "{%s}", pp->arg.v[xx]); dprintf(2, "\n"); }
         toy_singleinit(tl, pp->arg.v);
         tl->toy_main();
         xexit();
@@ -3070,15 +3101,19 @@ static struct sh_pipeline *add_pl(struct sh_pipeline **ppl, struct sh_arg **arg)
   return pl->end = pl;
 }
 
+// TODO [[ ]] disables ( ) ! && || processing
+
 // Add a line of shell script to a shell function. Returns 0 if finished,
 // 1 to request another line of input (> prompt), -1 for syntax err
+// Attaches parsed input data to TT.ff->pl
 static int parse_line(char *line, struct double_list **expect)
 {
-  char *start = line, *delete = 0, *end, *s, *ex, done = 0,
+  char *start = line, *delete = 0, *end, *s, *ss, *ex, done = 0,
     *tails[] = {"fi", "done", "esac", "}", "]]", ")", 0};
   struct sh_pipeline *pl = TT.ff->pl ? TT.ff->pl->prev : 0, *pl2, *pl3;
   struct sh_arg *arg = 0;
-  long i;
+  struct arg_list *aliseen = 0, *al;
+  long i, j;
 
   // Resume appending to last statement?
   if (pl) {
@@ -3175,7 +3210,7 @@ here_end:
 
     // Parse next word and detect overflow (too many nested quotes).
     if ((end = parse_word(start, 0)) == (void *)1) goto flush;
-//dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : -1, ex, (int)(end-start), end ? start : "");
+if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : -1, ex, (int)(end-start), end ? start : "");
 
     // End function declaration?
     if (pl && pl->type == 'f' && arg->c == 1 && (end-start!=1 || *start!='(')) {
@@ -3206,7 +3241,6 @@ here_end:
     i = ex && !strcmp(ex, "esac") &&
         ((pl->type && pl->type != 3) || (*start==';' && end-start>1));
     if (i) {
-
       // Premature EOL in type 1 (case x\nin) or 2 (at start or after ;;) is ok
       if (end == start) {
         if (pl->type==128 && arg->c==2) break;  // case x\nin
@@ -3259,9 +3293,55 @@ here_end:
       continue;
     }
 
-    // Save word and check for flow control
-    arg_add(arg, s = xstrndup(start, end-start));
+    // Copy word and check for aliases
+    s = xstrndup(start, end-start);
+    if (TT.alias.c && !pl->noalias) {
+      // ! x=y and x<y can all go before command name
+      if (!strcmp(s, "!")) start = 0;
+      else if ((start = varend(s))!=s && start[*start=='+']=='=') start = 0;
+      else if (anystart(skip_redir_prefix(s), (void *)redirectors)) {
+        // Next argument is redirect target, skip it.
+        if ((end = parse_word(end, 0)) == (void *)1) pl->noalias = 2;
+        start = 0;
+      }
+      if (start) {
+        // It's the command, is it a recognized alias?
+        for (j = 0; j<TT.alias.c; j++) {
+          start = TT.alias.v[j];
+          if (!strstart(&start, s) || *start++!='=') continue;
+
+          // Don't expand same alias twice
+          for (al = aliseen; al; al = al->next) {
+            ss = al->arg;
+            if (strstart(&ss, s) && *ss=='=') break;
+          }
+          if (!al) break;
+        }
+        if (j==TT.alias.c) start = 0;
+      }
+
+      // Did we find an alias?
+      if (start) {
+        (al = xmalloc(sizeof(struct arg_list)))->next = aliseen;
+        al->arg = TT.alias.v[i];
+        aliseen = al;
+        start = end = xmprintf("%s%s", start, end);
+        free(delete);
+        delete = start;
+
+        continue;
+      }
+      if (!pl->noalias) pl->noalias = 1;
+    }
     start = end;
+    arg_add(arg, s);
+
+    if (pl->noalias==2) {
+      pl->noalias = 0;
+
+      continue;
+    }
+    if (pl->noalias) while (aliseen) free(llist_pop(&aliseen));
 
     // Second half of case/esac parsing
     if (i) {
@@ -3735,7 +3815,7 @@ static char *get_next_line(FILE *fp, int prompt)
       new = 0;
     }
   }
-//dprintf(2, "%d get_next_line=%s\n", getpid(), new ? : "(null)");
+if (DEBUG) dprintf(2, "%d get_next_line=%s\n", getpid(), new ? : "(null)");
   return new;
 }
 
@@ -3790,7 +3870,7 @@ static void run_lines(void)
     ctl = TT.ff->pl->end->arg->v[TT.ff->pl->end->arg->c];
     s = *TT.ff->pl->arg->v;
     ss = TT.ff->pl->arg->v[1];
-//dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (TT.ff->pl->type == 'F') ? ((struct sh_function *)s)->name : s, ss, ctl, TT.ff->pl->type, TT.ff->pl, TT.ff);
+if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (TT.ff->pl->type == 'F') ? ((struct sh_function *)s)->name : s, ss, ctl, TT.ff->pl->type, TT.ff->pl, TT.ff);
     if (!pplist) TT.hfd = 10;
 
     // Skip disabled blocks, handle pipes and backgrounding
@@ -4348,7 +4428,7 @@ void sh_main(void)
   char *new;
   unsigned more = 0;
 
-//dprintf(2, "%d main", getpid()); for (unsigned uu = 0; toys.argv[uu]; uu++) dprintf(2, " %s", toys.argv[uu]); dprintf(2, "\n");
+if (DEBUG) { dprintf(2, "%d main", getpid()); for (unsigned uu = 0; toys.argv[uu]; uu++) dprintf(2, " %s", toys.argv[uu]); dprintf(2, "\n"); }
 
   signify(SIGPIPE, 0);
   TT.options = OPT_B;
@@ -4422,6 +4502,34 @@ void sh_main(void)
 // TODO: ./blah.sh one two three: put one two three in scratch.arg
 
 /********************* shell builtin functions *************************/
+
+#define FOR_alias
+#include "generated/flags.h"
+void alias_main(void)
+{
+  char *s;
+  int i, j;
+
+  if (!toys.optc || FLAG(p))
+    for (i = 0; i<TT.alias.c; i++) puts(TT.alias.v[i]); // TODO $'escape'
+
+  for (i = 0; i<toys.optc; i++) {
+    if (!(s = strchr(toys.optargs[i], '='))) {
+      for (j = 0; j<TT.alias.c && (s = TT.alias.v[j]); j++)
+        if (strstart(&s, toys.optargs[i]) && *s++=='=') break;
+      if (j==TT.alias.c) sherror_msg("%s: not found", TT.alias.v[j]);
+      else printf("alias %s=%s\n", TT.alias.v[j], s); // TODO $'escape'
+    } else {
+      for (i = 0; i<TT.alias.c; i++)
+        if (!memcmp(TT.alias.v[i], toys.optargs[i], s+1-toys.optargs[i])) break;
+      if (i==TT.alias.c) arg_add(&TT.alias, xstrdup(toys.optargs[i]));
+      else {
+        free(toys.optargs[i]);
+        toys.optargs[i] = xstrdup(toys.optargs[i]);
+      }
+    }
+  }
+}
 
 // Note: "break &" in bash breaks in the child, this breaks in the parent.
 void break_main(void)
@@ -4918,6 +5026,37 @@ void source_main(void)
   TT.ff->arg.v = toys.argv; // $0 is shell name, not source file name. Bash!
   for (ii = 0; toys.argv[ii]; ii++);
   TT.ff->arg.c = ii;
+}
+
+#define FOR_unalias
+#include "generated/flags.h"
+
+void unalias_main(void)
+{
+  char *s;
+  int i, j;
+
+  // Remove all?
+  if (FLAG(a)) {
+    for (i = 0; i<TT.alias.c; i++) free(TT.alias.v[i]);
+    if (TT.alias.v) *TT.alias.v = 0;
+    TT.alias.c = 0;
+
+    return;
+  }
+
+  // Remove each listed entry, erroring if not found
+  for (i = 0; i<toys.optc; i++) {
+    for (j = 0; j<TT.alias.c && (s = TT.alias.v[j]); j++) {
+      if (strstart(&s, toys.optargs[i]) && *s=='=') break;
+      if (j==TT.alias.c) sherror_msg("%s: not found", toys.optargs[i]);
+      else {
+        free(TT.alias.v[j]);
+        memmove(TT.alias.v+j, TT.alias.v+j+1,
+          sizeof(*TT.alias.v)*TT.alias.c--+1-j);
+      }
+    }
+  }
 }
 
 #define FOR_wait
