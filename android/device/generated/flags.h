@@ -2935,9 +2935,9 @@
 #undef FLAG_w
 #endif
 
-// sh   0^(noediting)(noprofile)(norc)sc:i
+// sh   ^(noediting)(noprofile)(norc)sc:i
 #undef OPTSTR_sh
-#define OPTSTR_sh "0^(noediting)(noprofile)(norc)sc:i"
+#define OPTSTR_sh "^(noediting)(noprofile)(norc)sc:i"
 #ifdef CLEANUP_sh
 #undef CLEANUP_sh
 #undef FOR_sh
