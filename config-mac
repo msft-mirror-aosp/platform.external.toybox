@@ -155,7 +155,6 @@ CONFIG_HOSTNAME=y
 # CONFIG_I2CTRANSFER is not set
 # CONFIG_ICONV is not set
 CONFIG_ID=y
-# CONFIG_ID_Z is not set
 # CONFIG_IFCONFIG is not set
 # CONFIG_INIT is not set
 # CONFIG_INOTIFYD is not set
@@ -198,11 +197,8 @@ CONFIG_MD5SUM=y
 CONFIG_MICROCOM=y
 # CONFIG_MIX is not set
 CONFIG_MKDIR=y
-# CONFIG_MKDIR_Z is not set
 # CONFIG_MKFIFO is not set
-# CONFIG_MKFIFO_Z is not set
 # CONFIG_MKNOD is not set
-# CONFIG_MKNOD_Z is not set
 # CONFIG_MKPASSWD is not set
 # CONFIG_MKSWAP is not set
 CONFIG_MKTEMP=y
@@ -277,7 +273,6 @@ CONFIG_SHA512SUM=y
 # CONFIG_SKELETON is not set
 CONFIG_SLEEP=y
 # CONFIG_SNTP is not set
-CONFIG_SORT_FLOAT=y
 CONFIG_SORT=y
 # CONFIG_SPLIT is not set
 CONFIG_STAT=y
