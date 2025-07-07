@@ -516,7 +516,7 @@
 
 #define HELP_nproc "usage: nproc [--all]\n\nPrint number of processors.\n\n--all	Show all processors, not just ones this task can run on"
 
-#define HELP_taskset "usage: taskset [-ap] [mask] [PID | cmd [args...]]\n\nLaunch a new task which may only run on certain processors, or change\nthe processor affinity of an existing PID.\n\nMask is a hex string where each bit represents a processor the process\nis allowed to run on. PID without a mask displays existing affinity.\n\n-p	Set/get the affinity of given PID instead of a new command\n-a	Set/get the affinity of all threads of the PID"
+#define HELP_taskset "usage: taskset [-ap] [mask] [PID | cmd [args...]]\n\nLaunch a new task which may only run on certain processors, or change\nthe processor affinity of an existing PID.\n\nMask is a hex string where each bit represents a processor the process\nis allowed to run on. PID without a mask displays existing affinity.\nA PID of zero means the taskset process.\n\n-p	Set/get the affinity of given PID instead of a new command\n-a	Set/get the affinity of all threads of the PID"
 
 #define HELP_timeout "usage: timeout [-iv] [-k DURATION] [-s SIGNAL] DURATION COMMAND...\n\nRun command line as a child process, sending child a signal if the\ncommand doesn't exit soon enough.\n\nDURATION can be a decimal fraction. An optional suffix can be \"m\"\n(minutes), \"h\" (hours), \"d\" (days), or \"s\" (seconds, the default).\n\n-i	Only kill for inactivity (restart timeout when command produces output)\n-k	Send KILL signal if child still running this long after first signal\n-s	Send specified signal (default TERM)\n-v	Verbose\n--foreground       Don't create new process group\n--preserve-status  Exit with the child's exit status"
 
