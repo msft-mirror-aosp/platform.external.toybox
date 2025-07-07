@@ -426,9 +426,6 @@
 #define CFG_ID 1
 #define USE_ID(...) __VA_ARGS__
 #define SKIP_ID(...)
-#define CFG_ID_Z 0
-#define USE_ID_Z(...)
-#define SKIP_ID_Z(...) __VA_ARGS__
 #define CFG_IFCONFIG 0
 #define USE_IFCONFIG(...)
 #define SKIP_IFCONFIG(...) __VA_ARGS__
@@ -555,21 +552,12 @@
 #define CFG_MKDIR 1
 #define USE_MKDIR(...) __VA_ARGS__
 #define SKIP_MKDIR(...)
-#define CFG_MKDIR_Z 0
-#define USE_MKDIR_Z(...)
-#define SKIP_MKDIR_Z(...) __VA_ARGS__
 #define CFG_MKFIFO 0
 #define USE_MKFIFO(...)
 #define SKIP_MKFIFO(...) __VA_ARGS__
-#define CFG_MKFIFO_Z 0
-#define USE_MKFIFO_Z(...)
-#define SKIP_MKFIFO_Z(...) __VA_ARGS__
 #define CFG_MKNOD 0
 #define USE_MKNOD(...)
 #define SKIP_MKNOD(...) __VA_ARGS__
-#define CFG_MKNOD_Z 0
-#define USE_MKNOD_Z(...)
-#define SKIP_MKNOD_Z(...) __VA_ARGS__
 #define CFG_MKPASSWD 0
 #define USE_MKPASSWD(...)
 #define SKIP_MKPASSWD(...) __VA_ARGS__
@@ -792,9 +780,6 @@
 #define CFG_SNTP 0
 #define USE_SNTP(...)
 #define SKIP_SNTP(...) __VA_ARGS__
-#define CFG_SORT_FLOAT 1
-#define USE_SORT_FLOAT(...) __VA_ARGS__
-#define SKIP_SORT_FLOAT(...)
 #define CFG_SORT 1
 #define USE_SORT(...) __VA_ARGS__
 #define SKIP_SORT(...)
