@@ -2,18 +2,18 @@
  *
  * Copyright 2012 Elie De Brauwer <eliedebrauwer@gmail.com>
 
-USE_TASKSET(NEWTOY(taskset, "<1^pa", TOYFLAG_USR|TOYFLAG_BIN))
-USE_NPROC(NEWTOY(nproc, "(all)", TOYFLAG_USR|TOYFLAG_BIN))
+USE_TASKSET(NEWTOY(taskset, "^pa", TOYFLAG_USR|TOYFLAG_BIN))
+USE_NPROC(NEWTOY(nproc, "a(all)", TOYFLAG_USR|TOYFLAG_BIN))
 
 config NPROC
   bool "nproc"
   default y
   help
-    usage: nproc [--all]
+    usage: nproc [-a]
 
     Print number of processors.
 
-    --all	Show all processors, not just ones this task can run on
+    -a	Show all processors, not just ones this task can run on (--all)
 
 config TASKSET
   bool "taskset"
@@ -28,8 +28,8 @@ config TASKSET
     is allowed to run on. PID without a mask displays existing affinity.
     A PID of zero means the taskset process.
 
-    -p	Set/get the affinity of given PID instead of a new command
-    -a	Set/get the affinity of all threads of the PID
+    -p	Set/get affinity of given PID instead of a new command
+    -a	Set/get affinity of all threads of the PID
 */
 
 #define FOR_taskset
@@ -41,7 +41,7 @@ config TASKSET
 #define sched_getaffinity(pid, size, cpuset) \
   syscall(__NR_sched_getaffinity, (pid_t)pid, (size_t)size, (void *)cpuset)
 
-static void do_taskset(pid_t pid, int quiet)
+static void do_taskset(pid_t pid)
 {
   unsigned long *mask = (unsigned long *)toybuf;
   char *s, *failed = "failed to %s pid %d's affinity";
@@ -49,11 +49,12 @@ static void do_taskset(pid_t pid, int quiet)
 
   // loop through twice to display before/after affinity masks
   for (i=0; ; i++) {
-    if (!quiet) {
+    if (FLAG(p) || !toys.optc) {
       if (-1 == sched_getaffinity(pid, sizeof(toybuf), (void *)mask))
         perror_exit(failed, "get", pid);
 
-      printf("pid %d's %s affinity mask: ", pid, i ? "new" : "current");
+      if (toys.optc)
+        printf("pid %d's %s affinity mask: ", pid, i ? "new" : "current");
 
       for (j = sizeof(toybuf)/sizeof(long), k = 0; --j>=0;) {
         if (k) printf("%0*lx", (int)(2*sizeof(long)), mask[j]);
@@ -67,7 +68,7 @@ static void do_taskset(pid_t pid, int quiet)
 
     if (i || toys.optc < 2) return;
 
-    // Convert hex strong to mask[] bits
+    // Convert hex string to mask[] bits
     memset(toybuf, 0, sizeof(toybuf));
     k = minof(strlen(s = *toys.optargs), 2*sizeof(toybuf));
     s += k;
@@ -87,27 +88,30 @@ static void do_taskset(pid_t pid, int quiet)
 static int task_callback(struct dirtree *new)
 {
   if (!new->parent) return DIRTREE_RECURSE|DIRTREE_SHUTUP|DIRTREE_PROC;
-  do_taskset(atoi(new->name), 0);
+  do_taskset(atoi(new->name));
 
   return 0;
 }
 
 void taskset_main(void)
 {
-  if (!FLAG(p)) {
-    if (toys.optc < 2) error_exit("Needs 2 args");
-    do_taskset(getpid(), 1);
+  if (!FLAG(p) && toys.optc) {
+    if (toys.optc<2) error_exit("Needs 2 args");
+    do_taskset(getpid());
     xexec(toys.optargs+1);
   } else {
     char *c, buf[33];
-    pid_t pid = strtol(toys.optargs[toys.optc-1], &c, 10);
+    pid_t pid = getpid();
 
-    if (*c) error_exit("Not int %s", toys.optargs[toys.optc-1]);
+    if (toys.optc) {
+      pid = strtol(toys.optargs[toys.optc-1], &c, 10);
+      if (*c) error_exit("Not int %s", toys.optargs[toys.optc-1]);
+    }
 
     if (FLAG(a)) {
       sprintf(buf, "/proc/%ld/task/", (long)pid);
       dirtree_read(buf, task_callback);
-    } else do_taskset(pid, 0);
+    } else do_taskset(pid);
   }
 }
 

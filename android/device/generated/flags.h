@@ -2352,13 +2352,13 @@
 #undef FOR_nologin
 #endif
 
-// nproc (all) (all)
+// nproc a(all) a(all)
 #undef OPTSTR_nproc
-#define OPTSTR_nproc "(all)"
+#define OPTSTR_nproc "a(all)"
 #ifdef CLEANUP_nproc
 #undef CLEANUP_nproc
 #undef FOR_nproc
-#undef FLAG_all
+#undef FLAG_a
 #endif
 
 // nsenter <1a(all)F(no-fork)t#<1(target)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):;  <1a(all)F(no-fork)t#<1(target)C(cgroup):; i(ipc):; m(mount):; n(net):; p(pid):; u(uts):; U(user):; 
@@ -3326,9 +3326,9 @@
 #undef FLAG_one_file_system
 #endif
 
-// taskset <1^pa <1^pa
+// taskset ^pa ^pa
 #undef OPTSTR_taskset
-#define OPTSTR_taskset "<1^pa"
+#define OPTSTR_taskset "^pa"
 #ifdef CLEANUP_taskset
 #undef CLEANUP_taskset
 #undef FOR_taskset
@@ -6167,7 +6167,7 @@
 #ifndef TT
 #define TT this.nproc
 #endif
-#define FLAG_all (1LL<<0)
+#define FLAG_a (1LL<<0)
 #endif
 
 #ifdef FOR_nsenter
