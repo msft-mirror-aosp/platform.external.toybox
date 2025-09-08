@@ -2010,13 +2010,14 @@
 #undef FLAG_e
 #endif
 
-// lsusb   i:
+// lsusb   ti:
 #undef OPTSTR_lsusb
-#define OPTSTR_lsusb "i:"
+#define OPTSTR_lsusb "ti:"
 #ifdef CLEANUP_lsusb
 #undef CLEANUP_lsusb
 #undef FOR_lsusb
 #undef FLAG_i
+#undef FLAG_t
 #endif
 
 // makedevs   <1>1d:
@@ -5855,6 +5856,7 @@
 #define TT this.lsusb
 #endif
 #define FLAG_i (FORCED_FLAG<<0)
+#define FLAG_t (FORCED_FLAG<<1)
 #endif
 
 #ifdef FOR_makedevs
