@@ -40,7 +40,7 @@ static void MkdirOrFatal(std::string dir) {
 }
 
 static std::string SystemStdoutOrFatal(std::string cmd) {
-  CapturedStdout stdout_str;
+  android::base::CapturedStdout stdout_str;
   int ret = system(cmd.c_str());
   stdout_str.Stop();
   EXPECT_GE(ret, 0) << "Failed to run " << cmd << ": " << strerror(errno);
