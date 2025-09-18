@@ -362,7 +362,7 @@ struct wc_data {
 
 struct xargs_data {
   long s, n, P;
-  char *E;
+  char *E, *a;
 
   long entries, bytes, np;
   char delim;

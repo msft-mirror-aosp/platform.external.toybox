@@ -3934,9 +3934,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
+// xargs ^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
+#define OPTSTR_xargs "^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
@@ -3949,6 +3949,7 @@
 #undef FLAG_o
 #undef FLAG_P
 #undef FLAG_E
+#undef FLAG_a
 #endif
 
 // xxd >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re] >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re]
@@ -7637,6 +7638,7 @@
 #define FLAG_o (1LL<<6)
 #define FLAG_P (1LL<<7)
 #define FLAG_E (1LL<<8)
+#define FLAG_a (1LL<<9)
 #endif
 
 #ifdef FOR_xxd

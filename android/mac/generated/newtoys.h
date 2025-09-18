@@ -347,7 +347,7 @@ USE_WGET(NEWTOY(wget, "<1>1(max-redirect)#<0=20d(debug)O(output-document):p(post
 USE_WHICH(NEWTOY(which, "<1a", TOYFLAG_USR|TOYFLAG_BIN))
 USE_WHO(NEWTOY(who, "a", TOYFLAG_USR|TOYFLAG_BIN))
 USE_WHOAMI(OLDTOY(whoami, logname, TOYFLAG_USR|TOYFLAG_BIN))
-USE_XARGS(NEWTOY(xargs, "^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]", TOYFLAG_USR|TOYFLAG_BIN))
+USE_XARGS(NEWTOY(xargs, "^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_XXD(NEWTOY(xxd, ">1c#<0>256l#o#g#<0=2eiprs#[!rs][!re]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_XZCAT(NEWTOY(xzcat, NULL, TOYFLAG_USR|TOYFLAG_BIN))
 USE_YES(NEWTOY(yes, 0, TOYFLAG_USR|TOYFLAG_BIN))
