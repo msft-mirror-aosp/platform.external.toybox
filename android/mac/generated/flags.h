@@ -2582,13 +2582,12 @@
 #undef FLAG_null
 #endif
 
-// printf <1?^r# <1?^r#
+// printf <1?^ <1?^
 #undef OPTSTR_printf
-#define OPTSTR_printf "<1?^r#"
+#define OPTSTR_printf "<1?^"
 #ifdef CLEANUP_printf
 #undef CLEANUP_printf
 #undef FOR_printf
-#undef FLAG_r
 #endif
 
 // ps   k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]
@@ -6384,7 +6383,6 @@
 #ifndef TT
 #define TT this.printf
 #endif
-#define FLAG_r (1LL<<0)
 #endif
 
 #ifdef FOR_ps
