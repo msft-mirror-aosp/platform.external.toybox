@@ -266,10 +266,6 @@ struct patch_data {
   char *tempname;
 };
 
-struct printf_data {
-  long r;
-};
-
 struct sed_data {
   char *i;
   struct arg_list *f, *e;
@@ -408,7 +404,6 @@ extern union global_union {
 	struct od_data od;
 	struct paste_data paste;
 	struct patch_data patch;
-	struct printf_data printf;
 	struct sed_data sed;
 	struct sort_data sort;
 	struct tail_data tail;
