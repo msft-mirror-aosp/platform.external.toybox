@@ -693,9 +693,9 @@
 #undef FLAG_H
 #endif
 
-// dhcp V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf
+// dhcp V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCuaovqnbf V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCuaovqnbf
 #undef OPTSTR_dhcp
-#define OPTSTR_dhcp "V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCaovqnbf"
+#define OPTSTR_dhcp "V:H:F:x*r:O*A#<0=20T#<0=3t#<0=3s:p:i:SBRCuaovqnbf"
 #ifdef CLEANUP_dhcp
 #undef CLEANUP_dhcp
 #undef FOR_dhcp
@@ -706,6 +706,7 @@
 #undef FLAG_v
 #undef FLAG_o
 #undef FLAG_a
+#undef FLAG_u
 #undef FLAG_C
 #undef FLAG_R
 #undef FLAG_B
@@ -2010,13 +2011,14 @@
 #undef FLAG_e
 #endif
 
-// lsusb i: i:
+// lsusb ti: ti:
 #undef OPTSTR_lsusb
-#define OPTSTR_lsusb "i:"
+#define OPTSTR_lsusb "ti:"
 #ifdef CLEANUP_lsusb
 #undef CLEANUP_lsusb
 #undef FOR_lsusb
 #undef FLAG_i
+#undef FLAG_t
 #endif
 
 // makedevs <1>1d: <1>1d:
@@ -3932,9 +3934,9 @@
 #undef FLAG_a
 #endif
 
-// xargs ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
+// xargs ^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E] ^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]
 #undef OPTSTR_xargs
-#define OPTSTR_xargs "^E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
+#define OPTSTR_xargs "^a:E:P#<0(null)=1optr(no-run-if-empty)n#<1(max-args)s#0[!0E]"
 #ifdef CLEANUP_xargs
 #undef CLEANUP_xargs
 #undef FOR_xargs
@@ -3947,6 +3949,7 @@
 #undef FLAG_o
 #undef FLAG_P
 #undef FLAG_E
+#undef FLAG_a
 #endif
 
 // xxd >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re] >1c#<0>256l#o#g#<0=2eiprs#[!rs][!re]
@@ -4651,22 +4654,23 @@
 #define FLAG_v (1LL<<4)
 #define FLAG_o (1LL<<5)
 #define FLAG_a (1LL<<6)
-#define FLAG_C (1LL<<7)
-#define FLAG_R (1LL<<8)
-#define FLAG_B (1LL<<9)
-#define FLAG_S (1LL<<10)
-#define FLAG_i (1LL<<11)
-#define FLAG_p (1LL<<12)
-#define FLAG_s (1LL<<13)
-#define FLAG_t (1LL<<14)
-#define FLAG_T (1LL<<15)
-#define FLAG_A (1LL<<16)
-#define FLAG_O (1LL<<17)
-#define FLAG_r (1LL<<18)
-#define FLAG_x (1LL<<19)
-#define FLAG_F (1LL<<20)
-#define FLAG_H (1LL<<21)
-#define FLAG_V (1LL<<22)
+#define FLAG_u (1LL<<7)
+#define FLAG_C (1LL<<8)
+#define FLAG_R (1LL<<9)
+#define FLAG_B (1LL<<10)
+#define FLAG_S (1LL<<11)
+#define FLAG_i (1LL<<12)
+#define FLAG_p (1LL<<13)
+#define FLAG_s (1LL<<14)
+#define FLAG_t (1LL<<15)
+#define FLAG_T (1LL<<16)
+#define FLAG_A (1LL<<17)
+#define FLAG_O (1LL<<18)
+#define FLAG_r (1LL<<19)
+#define FLAG_x (1LL<<20)
+#define FLAG_F (1LL<<21)
+#define FLAG_H (1LL<<22)
+#define FLAG_V (1LL<<23)
 #endif
 
 #ifdef FOR_dhcp6
@@ -5855,6 +5859,7 @@
 #define TT this.lsusb
 #endif
 #define FLAG_i (1LL<<0)
+#define FLAG_t (1LL<<1)
 #endif
 
 #ifdef FOR_makedevs
@@ -7633,6 +7638,7 @@
 #define FLAG_o (1LL<<6)
 #define FLAG_P (1LL<<7)
 #define FLAG_E (1LL<<8)
+#define FLAG_a (1LL<<9)
 #endif
 
 #ifdef FOR_xxd
