@@ -198,6 +198,7 @@ struct lsusb_data {
 
   void *ids, *class;
   int count;
+  struct usb_bus *usb_buses;
 };
 
 struct makedevs_data {
