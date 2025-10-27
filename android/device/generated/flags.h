@@ -2011,14 +2011,15 @@
 #undef FLAG_e
 #endif
 
-// lsusb ti: ti:
+// lsusb vti: vti:
 #undef OPTSTR_lsusb
-#define OPTSTR_lsusb "ti:"
+#define OPTSTR_lsusb "vti:"
 #ifdef CLEANUP_lsusb
 #undef CLEANUP_lsusb
 #undef FOR_lsusb
 #undef FLAG_i
 #undef FLAG_t
+#undef FLAG_v
 #endif
 
 // makedevs <1>1d: <1>1d:
@@ -2582,13 +2583,12 @@
 #undef FLAG_null
 #endif
 
-// printf <1?^r# <1?^r#
+// printf <1?^ <1?^
 #undef OPTSTR_printf
-#define OPTSTR_printf "<1?^r#"
+#define OPTSTR_printf "<1?^"
 #ifdef CLEANUP_printf
 #undef CLEANUP_printf
 #undef FOR_printf
-#undef FLAG_r
 #endif
 
 // ps k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO] k(sort)*P(ppid)*aAdeflMno*O*p(pid)*s*t*Tu*U*g*G*wZ[!ol][+Ae][!oO]
@@ -5860,6 +5860,7 @@
 #endif
 #define FLAG_i (1LL<<0)
 #define FLAG_t (1LL<<1)
+#define FLAG_v (1LL<<2)
 #endif
 
 #ifdef FOR_makedevs
@@ -6384,7 +6385,6 @@
 #ifndef TT
 #define TT this.printf
 #endif
-#define FLAG_r (1LL<<0)
 #endif
 
 #ifdef FOR_ps
