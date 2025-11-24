@@ -407,7 +407,7 @@ struct vi_data {
 
   char *filename;
   int vi_mode, tabstop, list, cur_col, cur_row, scr_row, drawn_row, drawn_col,
-      count0, count1, vi_mov_flag;
+      count0, count1, vi_mov_flag, vi_exit;
   unsigned screen_height, screen_width;
   char vi_reg, *last_search;
   struct str_line {
@@ -815,11 +815,12 @@ struct wc_data {
 
 struct xargs_data {
   long s, n, P;
-  char *E, *a;
+  char *E, *a, *process_slot_var;
 
   long entries, bytes, np;
   char delim;
   FILE *tty;
+  pid_t *pids;
 };
 extern union global_union {
 	struct log_data log;
