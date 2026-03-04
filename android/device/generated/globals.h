@@ -1,9 +1,3 @@
-struct log_data {
-  char *t, *p, *b;
-
-  int pri, buf;
-};
-
 struct dmesg_data {
   long n, s;
 
@@ -60,10 +54,27 @@ struct seq_data {
   int precision, buflen;
 };
 
+struct su_data {
+  char *s, *c;
+};
+
 struct umount_data {
   struct arg_list *t;
 
   char *types;
+};
+
+struct ftpget_data {
+  char *u, *p, *P;
+
+  int fd;
+};
+
+struct host_data {
+  char *t;
+
+  char **nsname;
+  unsigned nslen;
 };
 
 struct ifconfig_data {
@@ -99,8 +110,27 @@ struct ping_data {
   unsigned long sent, recv, fugit, min, max;
 };
 
+struct sntp_data {
+  long r, t;
+  char *p, *m, *M;
+};
+
 struct tunctl_data {
   char *u;
+};
+
+struct wget_data {
+  char *p, *O;
+  long max_redirect;
+
+  int sock, https;
+  char *url;
+#if CFG_WGET_LIBTLS
+  struct tls *tls;
+#elif CFG_TOYBOX_LIBCRYPTO
+  struct ssl_ctx_st *ctx;
+  struct ssl_st *ssl;
+#endif
 };
 
 struct base64_data {
@@ -126,6 +156,11 @@ struct blockdev_data {
 
 struct chrt_data {
   long p;
+};
+
+struct count_data {
+  unsigned long long size, start;
+  unsigned tick, *slice;
 };
 
 struct devmem_data {
@@ -162,6 +197,19 @@ struct gpiodetect_data {
   int chip_count;
 };
 
+struct hd_data {
+    long len;
+    int pos;
+    char flush[16];
+};
+
+struct hexedit_data {
+  char *data, *search, keybuf[16], input[80];
+  long long len, base, pos;
+  int numlen, undo, undolen, mode;
+  unsigned rows, cols;
+};
+
 struct hwclock_data {
   char *f;
 };
@@ -172,6 +220,12 @@ struct i2cdetect_data {
 
 struct ionice_data {
   long p, n, c;
+};
+
+struct login_data {
+  char *h, *f;
+
+  int login_timeout, login_fail_timeout;
 };
 
 struct losetup_data {
@@ -205,6 +259,16 @@ struct makedevs_data {
   char *d;
 };
 
+struct mix_data {
+   long r, l;
+   char *d, *c;
+};
+
+struct mkpasswd_data {
+  long P;
+  char *m, *S;
+};
+
 struct mkswap_data {
   char *L;
 };
@@ -227,6 +291,18 @@ struct nsenter_data {
   long t;
 };
 
+struct oneit_data {
+  char *c;
+};
+
+struct openvt_data {
+  long c;
+};
+
+struct pwgen_data {
+  char *r;
+};
+
 struct readelf_data {
   char *x, *p;
 
@@ -237,6 +313,10 @@ struct readelf_data {
 
 struct realpath_data {
   char *R, *relative_base;
+};
+
+struct reboot_data {
+  char *d;
 };
 
 struct rtcwake_data {
@@ -252,6 +332,22 @@ struct setsid_data {
   long c;
 };
 
+struct sha3sum_data {
+  long a;
+  unsigned long long rc[24];
+};
+
+struct shred_data {
+  long o, n, s;
+};
+
+struct shuf_data {
+  long n;
+
+  char **lines;
+  long count;
+};
+
 struct stat_data {
   char *c;
 
@@ -265,6 +361,13 @@ struct stat_data {
 
 struct swapon_data {
   long p;
+};
+
+struct switch_root_data {
+  char *c;
+
+  struct stat new;
+  dev_t rootdev;
 };
 
 struct tac_data {
@@ -296,162 +399,14 @@ struct watch_data {
   pid_t pid, oldpid;
 };
 
+struct watchdog_data {
+  long T, t;
+
+  int fd;
+};
+
 struct xxd_data {
   long s, g, o, l, c;
-};
-
-struct brctl_data {
-    int sockfd;
-};
-
-struct dhcp_data {
-    char *iface;
-    char *pidfile;
-    char *script;
-    long retries;
-    long timeout;
-    long tryagain;
-    struct arg_list *req_opt;
-    char *req_ip;
-    struct arg_list *pkt_opt;
-    char *fdn_name;
-    char *hostname;
-    char *vendor_cls;
-};
-
-struct diff_data {
-  long U;
-  struct arg_list *L;
-  char *F, *S, *new_line_format, *old_line_format, *unchanged_line_format;
-
-  int dir_num, size, is_binary, is_symlink, differ, change, len[2], *offset[2];
-  struct stat st[2];
-  struct {
-    char **list;
-    int nr_elm;
-  } dir[2];
-  struct {
-    FILE *fp;
-    int len;
-  } file[2];
-  struct {
-    char *name;
-    int len;
-  } link[2];
-};
-
-struct expr_data {
-  char **tok, *delete;
-};
-
-struct getfattr_data {
-  char *n;
-};
-
-struct lsof_data {
-  struct arg_list *p;
-
-  struct stat *sought_files;
-  struct double_list *all_sockets, *files;
-  int last_shown_pid, shown_header;
-};
-
-struct modprobe_data {
-  struct arg_list *dirs;
-
-  struct arg_list *probes, *dbase[256];
-  char *cmdopts;
-  int nudeps, symreq;
-};
-
-struct more_data {
-  struct termios inf;
-  int cin_fd;
-};
-
-struct stty_data {
-  char *F;
-
-  int fd, col;
-  unsigned output_cols;
-};
-
-struct tr_data {
-  short *map;
-  int len1, len2;
-};
-
-struct traceroute_data {
-  long max_ttl;
-  long port;
-  long ttl_probes;
-  char *src_ip;
-  long tos;
-  long wait_time;
-  struct arg_list *loose_source;
-  long pause_time;
-  long first_ttl;
-  char *iface;
-
-  uint32_t gw_list[9];
-  int recv_sock;
-  int snd_sock;
-  unsigned msg_len;
-  char *packet;
-  uint32_t ident;
-  int istraceroute6;
-};
-
-struct vi_data {
-  char *c, *s;
-
-  char *filename;
-  int vi_mode, tabstop, list, cur_col, cur_row, scr_row, drawn_row, drawn_col,
-      count0, count1, vi_mov_flag, vi_exit;
-  unsigned screen_height, screen_width;
-  char vi_reg, *last_search;
-  struct str_line {
-    int alloc, len;
-    char *data;
-  } *il;
-  size_t screen, cursor; //offsets
-  //yank buffer
-  struct yank_buf {
-    char reg;
-    int alloc;
-    char *data;
-  } yank;
-
-  size_t filesize;
-// mem_block contains RO data that is either original file as mmap
-// or heap allocated inserted data
-  struct block_list {
-    struct block_list *next, *prev;
-    struct mem_block {
-      size_t size, len;
-      enum alloc_flag {
-        MMAP,  //can be munmap() before exit()
-        HEAP,  //can be free() before exit()
-        STACK, //global or stack perhaps toybuf
-      } alloc;
-      const char *data;
-    } *node;
-  } *text;
-
-// slices do not contain actual allocated data but slices of data in mem_block
-// when file is first opened it has only one slice.
-// after inserting data into middle new mem_block is allocated for insert data
-// and 3 slices are created, where first and last slice are pointing to original
-// mem_block with offsets, and middle slice is pointing to newly allocated block
-// When deleting, data is not freed but mem_blocks are sliced more such way that
-// deleted data left between 2 slices
-  struct slice_list {
-    struct slice_list *next, *prev;
-    struct slice {
-      size_t len;
-      const char *data;
-    } *node;
-  } *slices;
 };
 
 struct basename_data {
@@ -562,6 +517,10 @@ struct find_data {
   time_t now;
   long max_bytes;
   char *start;
+};
+
+struct fold_data {
+  long w;
 };
 
 struct grep_data {
@@ -823,7 +782,6 @@ struct xargs_data {
   pid_t *pids;
 };
 extern union global_union {
-	struct log_data log;
 	struct dmesg_data dmesg;
 	struct gzip_data gzip;
 	struct hostname_data hostname;
@@ -834,18 +792,24 @@ extern union global_union {
 	struct mount_data mount;
 	struct pidof_data pidof;
 	struct seq_data seq;
+	struct su_data su;
 	struct umount_data umount;
+	struct ftpget_data ftpget;
+	struct host_data host;
 	struct ifconfig_data ifconfig;
 	struct microcom_data microcom;
 	struct netcat_data netcat;
 	struct netstat_data netstat;
 	struct ping_data ping;
+	struct sntp_data sntp;
 	struct tunctl_data tunctl;
+	struct wget_data wget;
 	struct base64_data base64;
 	struct blkdiscard_data blkdiscard;
 	struct blkid_data blkid;
 	struct blockdev_data blockdev;
 	struct chrt_data chrt;
+	struct count_data count;
 	struct devmem_data devmem;
 	struct dos2unix_data dos2unix;
 	struct fallocate_data fallocate;
@@ -853,42 +817,44 @@ extern union global_union {
 	struct free_data free;
 	struct getopt_data getopt;
 	struct gpiodetect_data gpiodetect;
+	struct hd_data hd;
+	struct hexedit_data hexedit;
 	struct hwclock_data hwclock;
 	struct i2cdetect_data i2cdetect;
 	struct ionice_data ionice;
+	struct login_data login;
 	struct losetup_data losetup;
 	struct lsattr_data lsattr;
 	struct lsusb_data lsusb;
 	struct makedevs_data makedevs;
+	struct mix_data mix;
+	struct mkpasswd_data mkpasswd;
 	struct mkswap_data mkswap;
 	struct modinfo_data modinfo;
 	struct nbd_client_data nbd_client;
 	struct nsenter_data nsenter;
+	struct oneit_data oneit;
+	struct openvt_data openvt;
+	struct pwgen_data pwgen;
 	struct readelf_data readelf;
 	struct realpath_data realpath;
+	struct reboot_data reboot;
 	struct rtcwake_data rtcwake;
 	struct setfattr_data setfattr;
 	struct setsid_data setsid;
+	struct sha3sum_data sha3sum;
+	struct shred_data shred;
+	struct shuf_data shuf;
 	struct stat_data stat;
 	struct swapon_data swapon;
+	struct switch_root_data switch_root;
 	struct tac_data tac;
 	struct timeout_data timeout;
 	struct truncate_data truncate;
 	struct uclampset_data uclampset;
 	struct watch_data watch;
+	struct watchdog_data watchdog;
 	struct xxd_data xxd;
-	struct brctl_data brctl;
-	struct dhcp_data dhcp;
-	struct diff_data diff;
-	struct expr_data expr;
-	struct getfattr_data getfattr;
-	struct lsof_data lsof;
-	struct modprobe_data modprobe;
-	struct more_data more;
-	struct stty_data stty;
-	struct tr_data tr;
-	struct traceroute_data traceroute;
-	struct vi_data vi;
 	struct basename_data basename;
 	struct cal_data cal;
 	struct chgrp_data chgrp;
@@ -905,6 +871,7 @@ extern union global_union {
 	struct expand_data expand;
 	struct file_data file;
 	struct find_data find;
+	struct fold_data fold;
 	struct grep_data grep;
 	struct head_data head;
 	struct iconv_data iconv;

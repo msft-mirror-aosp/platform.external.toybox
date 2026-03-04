@@ -91,7 +91,7 @@ struct kconfig *read_Config(char *name, struct kconfig *contain)
   FILE *fp = fopen(name, "r");
   char *line, *help = 0, *s, *ss, *keywords[] = {"mainmenu", "menu",
     "choice", "comment", "config", "endmenu", "endchoice", 0};
-  struct kconfig *kc, *klist = 0;
+  struct kconfig *kc = 0, *klist = 0;
   int ii, jj, count = 1, hindent;
   size_t size;
 
@@ -137,7 +137,7 @@ struct kconfig *read_Config(char *name, struct kconfig *contain)
       struct kconfig *kt;
 
       if (!(kt = read_Config(trim(s), contain))) { fp = 0; break; }
-      if (klist) kc = (kc->next) = kt;
+      if (klist) kc = (kc->next = kt);
       else klist = kc = kt;
       while (kc->next) kc = kc->next;
     // start help block
@@ -150,7 +150,7 @@ struct kconfig *read_Config(char *name, struct kconfig *contain)
       if (ii<4) contain = kt;
       if (klist) kc = (kc->next = kt);
       else klist = kc = kt;
-      if (!strcmp(ss, "config")) {
+      if (ii==5) {
         if (!*s) { fp = 0; break; }
         else kt->symbol = strdup(trim(s));
       } else if (*s) kt->prompt = strdup(trim(s));
@@ -226,7 +226,7 @@ int depends(struct kconfig *klist, struct kconfig *kc)
       dprintf(2, "unknown dependency %s in %s\n", sym, kc->symbol);
       exit(1);
     } else {
-      rc = depends(kc, kt) ? value(kt) : 0;
+      rc = depends(klist, kt) ? value(kt) : 0;
       if (flip) rc = !rc;
     }
     free(ss);

@@ -349,16 +349,6 @@
 #undef FLAG_f
 #endif
 
-// tee ia ia
-#undef OPTSTR_tee
-#define OPTSTR_tee "ia"
-#ifdef CLEANUP_tee
-#undef CLEANUP_tee
-#undef FOR_tee
-#undef FLAG_a
-#undef FLAG_i
-#endif
-
 // tr ^<1>2Ccstd[+cC] ^<1>2Ccstd[+cC]
 #undef OPTSTR_tr
 #define OPTSTR_tr "^<1>2Ccstd[+cC]"
@@ -743,15 +733,6 @@
 #define FLAG_s (1LL<<2)
 #define FLAG_F (1LL<<3)
 #define FLAG_f (1LL<<4)
-#endif
-
-#ifdef FOR_tee
-#define CLEANUP_tee
-#ifndef TT
-#define TT this.tee
-#endif
-#define FLAG_a (1LL<<0)
-#define FLAG_i (1LL<<1)
 #endif
 
 #ifdef FOR_tr

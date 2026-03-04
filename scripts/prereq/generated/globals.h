@@ -115,11 +115,6 @@ struct tail_data {
   } *F;
 };
 
-struct tee_data {
-  void *outputs;
-  int out;
-};
-
 struct wc_data {
   unsigned long totals[5];
 };
@@ -150,7 +145,6 @@ extern union global_union {
 	struct sed_data sed;
 	struct sort_data sort;
 	struct tail_data tail;
-	struct tee_data tee;
 	struct wc_data wc;
 	struct xargs_data xargs;
 } this;

@@ -1,9 +1,9 @@
-#define CFG_TOYBOX_ON_ANDROID 0
-#define USE_TOYBOX_ON_ANDROID(...)
-#define SKIP_TOYBOX_ON_ANDROID(...) __VA_ARGS__
-#define CFG_TOYBOX_FORK 1
-#define USE_TOYBOX_FORK(...) __VA_ARGS__
-#define SKIP_TOYBOX_FORK(...)
+#define CFG_IS_ANDROID 0
+#define USE_IS_ANDROID(...)
+#define SKIP_IS_ANDROID(...) __VA_ARGS__
+#define CFG_IS_FDPIC 0
+#define USE_IS_FDPIC(...)
+#define SKIP_IS_FDPIC(...) __VA_ARGS__
 #define CFG_BASENAME 1
 #define USE_BASENAME(...) __VA_ARGS__
 #define SKIP_BASENAME(...)
@@ -208,9 +208,9 @@
 #define CFG_TAR 0
 #define USE_TAR(...)
 #define SKIP_TAR(...) __VA_ARGS__
-#define CFG_TEE 1
-#define USE_TEE(...) __VA_ARGS__
-#define SKIP_TEE(...)
+#define CFG_TEE 0
+#define USE_TEE(...)
+#define SKIP_TEE(...) __VA_ARGS__
 #define CFG_TEST 0
 #define USE_TEST(...)
 #define SKIP_TEST(...) __VA_ARGS__
@@ -961,6 +961,9 @@
 #define CFG_DEMO_SCANKEY 0
 #define USE_DEMO_SCANKEY(...)
 #define SKIP_DEMO_SCANKEY(...) __VA_ARGS__
+#define CFG_DEMO_SCANLINE 0
+#define USE_DEMO_SCANLINE(...)
+#define SKIP_DEMO_SCANLINE(...) __VA_ARGS__
 #define CFG_DEMO_UTF8TOWC 0
 #define USE_DEMO_UTF8TOWC(...)
 #define SKIP_DEMO_UTF8TOWC(...) __VA_ARGS__
@@ -1047,3 +1050,6 @@
 #define CFG_TOYBOX_FORCE_NOMMU 0
 #define USE_TOYBOX_FORCE_NOMMU(...)
 #define SKIP_TOYBOX_FORCE_NOMMU(...) __VA_ARGS__
+#define CFG_TOYBOX_FORK 1
+#define USE_TOYBOX_FORK(...) __VA_ARGS__
+#define SKIP_TOYBOX_FORK(...)
