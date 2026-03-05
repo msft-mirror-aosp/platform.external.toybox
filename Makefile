@@ -25,7 +25,7 @@ toybox generated/unstripped/toybox: $(KCONFIG_CONFIG) *.[ch] lib/*.[ch] toys/*/*
 
 .SUFFIXES: # Disable legacy behavior
 
-include kconfig/Makefile
+-include kconfig/Makefile
 -include .singlemake
 
 $(KCONFIG_CONFIG): Config.in generated/Config.in

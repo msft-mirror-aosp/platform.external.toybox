@@ -7,39 +7,19 @@ source scripts/portability.sh
 
 mkdir -p "$GENDIR"
 
-probecc()
-{
-  ${CROSS_COMPILE}${CC} $CFLAGS $LDFLAGS -xc -o /dev/null - "$@"
-}
-
-# Probe for a single config symbol with a "compiles or not" test.
-# Symbol name is first argument, flags second, feed C file to stdin
-probesymbol()
-{
-  probecc "${@:2}" 2>/dev/null && DEFAULT=y || DEFAULT=n
-  rm a.out 2>/dev/null
-  echo -e "config $1\n\tbool\n\tdefault $DEFAULT\n" || exit 1
-}
-
-probeconfig()
-{
-  # Some commands are android-specific
-  probesymbol TOYBOX_ON_ANDROID -c << EOF
-    #ifndef __ANDROID__
-    #error nope
-    #endif
-EOF
-
-  # nommu support
-  probesymbol TOYBOX_FORK << EOF
-    #include <unistd.h>
-    int main(int argc, char *argv[]) { return fork(); }
-EOF
-  echo -e '\tdepends on !TOYBOX_FORCE_NOMMU'
-}
-
 genconfig()
 {
+  # Convert compiler builtin #defines to config symbols
+  local i j DIR X DEFINES="$($CROSS_COMPILE$CC $CFLAGS -E -dM - </dev/null)"
+
+  for i in ANDROID FDPIC
+  do
+    X=n
+    [ "${DEFINES/#define __${i}__ /}" != "$DEFINES" ] && X=y
+
+    echo -e "config IS_$i\n\tbool\n\tdefault $X\n" || return 1
+  done
+
   # Reverse sort puts posix first, examples last.
   for j in $(ls toys/*/README | sort -s -r)
   do
@@ -59,12 +39,11 @@ genconfig()
       echo
     done
 
-    echo endmenu
+    echo endmenu || return 1
   done
 }
 
-probeconfig > "$GENDIR"/Config.probed || rm "$GENDIR"/Config.probed
-genconfig > "$GENDIR"/Config.in || rm "$GENDIR"/Config.in
+genconfig > "$GENDIR"/Config.in || { rm "$GENDIR"/Config.in; exit 1; }
 
 # Find names of commands that can be built standalone in these C files
 toys()
