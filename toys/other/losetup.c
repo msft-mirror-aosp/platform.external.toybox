@@ -71,7 +71,7 @@ static int loopback_setup(char *device, char *file)
       }
       close(cfd);
     }
-    if (CFG_TOYBOX_ON_ANDROID && device) {
+    if (CFG_IS_ANDROID && device) {
       // ANDROID SPECIFIC: /dev is not devtmpfs, instead an userspace daemon
       // ueventd is responsible for creating the loop devices under /dev.
       // Wait for the uevent to be processed to avoid race.
@@ -164,7 +164,7 @@ void losetup_main(void)
 {
   char **s;
 
-  TT.dir = CFG_TOYBOX_ON_ANDROID ? "/dev/block" : "/dev";
+  TT.dir = CFG_IS_ANDROID ? "/dev/block" : "/dev";
   TT.openflags = FLAG(r) ? O_RDONLY : O_RDWR;
 
   if (TT.j) {

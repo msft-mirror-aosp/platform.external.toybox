@@ -1366,10 +1366,8 @@ void ps_main(void)
       "USER:12=UID,%%sPPID,%s,STIME,TTY,TIME,ARGS=CMD", FLAG(T) ? "TCNT" :"C");
   else if (FLAG(l))
     not_o = "F,S,UID,%sPPID,C,PRI,NI,BIT,SZ,WCHAN,TTY,TIME,CMD";
-  else if (CFG_TOYBOX_ON_ANDROID)
-    sprintf(not_o = toybuf+128,
-            "USER,%%sPPID,VSIZE:10,RSS,WCHAN:10,ADDR:10,S,%s",
-            FLAG(T) ? "CMD" : "NAME");
+  else if (CFG_IS_ANDROID) sprintf(not_o = toybuf+128,
+    "USER,%%sPPID,VSIZE:10,RSS,WCHAN:10,ADDR:10,S,%s",FLAG(T) ? "CMD" : "NAME");
   sprintf(toybuf, not_o, FLAG(T) ? "PID,TID," : "PID,");
 
   // Init TT.fields. This only uses toybuf if TT.ps.o is NULL

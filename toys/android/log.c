@@ -6,7 +6,7 @@ USE_LOG(NEWTOY(log, "b:p:t:", TOYFLAG_USR|TOYFLAG_SBIN))
 
 config LOG
   bool "log"
-  depends on TOYBOX_ON_ANDROID
+  depends on IS_ANDROID
   default y
   help
     usage: log [-b BUFFER] [-p PRI] [-t TAG] [MESSAGE...]

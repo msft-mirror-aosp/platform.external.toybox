@@ -8,13 +8,13 @@ third_party {
   license_type: UNENCUMBERED
   last_upgrade_date {
     year: 2026
-    month: 2
-    day: 13
+    month: 3
+    day: 4
   }
   homepage: "https://landley.net/toybox/"
   identifier {
     type: "Git"
     value: "https://github.com/landley/toybox"
-    version: "50d6ff32d43e0df062f764fa6d96a0b75a14ba3c"
+    version: "e857e4ed139cf06cc72139e9785ae5431050832e"
   }
 }

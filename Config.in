@@ -1,7 +1,5 @@
 mainmenu "Toybox Configuration"
 
-
-source generated/Config.probed
 source generated/Config.in
 
 comment ""
@@ -187,3 +185,8 @@ config TOYBOX_FORCE_NOMMU
 	  Building a scripts/mcm-buildall.sh toolchain patches musl to fix this.
 
 endmenu
+
+config TOYBOX_FORK
+  bool
+  default y
+  depends on !IS_FDPIC && !TOYBOX_FORCE_NOMMU
