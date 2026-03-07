@@ -106,7 +106,7 @@ void modinfo_main(void)
 
   // Android (as shipped by Google) currently only has modules on /vendor.
   // Android does not support multiple sets of modules for different kernels.
-  if (CFG_TOYBOX_ON_ANDROID) {
+  if (CFG_IS_ANDROID) {
    if (!TT.b) TT.b = "/vendor";
    if (!TT.k) TT.k = "";
   } else {

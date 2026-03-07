@@ -101,7 +101,6 @@ USE_SYSLOGD(NEWTOY(syslogd,">0l#<1>8=8R:b#<0>99=1s#<0=200m#<0>71582787=20O:p:f:a
 USE_TAIL(NEWTOY(tail, "?fFs:c(bytes)-n(lines)-[-cn][-fF]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_LINEBUF))
 USE_TAR(NEWTOY(tar, "&(one-file-system)(no-ignore-case)(ignore-case)(no-anchored)(anchored)(no-wildcards)(wildcards)(no-wildcards-match-slash)(wildcards-match-slash)(show-transformed-names)(selinux)(restrict)(full-time)(no-recursion)(null)(numeric-owner)(no-same-permissions)(overwrite)(exclude)*(sort);:(mode):(mtime):(group):(owner):(to-command):~(strip-components)(strip)#~(transform)(xform)*Z(zstd)o(no-same-owner)p(same-permissions)k(keep-old)c(create)|h(dereference)x(extract)|t(list)|v(verbose)J(xz)j(bzip2)z(gzip)S(sparse)O(to-stdout)P(absolute-names)m(touch)X(exclude-from)*T(files-from)*I(use-compress-program):C(directory):f(file):as[!txc][!jzJa]", TOYFLAG_USR|TOYFLAG_BIN|TOYFLAG_UMASK))
 USE_TASKSET(NEWTOY(taskset, "^pa", TOYFLAG_USR|TOYFLAG_BIN))
-USE_TEE(NEWTOY(tee, "ia", TOYFLAG_USR|TOYFLAG_BIN))
 USE_TELNET(NEWTOY(telnet, "<1>2", TOYFLAG_BIN))
 USE_TELNETD(NEWTOY(telnetd, "w#<0b:p#<0>65535=23f:l:FSKi[!wi]", TOYFLAG_USR|TOYFLAG_BIN))
 USE_SH(OLDTOY(toysh, sh, TOYFLAG_BIN))
