@@ -453,7 +453,7 @@ GLOBALS(
 
 #define DEBUG 0
 
-void debug_show_fds()
+static void debug_show_fds(char *who)
 {
   int x = 0, fd = open("/proc/self/fd", O_RDONLY);
   DIR *X = fdopendir(fd);
@@ -468,7 +468,7 @@ void debug_show_fds()
     free(s); free(ss);
   }
   *sss = 0;
-  dprintf(2, "%d fd:%s\n", getpid(), buf);
+  dprintf(2, "%d %s fd:%s\n", getpid(), who, buf);
   closedir(X);
 }
 
@@ -1261,7 +1261,7 @@ static int save_redirect(int **rd, int from, int to)
 {
   int cnt, hfd, *rr;
 
-if (DEBUG) dprintf(2, "%d redir %d to %d\n", getpid(), from, to);
+if (DEBUG) dprintf(2, "%d redir %p %d to %d\n", getpid(), rd, from, to);
   if (from == to) return 0;
   // save displaced to, copying to high (>=10) file descriptor to undo later
   // except if we're saving to environment variable instead (don't undo that)
@@ -1274,7 +1274,7 @@ if (DEBUG) dprintf(2, "%d redir %d to %d\n", getpid(), from, to);
     if (from >= 0 && to != dup2(from, to)) {
       if (hfd >= 0) close(hfd);
 
-      return 1;
+      return 1; // filehandle exhaustion
     }
   } else {
     hfd = to;
@@ -1287,22 +1287,23 @@ if (DEBUG) dprintf(2, "%d redir %d to %d\n", getpid(), from, to);
   rr[2*cnt-1] = hfd;
   rr[2*cnt] = to;
 
-  return 0;
+  return 0; // success
 }
 
 // restore displaced filehandles, closing high filehandles they were copied to
-static void unredirect(int *urd)
+static void unredirect(int **urd)
 {
-  int *rr = urd+1, i;
+  int *rr = 1+*urd, i;
 
-  if (!urd) return;
+  if (!*urd) return;
 
-  for (i = 0; i<*urd; i++, rr += 2) if (rr[0] != -1) {
+  for (i = 0; i<**urd; i++, rr += 2) if (rr[0] != -1) {
     // No idea what to do about fd exhaustion here, so Steinbach's Guideline.
     dup2(rr[0], rr[1]);
     close(rr[0]);
   }
-  free(urd);
+  free(*urd);
+  *urd = 0;
 }
 
 // TODO: waitpid(WNOHANG) to clean up zombies and catch background& ending
@@ -1368,7 +1369,7 @@ static struct sh_pipeline *pop_block(void)
 
   // when ending a block, free, cleanup redirects and pop stack.
   if (blk->pout != -1) close(blk->pout);
-  unredirect(blk->urd);
+  unredirect(&blk->urd);
   llist_traverse(blk->fdelete, llist_free_arg);
   free(blk->farg.v);
   if (TT.ff->blk->next) {
@@ -1410,18 +1411,18 @@ static void free_function(struct sh_function *funky)
   free(funky);
 }
 
-static int free_process(struct sh_process *pp)
+static struct sh_process *free_process(struct sh_process *pp)
 {
-  int rc;
+  struct sh_process *next;
 
-  if (!pp) return 127;
-  rc = pp->exit;
+  if (!pp) return 0;
+  next = pp->next;
   if (!--pp->refcount) {
     llist_traverse(pp->delete, llist_free_arg);
     free(pp);
   }
 
-  return rc;
+  return next;
 }
 
 // Clean up and pop TT.ff
@@ -1447,8 +1448,7 @@ static void end_fcall(void)
   free(ff->blk);
   free_function(ff->function);
   if (ff->pp) {
-    unredirect(ff->pp->urd);
-    ff->pp->urd = 0;
+    unredirect(&ff->pp->urd);
     free_process(ff->pp);
   }
 
@@ -1474,7 +1474,7 @@ static void end_fcall(void)
 static int run_subshell(char *str, int len)
 {
   pid_t pid;
-if (DEBUG) { dprintf(2, "%d run_subshell %.*s\n", getpid(), len, str); debug_show_fds(); }
+if (DEBUG) { dprintf(2, "%d run_subshell %.*s\n", getpid(), len, str); debug_show_fds("run_subshell"); }
   // The with-mmu path is significantly faster.
   if (CFG_TOYBOX_FORK) {
     if ((pid = fork())<0) perror_msg("fork");
@@ -1547,7 +1547,7 @@ static int pipe_subshell(char *s, int len, int out)
   fcntl(pipes[!in], F_SETFD, FD_CLOEXEC);
   run_subshell(s, len);
   fcntl(pipes[!in], F_SETFD, 0);
-  unredirect(uu);
+  unredirect(&uu);
 
   return pipes[out];
 }
@@ -2629,7 +2629,7 @@ static char *expand_one_arg(char *new, unsigned flags)
 // saved to pp->delete. Returns zero for success, nonzero for failure.
 static int expand_redir(struct sh_process *pp, struct sh_arg *arg, int skip)
 {
-  char *s = s, *ss, *sss, *cv = 0;
+  char *s = 0, *ss, *sss, *cv = 0;
   int j, to, from, here = 0;
 
   TT.hfd = 10;
@@ -3031,7 +3031,7 @@ static struct sh_process *run_command(void)
 
     jj = tl ? tl->flags : 0;
     TT.ff->_ = pp->arg.v[pp->arg.c-1];
-if (DEBUG) { dprintf(2, "%d run command %p %s\n", getpid(), TT.ff, *pp->arg.v); debug_show_fds(); }
+if (DEBUG) { dprintf(2, "%d run command %p %s\n", getpid(), TT.ff, *pp->arg.v); debug_show_fds("run_command"); }
 // TODO: figure out when can exec instead of forking, ala sh -c blah
 
     // Is this command a builtin that should run in this process?
@@ -3729,7 +3729,7 @@ static int wait_pipeline(struct sh_process *pp)
 {
   int rc = 0;
 
-  for (dlist_terminate(pp); pp; pp = pp->next) {
+  for (dlist_terminate(pp); pp; pp = free_process(pp)) {
     if (pp->pid) {
       // TODO job control: not xwait, handle EINTR ourselves and check signals
       pp->exit = xwaitpid(pp->pid);
@@ -3740,11 +3740,14 @@ static int wait_pipeline(struct sh_process *pp)
   }
 
   // Check for background jobs exiting
-  while ((pp = wait_job(-1, 1)) && dashi()) {
-    char *s = show_job(pp, pp->dash);
+  while ((pp = wait_job(-1, 1))) {
+    if (dashi()) {
+      char *s = show_job(pp, pp->dash);
 
-    dprintf(2, "%s\n", s);
-    free(s);
+      dprintf(2, "%s\n", s);
+      free(s);
+    }
+    free_process(pp);
   }
 
   return rc;
@@ -3923,6 +3926,8 @@ static void run_lines(void)
       free(dl);
       TT.ff->source = fmemopen(ss, strlen(ss), "r");
     }
+
+    // If we've run out of pipeline segments, pop fcall or return to read input
     if (!TT.ff->pl) {
       if (TT.ff->source) break;
       i = TT.ff->signal;
@@ -3931,22 +3936,24 @@ static void run_lines(void)
       if (!i || !TT.ff || !TT.ff->pl) goto advance;
     }
 
+    // grab first arg, second arg, and ending control character (ala ; or |)
     ctl = TT.ff->pl->end->arg->v[TT.ff->pl->end->arg->c];
     s = *TT.ff->pl->arg->v;
     ss = TT.ff->pl->arg->v[1];
 if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (TT.ff->pl->type == 'F') ? ((struct sh_function *)s)->name : s, ss, ctl, TT.ff->pl->type, TT.ff->pl, TT.ff);
     if (!pplist) TT.hfd = 10;
 
-    // Skip disabled blocks, handle pipes and backgrounding
     if (TT.ff->pl->type<2) {
+      // skip disabled blocks
       if (!TT.ff->blk->run) {
         TT.ff->pl = TT.ff->pl->end->next;
 
         continue;
       }
 
+      // set -x tracing
       if (TT.options&OPT_x) {
-        char *ss, *ps4 = getvar("PS4");
+        char *sss, *ps4 = getvar("PS4");
         struct sh_fcall *ff;
 
         // duplicate first char of ps4 call depth times
@@ -3955,22 +3962,21 @@ if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (T
           for (ff = TT.ff, i = 0; ff != TT.ff->prev; ff = ff->next)
             if (ff->source && ff->name) i++;
           j = getutf8(ps4, k = strlen(ps4), 0);
-          ss = xmalloc(i*j+k+1);
-          for (k = 0; k<i; k++) memcpy(ss+k*j, ps4, j);
-          strcpy(ss+k*j, ps4+j);
-          do_prompt(ss);
-          free(ss);
+          sss = xmalloc(i*j+k+1);
+          for (k = 0; k<i; k++) memcpy(sss+k*j, ps4, j);
+          strcpy(sss+k*j, ps4+j);
+          do_prompt(sss);
+          free(sss);
 
           // TODO resolve variables
-          ss = pl2str(TT.ff->pl, 1);
-          dprintf(2, "%s\n", ss);
-          free(ss);
+          sss = pl2str(TT.ff->pl, 1);
+          dprintf(2, "%s\n", sss);
+          free(sss);
         }
       }
 
       // pipe data into and out of this segment, I.E. leading/trailing |
-      unredirect(TT.ff->blk->urd);
-      TT.ff->blk->urd = 0;
+      unredirect(&TT.ff->blk->urd);
       TT.ff->blk->pipe = 0;
 
       // Consume pipe from previous segment as stdin.
@@ -3981,7 +3987,7 @@ if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (T
         TT.ff->blk->pout = -1;
       }
 
-      // Create output pipe and save next process's stdin in pout
+      // if | out create output pipe and save next process's stdin in pout
       if (ctl && *ctl == '|' && ctl[1] != '|') {
         int pipes[2] = {-1, -1};
 
@@ -4250,10 +4256,7 @@ do_then:
         pplist->job = ++TT.jobcnt;
         arg_add(&TT.jobs, (void *)pplist);
         if (dashi()) dprintf(2, "[%u] %u\n", pplist->job,pplist->pid);
-      } else {
-        toys.exitval = wait_pipeline(pplist);
-        llist_traverse(pplist, (void *)free_process);
-      }
+      } else toys.exitval = wait_pipeline(pplist);
       pplist = 0;
     }
 advance:
@@ -4270,10 +4273,9 @@ advance:
   }
 
   // clean up any unfinished stuff
-  if (pplist) {
-    toys.exitval = wait_pipeline(pplist);
-    llist_traverse(pplist, (void *)free_process);
-  }
+  if (pplist) toys.exitval = wait_pipeline(pplist);
+
+  if (TT.ff) unredirect(&TT.ff->blk->urd);
 }
 
 // set variable
@@ -5104,6 +5106,7 @@ void unalias_main(void)
 #define FOR_wait
 #include "generated/flags.h"
 
+// TODO this is always doing -f
 void wait_main(void)
 {
   struct sh_process *pp;
@@ -5111,13 +5114,19 @@ void wait_main(void)
   long long ll;
   char *s;
 
-  // TODO does -o pipefail affect return code here
-  if (FLAG(n)) toys.exitval = free_process(wait_job(-1, 0));
-  else if (!toys.optc) while (TT.jobs.c) {
-    if (!(pp = wait_job(-1, 0))) break;
+  // TODO does -o pipefail affect return code here (%job can be a pipeline)
+  if (!toys.optc || FLAG(n)) while (TT.jobs.c) {
+    pp = wait_job(-1, 0);
+    ii = pp ? pp->exit : 127;
+    free_process(pp);
+    if (FLAG(n)) {
+      toys.exitval = ii;
+      break;
+    }
   } else for (ii = 0; ii<toys.optc; ii++) {
     ll = estrtol(toys.optargs[ii], &s, 10);
     if (errno || *s) {
+      // TODO %job can be a pipeline, add tests
       if (-1 == (jj = find_job(toys.optargs[ii]))) {
         error_msg("%s: bad pid/job", toys.optargs[ii]);
         continue;
@@ -5128,6 +5137,7 @@ void wait_main(void)
       if (toys.signal) toys.exitval = 128+toys.signal;
       break;
     }
-    toys.exitval = free_process(pp);
+    toys.exitval = pp->exit;
+    free_process(pp);
   }
 }

@@ -3328,12 +3328,13 @@
 #undef FLAG_one_file_system
 #endif
 
-// taskset ^pa ^pa
+// taskset ^p(pid)a(all-tasks)c(cpu-list) ^p(pid)a(all-tasks)c(cpu-list)
 #undef OPTSTR_taskset
-#define OPTSTR_taskset "^pa"
+#define OPTSTR_taskset "^p(pid)a(all-tasks)c(cpu-list)"
 #ifdef CLEANUP_taskset
 #undef CLEANUP_taskset
 #undef FOR_taskset
+#undef FLAG_c
 #undef FLAG_a
 #undef FLAG_p
 #endif
@@ -7075,8 +7076,9 @@
 #ifndef TT
 #define TT this.taskset
 #endif
-#define FLAG_a (1LL<<0)
-#define FLAG_p (1LL<<1)
+#define FLAG_c (1LL<<0)
+#define FLAG_a (1LL<<1)
+#define FLAG_p (1LL<<2)
 #endif
 
 #ifdef FOR_tcpsvd
