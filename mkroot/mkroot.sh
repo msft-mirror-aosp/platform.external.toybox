@@ -6,19 +6,15 @@
 [ -z "$NOCLEAR" ] && exec env -i NOCLEAR=1 HOME="$HOME" PATH="$PATH" \
     LINUX="$LINUX" CROSS="$CROSS" CROSS_COMPILE="$CROSS_COMPILE" "$0" "$@"
 
-! [ -d mkroot ] && echo "Run mkroot/mkroot.sh from toybox source dir." && exit 1
-
 # assign command line NAME=VALUE args to env vars, the rest are packages
 for i in "$@"; do
   [ "${i/=/}" != "$i" ] && export "$i" || { [ "$i" != -- ] && PKG="$PKG $i"; }
 done
 
-# Set default directory locations (overrideable from command line)
-: ${TOP:=$PWD/root} ${BUILD:=$TOP/build} ${LOG:=$BUILD/log}
-: ${AIRLOCK:=$BUILD/airlock} ${CCC:=$PWD/ccc} ${PKGDIR:=$PWD/mkroot/packages}
-
 announce() { printf "\033]2;$CROSS $*\007" 2>/dev/null >/dev/tty; printf "\n=== $*\n";}
 die() { echo "$@" >&2; exit 1; }
+
+[ -d mkroot ] || die "Run mkroot/mkroot.sh from toybox source dir."
 
 # ----- Are we cross compiling (via CROSS_COMPILE= or CROSS=)
 
@@ -29,9 +25,10 @@ if [ -n "$CROSS_COMPILE" ]; then
   [ -z "$CROSS" ] && CROSS=${CROSS_COMPILE/*\//} CROSS=${CROSS/-*/}
 
 elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
-  [ ! -d "$CCC" ] && die "No ccc symlink to compiler directory."
-  TARGETS="$(ls "$CCC" | sed -n 's/-.*//p' | sort -u)"
+  [ ! -d "${CCC:=$PWD/ccc}" ] && die "No ccc symlink to compiler directory."
+  TARGETS="$(ls "$CCC" | sed -n 's/-.*cross//p' | sort -u)"
 
+  # CROSS=one,two,three builds multiple targets, or all/allnonstop
   [ "${CROSS/,/}" == "$CROSS" ] || { TARGETS="${CROSS//,/ }"; CROSS=all; }
   if [ "${CROSS::3}" == all ]; then # loop calling ourselves for each target
     for i in $TARGETS; do
@@ -45,12 +42,14 @@ elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
   fi
 fi
 
-# Set per-target output directory (using "host" if not cross-compiling)
-: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS} ${OUTDOC:=$OUTPUT/docs}
-
 # Verify selected compiler works
 ${CROSS_COMPILE}cc --static -xc - -o /dev/null <<< "int main(void){return 0;}"||
   die "${CROSS_COMPILE}cc can't create static binaries"
+
+# Set default directory locations (overrideable from command line)
+: ${TOP:=$PWD/root} ${BUILD:=$TOP/build} ${LOG:=$BUILD/log}
+: ${AIRLOCK:=$BUILD/airlock} ${PKGDIR:=$PWD/mkroot/packages}
+: ${CROSS:=host} ${OUTPUT:=$TOP/$CROSS} ${OUTDOC:=$OUTPUT/docs}
 
 # ----- Create hermetic build environment
 
@@ -161,6 +160,12 @@ echo -e 'root:x:0:\nguest:x:500:\nnobody:x:65534:' > "$ROOT"/etc/group &&
 # Optional file, basically a comment
 echo $'NAME="mkroot"\nVERSION="'${VERSION#* }$'"\nHOME_URL="https://landley.net/toybox"' > "$ROOT"/etc/os-release || exit 1
 
+# ----- Compile and install source packages.
+
+# {brace,expansion} to comma separated values, csv in $1 to CONFIG=$2 miniconfig
+be2csv() { eval "echo $*" | tr ' ' ,; }
+csv2cfg() { sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1\n/g' <<< "$1" | sed '/^$/!{/=/!s/.*/&='"$2/}";}
+
 # Build any packages listed on command line
 for i in ${PKG:+plumbing $PKG}; do
   pushd .
@@ -171,20 +176,15 @@ done
 # Build static toybox with existing .config if there is one, else defconfig+sh
 if [ -z "$NOTOYBOX" ]; then
   announce toybox
-  [ -n "$PENDING" ] && rm -f .config
-  grep -q CONFIG_SH=y .config 2>/dev/null && CONF=silentoldconfig || unset CONF
-  for i in $PENDING sh route; do XX="$XX"$'\n'CONFIG_${i^^?}=y; done
+  [ -z "$TOYCFG" ] && { rm -f "${TOYCFG:=.config}";} || CONF=silentoldconfig
   [ -e "$ROOT"/lib/libc.so ] || export LDFLAGS=--static
-  PREFIX="$ROOT" make clean \
-    ${CONF:-defconfig KCONFIG_ALLCONFIG=<(echo "$XX")} toybox install || exit 1
+  PREFIX="$ROOT" KCONFIG_CONFIG="$TOYCFG" make clean \
+    ${CONF:-defconfig KCONFIG_ALLCONFIG=<(csv2cfg $(be2csv $PENDING SH ROUTE) y)} \
+    toybox install || exit 1
   unset LDFLAGS
 fi
 
 # ------------------ Part 3: Build + package bootable system ------------------
-
-# Convert comma separated values in $1 to CONFIG=$2 lines
-csv2cfg() { sed -E '/^$/d;s/([^,]*)($|,)/CONFIG_\1\n/g' <<< "$1" | sed '/^$/!{/=/!s/.*/&='"$2/}";}
-be2csv() { eval "echo $*" | tr ' ' ,; } # brace expansion to csv
 
 # Set variables from $CROSS, die on unrecognized target:
 # BUILTIN - if set, statically link initramfs into kernel image
@@ -284,7 +284,7 @@ get_target_config()
     [ "$CROSS" = riscv32 ] && KCONF+=,ARCH_RV32I
   elif [ "$CROSS" = s390x ]; then
     KARCH=s390 VMLINUX=bzImage
-    KCONF="$(be2csv MARCH_Z900 PACK_STACK S390_GUEST VIRTIO_{NET,BLK} \
+    KCONF="$(be2csv MARCH_Z900 S390_GUEST VIRTIO_{NET,BLK} \
       SCLP_VT220_{TTY,CONSOLE})"
   elif [ "$CROSS" == sh2eb ]; then
     BUILTIN=1 KARCH=sh
@@ -300,7 +300,7 @@ get_target_config()
     KCONF="$(be2csv CPU_SUBTYPE_SH7751R MMU VSYSCALL SH_{FPU,RTS7751R2D} PCI \
       RTS7751R2D_PLUS SERIAL_SH_SCI{,_CONSOLE} NET_VENDOR_REALTEK 8139CP \
       BLK_DEV_SD ATA{,_SFF,_BMDMA} PATA_PLATFORM BINFMT_ELF_FDPIC \
-      CMDLINE_FROM_BOOTLOADER MEMORY_START=0x0c000000)"
+      CMDLINE_FROM_BOOTLOADER MEMORY_START=0x04100000 MEMORY_SIZE=0x0bf00000)"
 #see also SPI{,_SH_SCI} MFD_SM501 RTC_{CLASS,DRV_{R9701,SH},HCTOSYS}
     [ "$CROSS" == sh4eb ] && KCONF+=,CPU_BIG_ENDIAN
   else die "Unknown \$CROSS=$CROSS"

@@ -348,10 +348,12 @@ static int *diff(char **files)
 
   for (i = 0; i < 2; i++) {
     if ((j = !strcmp(files[i], "-")) || S_ISFIFO(TT.st[i].st_mode)) {
+      char *tmp = xmprintf("%s/fifo", getenv("TMPDIR") ? : "/tmp");
       char *tmp_name;
       int srcfd = j ? 0 : open(files[i], O_RDONLY),
-        tmpfd = xtempfile("fifo", &tmp_name);
+        tmpfd = xtempfile(tmp, &tmp_name);
 
+      free(tmp);
       unlink(tmp_name);
       free(tmp_name);
 

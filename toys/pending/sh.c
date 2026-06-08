@@ -1419,6 +1419,7 @@ static struct sh_process *free_process(struct sh_process *pp)
   next = pp->next;
   if (!--pp->refcount) {
     llist_traverse(pp->delete, llist_free_arg);
+    unredirect(&pp->urd);
     free(pp);
   }
 
@@ -1447,10 +1448,7 @@ static void end_fcall(void)
   while (pop_block());
   free(ff->blk);
   free_function(ff->function);
-  if (ff->pp) {
-    unredirect(&ff->pp->urd);
-    free_process(ff->pp);
-  }
+  free_process(ff->pp);
 
   // Unblock signal we just finished handling
   if (TT.ff->signal) {
@@ -2646,7 +2644,7 @@ static int expand_redir(struct sh_process *pp, struct sh_arg *arg, int skip)
       int new = pipe_subshell(s+2, strlen(s+2)-1, *s == '>');
 
       // Grab subshell data
-      if (new == -1) return pp->exit = 1;
+      if (new == -1) goto qfail;
       save_redirect(&pp->urd, -2, new);
 
       // bash uses /dev/fd/%d which requires /dev/fd to be a symlink to
@@ -2661,7 +2659,7 @@ static int expand_redir(struct sh_process *pp, struct sh_arg *arg, int skip)
     sss = ss + anystart(ss, (void *)redirectors);
     if (ss == sss) {
       // Nope: save/expand argument and loop
-      if (expand_arg(&pp->arg, s, 0, &pp->delete)) return pp->exit = 1;
+      if (expand_arg(&pp->arg, s, 0, &pp->delete)) goto qfail;
       continue;
     } else if (j+1 >= arg->c) {
       // redirect needs one argument
@@ -2808,14 +2806,15 @@ notfd:
     if (bad) break;
   }
 
-  // didn't parse everything?
-  if (j != arg->c) {
-    if (s) syntax_err(s);
-    if (!pp->exit) pp->exit = 1;
-    free(cv);
-  }
+  // Parsed everything?
+  if (j==arg->c) return 0;
+  if (s) syntax_err(s);
 
-  return 0;
+qfail: // jump here instead of break to skip syntax_err()
+  free(cv);
+  unredirect(&pp->urd);
+
+  return pp->exit ? : ++pp->exit;
 }
 
 // Handler called with all signals blocked, so no special locking needed.
@@ -2933,11 +2932,11 @@ static void sh_exec(char **argv)
 }
 
 // Execute a single command at TT.ff->pl returning new sh_process instance.
-static struct sh_process *run_command(void)
+static struct sh_process *run_command(int local)
 {
   char *s, *ss;
   struct sh_arg *arg = TT.ff->pl->arg, prefix = {0};
-  int skiplen = 0, funk, ii, jj, local = TT.ff->blk->pipe;
+  int skiplen = 0, funk, ii, jj;
   struct sh_process *pp = xzalloc(sizeof(*pp));
 
   // Setup function and child process contexts
@@ -2962,6 +2961,7 @@ static struct sh_process *run_command(void)
     if (anystart(skip_redir_prefix(s = arg->v[ii]), (void *)redirectors)) {
       if ((skiplen = ii)<(jj = arg->c)) ii++;
       arg->c = ii+1;
+      // TODO should expand_redir() understand 1-skiplen to avoid arg->c swap?
       expand_redir(pp, arg, skiplen);
       arg->c = jj;
       skiplen = 0;
@@ -3137,29 +3137,29 @@ static int parse_line(char *line, struct double_list **expect)
       arg->v[arg->c] = 0;
 
     // is a HERE document in progress?
-    } else if (pl->count != pl->here) {
-here_loop:
+    } else if (pl->count != pl->here) while (start) {
       // Back up to oldest unfinished pipeline segment.
       while (pl!=TT.ff->pl && pl->prev->count != pl->prev->here) pl = pl->prev;
       arg = pl->arg+1+pl->here;
 
       // Match unquoted EOF.
-      if (!line) {
-        sherror_msg("<<%s EOF", arg->v[arg->c]);
-        goto here_end;
-      }
-      for (s = line, end = arg->v[arg->c]; *end; s++, end++) {
-        end += strspn(end, "\\\"'\n");
-        if (!*s || *s != *end) break;
+      if (!line) sherror_msg("<<%s EOF", arg->v[arg->c]), end = 0;
+      else {
+        for (i = 0, s = line, end = arg->v[arg->c]; *end; s++, end++) {
+          i |= (j = strspn(end, "\\\"'\n"));
+          end += j;
+          if (!*s || *s != *end) break;
+        }
+
+        // Add this line, else EOF hit so end HERE document
+        if ((*s && *s!='\n') || *end) {
+          end = arg->v[arg->c];
+          arg_add(arg, xstrdup(line));
+          arg->v[arg->c] = end;
+        } else end = 0;
       }
 
-      // Add this line, else EOF hit so end HERE document
-      if ((*s && *s!='\n') || *end) {
-        end = arg->v[arg->c];
-        arg_add(arg, xstrdup(line));
-        arg->v[arg->c] = end;
-      } else {
-here_end:
+      if (!end) {
         // End segment and advance/consume bridge segments
         arg->v[arg->c] = 0;
         if (pl->count == ++pl->here)
@@ -3167,7 +3167,7 @@ here_end:
             pl->here = pl->count;
       }
       if (pl->here != pl->count) {
-        if (!line) goto here_loop;
+        if (!line) continue;
         else return 1;
       }
       start = 0;
@@ -3933,7 +3933,9 @@ static void run_lines(void)
       i = TT.ff->signal;
       end_fcall();
 // TODO can we move advance logic to start of loop to avoid straddle?
-      if (!i || !TT.ff || !TT.ff->pl) goto advance;
+      if (!TT.ff || !TT.ff->pl) break;
+      // if returning from signal handler, retry interrupted command
+      if (!i) goto advance;
     }
 
     // grab first arg, second arg, and ending control character (ala ; or |)
@@ -3941,7 +3943,6 @@ static void run_lines(void)
     s = *TT.ff->pl->arg->v;
     ss = TT.ff->pl->arg->v[1];
 if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (TT.ff->pl->type == 'F') ? ((struct sh_function *)s)->name : s, ss, ctl, TT.ff->pl->type, TT.ff->pl, TT.ff);
-    if (!pplist) TT.hfd = 10;
 
     if (TT.ff->pl->type<2) {
       // skip disabled blocks
@@ -3979,11 +3980,11 @@ if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (T
       unredirect(&TT.ff->blk->urd);
       TT.ff->blk->pipe = 0;
 
-      // Consume pipe from previous segment as stdin.
+      // if | into us, consume saved output pipe from previous segment as stdin.
       if (TT.ff->blk->pout != -1) {
         TT.ff->blk->pipe++;
         if (save_redirect(&TT.ff->blk->urd, TT.ff->blk->pout, 0)) break;
-        close(TT.ff->blk->pout);
+        if (TT.ff->blk->pout) close(TT.ff->blk->pout);
         TT.ff->blk->pout = -1;
       }
 
@@ -4011,7 +4012,7 @@ if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (T
 
     // If executable segment parse and run next command saving resulting process
     if (!TT.ff->pl->type) {
-      dlist_add_nomalloc((void *)&pplist, (void *)run_command());
+      dlist_add_nomalloc((void *)&pplist, (void *)run_command(TT.ff->blk->pipe));
 
     // Start of flow control block?
     } else if (TT.ff->pl->type == 1) {
@@ -4042,9 +4043,7 @@ if (DEBUG) dprintf(2, "%d s=%s ss=%s ctl=%s type=%d pl=%p ff=%p\n", getpid(), (T
         if (!(pp->pid = run_subshell(0, -1))) {
           // zap forked child's cleanup context and advance to next statement
           pplist = 0;
-          while (TT.ff->blk->next) TT.ff->blk = TT.ff->blk->next;
-          TT.ff->blk->pout = -1;
-          TT.ff->blk->urd = 0;
+          clear_block(TT.ff->blk);
           TT.ff->pl = TT.ff->next->pl->next;
 
           continue;
@@ -4259,8 +4258,8 @@ do_then:
       } else toys.exitval = wait_pipeline(pplist);
       pplist = 0;
     }
-advance:
     if (!TT.ff || !TT.ff->pl) break;
+advance:
     // for && and || skip pipeline segment(s) based on return code
     if (!TT.ff->pl->type || TT.ff->pl->type == 3) {
       for (;;) {
@@ -4503,6 +4502,7 @@ if (DEBUG) { dprintf(2, "%d main", getpid()); for (unsigned uu = 0; toys.argv[uu
   signify(SIGPIPE, 0);
   TT.options = (toys.optflags&0xff)|OPT_B;
   TT.pid = getpid();
+  TT.hfd = 10;
   srandom(TT.SECONDS = millitime());
 
   // TODO euid stuff?
@@ -4579,22 +4579,24 @@ void alias_main(void)
   char *s;
   int i, j;
 
+  // print all aliases
   if (!toys.optc || FLAG(p))
     for (i = 0; i<TT.alias.c; i++) puts(TT.alias.v[i]); // TODO $'escape'
 
+  // print/assign aliases
   for (i = 0; i<toys.optc; i++) {
     if (!(s = strchr(toys.optargs[i], '='))) {
       for (j = 0; j<TT.alias.c && (s = TT.alias.v[j]); j++)
-        if (strstart(&s, toys.optargs[i]) && *s++=='=') break;
+        if (strstart(&s, toys.optargs[i]) && *s=='=') break;
       if (j==TT.alias.c) sherror_msg("%s: not found", TT.alias.v[j]);
-      else printf("alias %s=%s\n", TT.alias.v[j], s); // TODO $'escape'
+      else printf("alias %s\n", TT.alias.v[j]); // TODO $'escape'
     } else {
-      for (i = 0; i<TT.alias.c; i++)
-        if (!memcmp(TT.alias.v[i], toys.optargs[i], s+1-toys.optargs[i])) break;
-      if (i==TT.alias.c) arg_add(&TT.alias, xstrdup(toys.optargs[i]));
+      for (j = 0; j<TT.alias.c; j++)
+        if (!smemcmp(TT.alias.v[j], toys.optargs[i],s+1-toys.optargs[i])) break;
+      if (j==TT.alias.c) arg_add(&TT.alias, xstrdup(toys.optargs[i]));
       else {
-        free(toys.optargs[i]);
-        toys.optargs[i] = xstrdup(toys.optargs[i]);
+        free(TT.alias.v[j]);
+        TT.alias.v[j] = xstrdup(toys.optargs[i]);
       }
     }
   }
@@ -4935,9 +4937,18 @@ void exec_main(void)
   char *ee[1] = {0}, **old = environ;
 
   // discard redirects and return if nothing to exec
-  free(TT.ff->pp->urd);
-  TT.ff->pp->urd = 0;
-  if (!toys.optc) return;
+  if (!toys.optc) {
+    int i, j, *urd = TT.ff->pp->urd, *rr = urd+1;
+
+    // Close saved high file descriptors marked CLOEXEC
+    for (i = 0; i<*urd; i++, rr += 2)
+      if (rr[0]!=-1 && -1!=(j = fcntl(rr[0], F_GETFL)) && (j&FD_CLOEXEC))
+        close(rr[0]);
+    free(urd);
+    TT.ff->pp->urd = 0;
+
+    return;
+  }
 
 //TODO zap isexec
   // exec, handling -acl

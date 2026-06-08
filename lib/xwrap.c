@@ -483,7 +483,7 @@ int xtempfile(char *name, char **tempname)
   int fd;
 
   *tempname = xmprintf("%s%s", name, "XXXXXX");
-  if(-1 == (fd = mkstemp(*tempname))) error_exit("no temp file");
+  if(-1 == (fd = mkstemp(*tempname))) perror_exit("no temp file");
 
   return fd;
 }
