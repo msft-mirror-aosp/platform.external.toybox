@@ -530,6 +530,7 @@ cc_binary {
     defaults: ["toybox-shared-defaults"],
     host_supported: true,
     vendor_ramdisk_available: true,
+    ota_recovery_ramdisk_available: true,
 }
 
 cc_binary {
