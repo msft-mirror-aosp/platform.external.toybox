@@ -103,13 +103,13 @@ in 2024.</p>
 <h3>Why not just use posix for everything?</h3>
 
 <p>Unfortunately, Posix describes an incomplete subset of reality, because
-it was designed to. Those first few pre-SUSv2 Posix standards (which remain
-unavailable on the Open Group's wesite) were produced during a period known as
+it was designed to. Those first few pre-SUSv2 Posix standards (not
+available on the Open Group's wesite) were produced during a period known as
 "<a href=https://en.wikipedia.org/wiki/Unix_wars>the unix wars</a>" when
 AT&amp;T's prioprietary control over the original UNIX(tm) intellectual property
 sucked the old UNIX(tm) ecosystem dry until Linux and FreeBSD swept away
 the irrelevant debris. That's why the standards process started with proprietary
-unix vendors collaborating to describe what little functionality their
+unix vendors collaborating to describe what functionality their
 fragmented APIs could agree on, which was then incorporated into
 <a href=https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub151-2-1993.pdf>US federal procurement standards</a>
 as a <a href=https://www.youtube.com/watch?v=nwrTTXOg-KI>compliance requirement</a>
@@ -136,7 +136,7 @@ them. And widely used real-world commands such as tar and cpio (the basis
 of initramfs and RPM) which were present in earlier
 versions of the standard have been removed, while obsolete commands like
 cksum, compress, sccs and uucp remain with no mention of modern counterparts
-like crc32/sha1sum, gzip/xz, svn/git or scp/rsync. Meanwhile posix' description
+like crc32/sha256sum, gzip/xz, svn/git or scp/rsync. Meanwhile posix' description
 of the commands
 themselves are missing dozens of features, and specify silly things like ebcdic
 support in dd or that wc should use %d (not %lld) for byte counts. So
@@ -309,7 +309,7 @@ and archived them (until his death in 1998 when a committee took over).
 The documents are numbered based on the order they were received, with
 no real attempt at coherently indexing the result.
 As with the man-pages, they're very nice, but there's thousands of them,
-the signal to noise ratio here is terrible, and nothing here is a good
+the signal to noise ratio is terrible, and nothing here is a good
 indicator of whether a linux system should or should not include a given
 command in its basic command set. This is another collection of documentation
 with a low barrier to inclusion. They're not saying "you should support
@@ -317,8 +317,8 @@ X", they're saying "if you do, here's how", which does not
 help us select which commands to include.</p>
 
 <p>RFCs are mostly about protocols and file formats, not commands.
-The noise level is extremely high: there's thousands of RFCs, many
-describing a proposed idea that never took off, most of the rest are
+Even there the noise level is extremely high: there's thousands of RFCs, many
+describing proposed ideas that never took off, most of the rest are
 extensions to or replacements for earlier RFCs, and even a few April Fool's
 entries. Less than 1% of the resulting
 documents are currently relevant to toybox. As with man pages they can be
@@ -406,35 +406,48 @@ project ("mkroot") designed to use an existing cross+native toolchain (such as
 <a href=https://github.com/richfelker/musl-cross-make>musl-cross-make</a>
 or the Android NDK) instead of building its own cross and native compilers
 from source. In 2019 the still-incomplete
-mkroot was merged into toybox as the "make root" target (which runs
-mkroot/mkroot.sh). This is intended
-as a simpler way of providing essentially the same build environment, and doesn't
-significantly affect the rest of this analysis (although the "rebuild itself
-from source" test should now include building musl-cross-make under either
-mkroot or toybox's "make airlock" host environment).</p>
+mkroot was merged into toybox (see <a href=https://codeberg.org/landley/toybox/src/branch/master/mkroot/README>mkroot/README</a>).
+This is intended as a simpler way of providing essentially the same build
+environment, and doesn't significantly affect the rest of this analysis
+(although the "rebuild itself from source" test should now include building
+musl-cross-make under either mkroot or toybox's "make airlock" host
+environment).</p>
 
 <p>Toybox source includes
 a <b>scripts/mcm-buildall.sh</b> wrapper script around musl-cross-make, which
 builds cross and native versions of gcc+musl toolchains for a dozen
 different architectures, and a <b>mkroot/testroot.sh</b> that boots
-all the <b>mkroot/mkroot CROSS=allnonstop LINUX=~/linux</b> systems under
+all the <b>mkroot/mkroot.sh CROSS=allnonstop LINUX=~/linux</b> systems under
 qemu and performs basic automated smoketesting that they run, have a current
 clock, and their network and block device support works. The "make airlock"
 target is implemented by <b>scripts/install.sh</b> which sets the
 $PENDING and $TOOLCHAIN variables to lists of commands to symlink out of the
 host.</p>
 
+<p>In 2026 <a href=https://lwn.net/Articles/1057509/>Linux From Scratch
+development ended</a>, leaving <a href=https://linuxfromscratch.org/lfs/downloads/12.4/LFS-BOOK-12.4-NOCHUNKS.html>12.4</a>
+as the final release of the project. On the upside, this means it's no
+longer a moving target, and manual upgrading of package versions from there
+isn't much more painful than upgrading toolchain, kernel, and qemu versions.
+But building newer kernels under that old release does provide some
+deadline pressure to get toybox 1.0 (with toysh and make)
+and mkroot/packages/lfs-sources finished before that build environment
+bit-rots.</p>
+
 <p>Building Linux From Scratch is not the same as building the
-<a href=https://source.android.com>Android Open Source Project</a>,
-but after toybox 1.0 we plan to try
-<a href=http://landley.net/aboriginal/about.html#hairball>modifying the AOSP build</a>
-to reduce dependencies. (It's fairly likely we'll have to add at least
-a read-only git utility so repo can download the build's source code,
-but that's actually <a href=https://www.youtube.com/watch?v=I-lGyn3PHP4>not
-that hard</a>. We'll probably also need our own "make" at some point after
-1.0, which is its own moving target thanks to cmake and ninja and so on.)
-The ongoing Android <a href=http://lists.landley.net/pipermail/toybox-landley.net/2018-January/009330.html>hermetic build</a> work is already advancing
-this goal.</p>
+<a href=https://source.android.com>Android Open Source Project</a>.
+After toybox 1.0 the plan was to try to
+<a href=http://landley.net/aboriginal/about.html#hairball>modify the AOSP build</a>
+to reduce dependencies, add a read-only git utility so repro could
+download the build's source code (which is actually
+<a href=https://www.youtube.com/watch?v=I-lGyn3PHP4>not that hard</a>),
+figure out how to bootstrap cmake/ninja from "make", and so on.
+The ongoing Android <a href=http://lists.landley.net/pipermail/toybox-landley.net/2018-January/009330.html>hermetic build</a> work was already advancing
+this goal. Unfortunately, Google's
+<a href=https://www.wheresyoured.at/the-men-who-killed-google/>behavior</a>
+since the project started has
+<a href=https://lists.landley.net/pipermail/toybox/2025-September/009803.html>reduced</a>
+the desirability of an Android-based solution.</p>
 
 <hr />
 <h2><a name=android /><a href="#android">Use case: Replacing Android Toolbox</a></h2>
@@ -620,7 +633,7 @@ tar diff printf wget rsync fdisk vi less tr test stty fold expr dd
 </span>
 </b></blockquote>
 
-<p>Also, tizen uses a different Linux Security Module called SMACK, so
+<p>Also, tizen used a different Linux Security Module called SMACK, so
 many of the SELinux options ala ls -Z needed smack alternatives in an
 if/else setup. We added lib/lsm.h to abstract this, but haven't heard
 from Tizen in years and have started implementing SELinux support without
@@ -729,7 +742,10 @@ breaks otherwise</a>.)</p>
 with a prefix of "".  If you try, and chop out the test for a blank prefix,
 it dies trying to run "/usr/bin/-gcc". In theory you can modify any open source
 project to do anything if you rewrite enough of it, but buildroot's developers
-<b>explicitly</b> do not support this usage model.</p>
+<b>explicitly</b> do not support this usage model. You are forbidden from
+using buildroot to build packages for the current host using the existing
+toolchain which (like gentoo) makes it a poor fit natively building a new
+chroot under mkroot.</p>
 
 <hr /><a name=klibc />
 <h2>klibc:</h2>
@@ -807,6 +823,18 @@ ipconfig
 resume
 </span>
 </b></blockquote>
+
+<p>These days klibc seems to have been superceded by the kernel's
+<a href=https://lwn.net/Articles/920158/>nolibc</a>, which started life
+as a header file to wrap the system calls and provide standard
+types/structures so you could build userspace binaries that make
+system calls without actually needing a C library, then split into
+the standard set of header file names and gradually
+grew static implementations of most standard libc functions in the headers
+themselves. It might be possible to build toybox against nolibc, but doing
+so without including a separate copy of printf() in every single .o file
+would require some surgery. (It's really designed to output one executable per
+source file.)</p>
 
 <hr />
 <a name=glibc />

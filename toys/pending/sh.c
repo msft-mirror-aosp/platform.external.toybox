@@ -1228,7 +1228,7 @@ static char *parse_word(char *start, int early)
       } else if (*end=='(' && strchr("?*+@!", ii)) toybuf[quote++] = ')';
       else {
         if (ii!='\\') end--;
-        else if (!end[*end=='\n']) return (*end && !early) ? 0 : end;
+        else if (!end[*end=='\n']) return (early==2) ? end-1 : (*end && !early) ? 0 : end; // TODO why
         if (early && !quote) return end;
       }
       end++;
@@ -1910,7 +1910,7 @@ static char *slashcopy(char *s, char *c, struct sh_arg *deck)
 #define NO_BRACE (1<<3)    // {brace,expansion}
 #define NO_TILDE (1<<4)    // ~username/path
 #define NO_NULL  (1<<5)    // Expand to "" instead of NULL
-#define SEMI_IFS (1<<6)    // Use ' ' instead of IFS to combine $*
+#define NO_IFS   (1<<6)    // Use ' ' instead of $IFS to combine $*
 // expand str appending to arg using above flag defines, add mallocs to delete
 // if ant not null, save wildcard deck there instead of expanding vs filesystem
 // returns 0 for success, 1 for error.
@@ -2159,7 +2159,7 @@ barf:
       unsigned wc;
 
       nosplit++;
-      if (flags&SEMI_IFS) strcpy(sep, " ");
+      if (flags&NO_IFS) strcpy(sep, " ");
 // TODO what if separator is bigger? Need to grab 1 column of combining chars
       else if (0<(dd = utf8towc(&wc, TT.ff->ifs, 4)))
         sprintf(sep, "%.*s", dd, TT.ff->ifs);
@@ -2606,7 +2606,7 @@ static char *expand_one_arg(char *new, unsigned flags)
 
   // TODO: ${var:?error} here?
   if (!expand_arg(&arg, new, flags|NO_PATH|NO_SPLIT, &del))
-    if (!(s = *arg.v) && (flags&(SEMI_IFS|NO_NULL))) s = "";
+    if (!(s = *arg.v) && (flags&(NO_IFS|NO_NULL))) s = "";
 
   // Free non-returned allocations.
   while (del) {
@@ -2730,7 +2730,7 @@ static int expand_redir(struct sh_process *pp, struct sh_arg *arg, int skip)
             while (zap && *ss == '\t') ss++;
 // TODO audit this ala man page
             // expand_parameter, commands, and arithmetic
-            if (x && !(sss = expand_one_arg(ss, ~SEMI_IFS))) {
+            if (x && !(sss = expand_one_arg(ss, ~NO_IFS))) {
               s = 0;
               break;
             }
@@ -2986,7 +2986,7 @@ static struct sh_process *run_command(int local)
   } else for (jj = 0; jj<prefix.c && !pp->exit; jj++) {
     struct sh_vars *vv;
 
-    if ((ss = expand_one_arg(s = prefix.v[jj], SEMI_IFS))) {
+    if ((ss = expand_one_arg(s = prefix.v[jj], NO_IFS))) {
       if (!local && ss==s) ss = xstrdup(ss);
       if ((vv = setvar_long(ss, ss!=s, local ? TT.ff : TT.ff->prev)))
         if (local) vv->flags |= VAR_EXPORT;
@@ -3109,20 +3109,35 @@ static struct sh_pipeline *add_pl(struct sh_pipeline **ppl, struct sh_arg **arg)
   return pl->end = pl;
 }
 
+// replace "str" with str+add, freeing old *str
+// keep "len" bytes of str, use -1 to keep it all.
+static char *strglue(char **str, char *cut, char *add)
+{
+  long len = cut ? cut-*str : strlen(*str);
+
+  *str = xrealloc(*str, len+strlen(add)+1);
+  strcpy(len+*str, add);
+  free(add);
+
+  return *str;
+}
+
 // TODO [[ ]] disables ( ) ! && || processing
 
-// Add a line of shell script to a shell function. Returns 0 if finished,
-// 1 to request another line of input (> prompt), -1 for syntax err
-// Attaches parsed input data to TT.ff->pl
+// Add a line of shell script to current shell function (appending to TT.ff->pl)
+// "line" is malloced memory which is consumed (and eventually freed).
+// call with NULL at EOF to flush (unfinished HERE doc for example)
+// Returns 0 finished, 1 need more input (> prompt), -1 for syntax err
 static int parse_line(char *line, struct double_list **expect)
 {
-  char *start = line, *delete = 0, *end, *s, *ss, *ex, done = 0,
+  char *start = line, *end, *s, *ss, *ex, done = 0,
     *tails[] = {"fi", "done", "esac", "}", "]]", ")", 0};
   struct sh_pipeline *pl = TT.ff->pl ? TT.ff->pl->prev : 0, *pl2, *pl3;
   struct sh_arg *arg = 0;
   struct arg_list *aliseen = 0, *al;
   long i, j;
 
+if (DEBUG) dprintf(2, "%d parse_line %s\n", getpid(), line ? : "(NULL)");
   // Resume appending to last statement?
   if (pl) {
     arg = pl->arg;
@@ -3130,33 +3145,52 @@ static int parse_line(char *line, struct double_list **expect)
     // Extend/resume quoted block
     if (arg->c<0) {
       arg->c = (-arg->c)-1;
-      if (start) {
-        delete = start = xmprintf("%s%s", arg->v[arg->c], start);
-        free(arg->v[arg->c]);
-      } else start = arg->v[arg->c];
+      start = arg->v[arg->c];
       arg->v[arg->c] = 0;
+      if (line) line = strglue(&start, 0, line);
 
     // is a HERE document in progress?
     } else if (pl->count != pl->here) while (start) {
       // Back up to oldest unfinished pipeline segment.
-      while (pl!=TT.ff->pl && pl->prev->count != pl->prev->here) pl = pl->prev;
+      while (pl!=TT.ff->pl && pl->prev->count!=pl->prev->here) pl = pl->prev;
       arg = pl->arg+1+pl->here;
+      end = arg->v[arg->c];
 
       // Match unquoted EOF.
-      if (!line) sherror_msg("<<%s EOF", arg->v[arg->c]), end = 0;
+      if (!line) sherror_msg("<<%s EOF", end);
       else {
-        for (i = 0, s = line, end = arg->v[arg->c]; *end; s++, end++) {
-          i |= (j = strspn(end, "\\\"'\n"));
-          end += j;
-          if (!*s || *s != *end) break;
+        // detect forced line continuation (only when "EOF" not quoted)
+        i = strcspn(end, ex = "\\\"'\n");
+        ss = "";
+
+        if (!end[i] && arg->c) for (ss = arg->v[arg->c-1];;) {
+          while (isspace(*ss)) ++ss;
+          if (!*ss) break;
+
+          if (*ss=='\\' && ss[1]=='\n') {
+            // Concatenate new line to previous line (minus trailing \)
+            ss = line = strglue(&arg->v[arg->c-1], ss, line);
+            break;
+          }
+          if ((void *)1==(s = parse_word(ss, 2))) goto flush;
+          ss = (s==ss) ? ss+1 : s;
         }
 
-        // Add this line, else EOF hit so end HERE document
-        if ((*s && *s!='\n') || *end) {
-          end = arg->v[arg->c];
-          arg_add(arg, xstrdup(line));
+        if (!*ss) {
+          // Add this line
+          arg_add(arg, line);
           arg->v[arg->c] = end;
-        } else end = 0;
+        }
+
+        // Detect EOF, free appended marker if found
+        for (s = line; *end; s++, end++) {
+          end += strspn(end, ex);
+          if (!*s || *s != *end) break;
+        }
+        if (!*end && (!*s || *s=='\n')) {
+          arg->v[arg->c] = end = 0;
+          free(arg->v[--arg->c]);
+        }
       }
 
       if (!end) {
@@ -3167,10 +3201,10 @@ static int parse_line(char *line, struct double_list **expect)
             pl->here = pl->count;
       }
       if (pl->here != pl->count) {
-        if (!line) continue;
+        if (!line) continue; // no more input, flush processing
         else return 1;
       }
-      start = 0;
+      start = line = 0;
 
     // Nope, new segment if not self-managing type
     } else if (pl->type < 128) pl = 0;
@@ -3236,9 +3270,8 @@ if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : 
     if (!end) {
       // Save unparsed bit of this line, we'll need to re-parse it.
       if (*start=='\\' && (!start[1] || start[1]=='\n')) start++;
-      arg_add(arg, xstrndup(start, strlen(start)));
+      arg_add(arg, memmove(line, start, strlen(start)+1));
       arg->c = -arg->c;
-      free(delete);
 
       return 1;
     }
@@ -3340,8 +3373,8 @@ if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : 
           al->arg = TT.alias.v[i];
           aliseen = al;
           start = end = xmprintf("%s%s", start, end);
-          free(delete);
-          delete = start;
+          free(line);
+          line = start;
 
           continue;
         }
@@ -3564,24 +3597,22 @@ if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : 
     if (!pl->type && anystr(s, (char *[]){"then", "do", "esac", "}", "]]", ")",
         "done", "fi", "elif", "else", 0})) goto flush;
   }
-  free(delete);
+  free(line);
 
   // Return now if line didn't tell us to DO anything.
   if (!TT.ff->pl) return 0;
-  pl = TT.ff->pl->prev;
 
   // return if HERE document pending or more flow control needed to complete
-  if (pl->count != pl->here) return 1;
-  if (*expect) return 1;
-  if (pl->arg->v[pl->arg->c] && strcmp(pl->arg->v[pl->arg->c], "&")) return 1;
+  pl = TT.ff->pl->prev;
+  end = pl->arg->v ? pl->arg->v[pl->arg->c] : 0;
+  if (pl->count!=pl->here || *expect || (end && strcmp(end, "&"))) return 1;
 
   // Transplant completed function bodies into reference counted structures
-  for (;;) {
+  for (;; pl = pl->prev) {
     if (pl->type=='f') {
-      struct sh_function *funky;
+      struct sh_function *funky = xmalloc(sizeof(struct sh_function));
 
-      // Create sh_function struct, attach to declaration's pipeline segment
-      funky = xmalloc(sizeof(struct sh_function));
+      // Attach a new sh_function instance to declaration's pipeline segment
       funky->refcount = 1;
       funky->name = *pl->arg->v;
       *pl->arg->v = (void *)funky;
@@ -3603,7 +3634,6 @@ if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : 
       pl3->next = 0;
     }
     if (pl == TT.ff->pl) break;
-    pl = pl->prev;
   }
 
   // Don't need more input, can start executing.
@@ -3613,6 +3643,7 @@ if (DEBUG) dprintf(2, "%d %p(%d) %s word=%.*s\n", getpid(), pl, pl ? pl->type : 
 
 flush:
   if (s) syntax_err(s);
+  free(line);
 
   return -1;
 }
@@ -4540,9 +4571,7 @@ if (DEBUG) { dprintf(2, "%d main", getpid()); for (unsigned uu = 0; toys.argv[uu
   for (;;) {
     // if this fcall has source but not dlist_terminate()d pl, get line & parse
     if (TT.ff->source && (!TT.ff->pl || TT.ff->pl->prev)) {
-      new = get_next_line(TT.ff->source, more+1);
-      more = parse_line(new, &expect);
-      free(new);
+      more = parse_line(new = get_next_line(TT.ff->source, more+1), &expect);
       if (more==1) {
         if (new) continue;
         syntax_err("unexpected end of file");
@@ -4924,7 +4953,7 @@ void eval_main(void)
   TT.ff->arg = (struct sh_arg){.v = toys.optargs, .c = toys.optc};
   TT.ff->lineno = get_lineno(0);
   s = push_arg(&TT.ff->pp->delete,
-    TT.ff->_ = expand_one_arg("\"$*\"", SEMI_IFS)); // can't fail
+    TT.ff->_ = expand_one_arg("\"$*\"", NO_IFS)); // can't fail
   TT.ff->arg = old;
   TT.ff->source = fmemopen(s, strlen(s), "r");
 }

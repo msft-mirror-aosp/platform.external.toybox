@@ -961,9 +961,6 @@
 #define CFG_DEMO_SCANKEY 0
 #define USE_DEMO_SCANKEY(...)
 #define SKIP_DEMO_SCANKEY(...) __VA_ARGS__
-#define CFG_DEMO_SCANLINE 0
-#define USE_DEMO_SCANLINE(...)
-#define SKIP_DEMO_SCANLINE(...) __VA_ARGS__
 #define CFG_DEMO_UTF8TOWC 0
 #define USE_DEMO_UTF8TOWC(...)
 #define SKIP_DEMO_UTF8TOWC(...) __VA_ARGS__

@@ -228,7 +228,7 @@ get_target_config()
   elif [ "$CROSS" == i486 ] || [ "$CROSS" == i686 ] ||
        [ "$CROSS" == x86_64 ] || [ "$CROSS" == x32 ]; then
     if [ "$CROSS" == i486 ]; then
-      QEMU="i386 -cpu 486 -global fw_cfg.dma_enabled=false" KCONF=M486
+      QEMU="i386 -cpu 486" KCONF=M486
     elif [ "$CROSS" == i686 ]; then
       QEMU="i386 -cpu pentium3" KCONF=MPENTIUMII
     else

@@ -45,7 +45,7 @@ void devmem_main(void)
   int ii, writing = toys.optc > 2, bytes = 4, fd;
   unsigned long data = 0, map_len QUIET,
     addr = xatolu(*toys.optargs, sizeof(long));
-  void *map, *p = 0;
+  void *map QUIET, *p = 0;
   char *pdata;
 
   // WIDTH?
