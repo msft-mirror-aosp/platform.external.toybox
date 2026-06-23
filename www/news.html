@@ -17,10 +17,10 @@ Don't Panic
 </blockquote>
 
 <p><a href=downloads/toybox-0.0.1.tar.gz>Toybox 0.0.1</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.0.1>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.0.1>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.0.1>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.0.1>mkroot images</a>
-bootable under QEMU (built using a <a href=https://github.com/landley/linux/tree/mkroot-0.1>lightly patched</a> linux-0.1).</p>
+bootable under QEMU (built using a <a href=/bin/mkroot/0.0.1/linux-patches/>lightly patched</a> linux-0.1).</p>
 
 <p>New commands</p>
 
@@ -37,6 +37,175 @@ bootable under QEMU (built using a <a href=https://github.com/landley/linux/tree
 <u>Build</u>:
 -->
 
+<a name="22-06-2026" /><a href="#22-06-2026"><hr><h2><b>June 22, 2026</b></h2></a>
+<blockquote>
+<p>
+"The first ten million years were the worst," said Marvin, "and the second ten
+million years, they were the worst too. The third ten million years I didn't
+enjoy at all. After that I went into a bit of a decline."
+</p> - The Hitchhiker's Guide to the Galaxy</p>
+</blockquote>
+
+<p><a href=downloads/toybox-0.8.14.tar.gz>Toybox 0.8.14</a>
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.14>git commit</a>)
+is out, with prebuilt <a href=downloads/binaries/0.8.14>static binaries</a> and
+<a href=downloads/binaries/mkroot/0.8.14>mkroot images</a>
+bootable under QEMU 11.0 (built using a
+<a href=/bin/mkroot/0.8.14/linux-patches/>lightly patched</a> linux-7.0 and
+this time there's
+<a href=https://lists.gnu.org/archive/html/qemu-devel/2026-01/msg06318.html>a
+patch for QEMU too</a>).</p>
+
+<p>No new commands this time, but rather a lot of infrastructure work:</p>
+
+<ul>
+<li>The repository mirror moved from Microsoft Github to
+<a href=https://codeberg.org/landley/toybox>Codeberg</a> (and remains
+on <a href=https://landley.net/toybox/git>the maintainer's website</a>).
+The Microsoft Github mirror is still up for the moment but is unlikely
+to be updated further, and may be removed at some point.</li>
+
+<li>The mailing list is now hosted by OSUOSL (after many
+<a href=https://landley.net/dreamhost.txt>years</a> of
+<a href=https://landley.net/dreamhost2.txt>flailing</a>,
+dreamhost finally <a href=https://www.reddit.com/r/dreamhost/comments/1tjunvv/ugh_dreamhost_getting_rid_of_mailman_email_lists/>gave up</a>).</li>
+
+<li>Updated <a href=https://landley.net/bin/toolchains/19-06-2026/>toolchains</a>
+based on gcc 15.1 and musl 1.2.6.</li>
+
+<li>The maintainer gave an
+<a href=https://www.youtube.com/watch?v=vM_Gbx-c2Qs>ELC talk</a> about mkroot,
+and followed up with a <a href=https://www.spinics.net/lists/linux-embedded/msg04629.html>linux-embedded</a>
+thread.</li>
+
+<li>The old kconfig/* plumbing has mostly (except for menuconfig) been replaced
+by <b>scripts/kconfig.c</b>, and a new <b>scripts/prereq/use.sh</b> wrapper
+builds toybox <a href=https://landley.net/toybox/faq.html#hermetic>under
+itself</a> in a way that should work on quite bare bones posix-ish systems
+with a sufficiently capable C compiler and libc. (It still needs bash until
+toysh is ready, but only in $PATH instead of requiring /bin/bash.)</li>
+</ul>
+
+<p><u>Features</u>: Ulises Mendez Martinez added builtin_width to the <b>modinfo</b>
+tag list. Madhav added <b>lsusb -v</b>. Elliott Hughes added
+<b>xargs --process-slot-var</b> and processor specific flags to
+<b>readelf</b>. Jesse Rosenstock added <b>taskset -c</b>
+(cpulist) support and long options for --all-tasks and --pid.</p>
+
+<p><u>Bugfixes</u>: Elliott Hughes fixed <b>readelf -S</b>. Anton Kling reported
+a missing error check for short patterns in <b>printf</b>.
+Mark Hansen reported that <b>top</b> got the sort field highlighting wrong
+when cursoring left/right.</p>
+
+<p><u>Library</u>: mkstemp() failures now show errno.</p>
+
+<p><u>Mkroot</u>: Added TOYCFG control knob to explicitly specify an existing
+toybox .config (rather than trying to guess whether an existing .config was
+usable). $PENDING now uses the same comma separated value format as
+other config specifiers.
+The sh4 target now configures the kernel to use more
+memory, which requires a <a href=https://lists.gnu.org/archive/html/qemu-devel/2026-01/msg06318.html>qemu patch</a>
+to teach qemu how to correspondingly move the base address. (It's just a small
+<a href=https://codeberg.org/landley/toybox/commit/0b3f25fb5d94>.config change</a>
+in the kernel, and the old kernels work with the new qemu if
+you don't specify a larger -m than the default. I.E. if you want to run
+an old sh4 mkroot image with the patched qemu, change run-qemu.sh to say
+-m 64. No, I don't know if/when upstream qemu might merge that patch,
+they seem <a href=https://www.phoronix.com/news/QEMU-Patch-Allows-Some-AI>distracted</a>,
+feel free to ask them on their mailing list...)</p>
+
+<p><u>Pending</u>: several <b>toysh</b> fixes/upgrades: <b>echo | cat</b> was
+exiting in interactive mode (lazy evaluation was too lazy and called
+get_next_line() before restoring stdin), unredirect() now takes
+an extra level of pointer indirection so it can not just free its argument
+but zero the pointer (just unredirect(&amp;thingy) instead of
+unredirect(thingy); thingy = 0; everywhere), free_process() returns
+"next" to simplify linked list traversal (avoiding use-after-free errors),
+fixed <b>exec</b> redirects to close saved high filehandles instead of leaking them
+(manually triggering O_CLOEXEC in the current process), cleaned up flow control
+block handling so run_command() doesn't mess with it any more: now only
+run_lines() and helper functions like break_main() manipulate flow control
+blocks, redid trailing \ handling in HERE documents (fixing two $BROKEN
+tests), changed the parse_line() lifetime rules to consume/free
+the supplied line (which must be malloc memory), and renamed SEMI_IFS to
+NO_IFS to match the other flags. Maxim Smirnov fixed toysh <b>unset</b>.</p>
+
+<p>Alex Kapranoff added
+a ZZ command to <b>vi</b>, and Avery Terrel fixed an unchanged empty
+buffer being marked as modified. Cole Faust
+pointed out four more wrong "optional argument" flags in <b>diff</b>
+and moved its unnecessary temp file to $TMPDIR or /tmp rather than the
+current (possibly read only) directory.
+Karen Barsegyan fixed zombie process generation in <b>dhcp</b>.
+</p>
+
+<p><u>Portability</u>: The new use.sh script has
+<a href=https://landley.net/toybox/faq.html#hermetic>a FAQ entry</a>,
+and the new kconfig is a lot more portable than the old one.</p>
+
+<u>Documentation</u>: explained how to build toybox on macos without
+homebrew in the <a href=https://landley.net/toybox/design.html#portability>design
+page</a>, and again gave an
+<a href=https://www.youtube.com/watch?v=vM_Gbx-c2Qs>ELC talk</a>
+and wrote a <a href=https://www.spinics.net/lists/linux-embedded/msg04629.html>linux-embedded thread</a> about mkroot.</p>
+
+<u>Plumbing</u>: the changes to the stdout flush defaults left
+<b>demo_scankey</b> updating the display a frame behind.</p>
+
+<u>Test suite</u>: The <b>taskset</b> test now caps $CPUS at 63 so calculating
+masks doesn't overflow the shell's 64 bit $((math logic)),
+and requires at least 5 processors to test "stride" (because 1,3 is not 1,3:2).
+Tweaked <b>runtest.sh</b> not to explicitly show nothing being fed into stdin
+when reporting a test failure.</p>
+
+<p><u>Build</u>:
+The build scripts got a
+<a href=https://codeberg.org/landley/toybox/commit/228cb983eb28>LOT</a> of
+<a href=https://codeberg.org/landley/toybox/commit/32decfacef12>cleanup</a>.
+The first few lines of
+the Makefile now list the scripts it wraps so you can just call those
+directly. In theory you no longer have to use
+"make" for anything except "menuconfig" and "baseline/bloatcheck".
+(And the text mode interative "make config" if you need that.)</p>
+
+<p>The migration to the new <b>scripts/kconfig.c</b> infrastructure is
+mostly complete, everything except the interactive targets
+("menuconfig", "config", and "oldconfig") should now be weaned off
+the old kconfig code. (Even "silentoldconfig" is using the new stuff,
+because it doesn't prompt interactively when encountering new symbols
+but instead sets them to defconfig defaults.) The kconfig/Makefile include
+is now optional, and the build works if you </b>rm -rf kconfig</b>.</p>
+
+<p>Creating .config files is now done by genconfig.sh, for example
+<b>scripts/genconfig.sh -d</b>
+is what "make defconfig" calls under the covers, -y is allyesconfig, -n is
+allnoconfig, -r is randconfig, silentoldconfig is just defconfig
+with $KCONFIG_ALLCONFIG pointing at the old .config file, and
+<b>make macos_defconfig</b> is allnoconfig with
+KCONFIG_ALLCONFIG=scripts/macos_miniconfig. The bsd, macos, and android
+defconfig files moved from kconfig/*_miniconfig to scripts/*_miniconfig.</p>
+
+<p>The new <b>scripts/prereq/use.sh</b> script builds a tiny version of toybox
+using the scripts/prereq saved header files, and then configures and builds
+a full toybox with that. It can take one argument, which is a miniconfig
+to configure the new toybox with (such as
+<b>scripts/prereq/use.sh scripts/macos_miniconfig</b>). With no argument
+it builds defconfig.</p>
+
+<p>The top level Config.in file sources a single <b>generated/Config.in</b>
+and all the old autoconf-style compile-and-test probes were replaced
+by checking the compiler built-in #defines listed in "<b>:|cc -E -dM -</b>"
+to set a corresponding IS_THINGY config symbol. This is fast enough to do
+every time, so no need for configure/build dependencies. Currently only two
+(IS_ANDROID and IS_FDPIC) are needed by the kconfig dependencies anyway, the
+rest are just normal #ifdef tests in portability.h and similar.</p>
+
+<p><u>Pedantry</u>: gcc's "this is never used uninitialized" false
+positive generator was triggering in <b>devmem</b>, so we rerolled
+the dice to stop it. (The linux 7.0 kernel supplies -Wno-maybe-uninitialized
+to gcc in scripts/Makefile.warn and maybe we should too.
+There's no corresponding llvm flag because llvm isn't broken in that way.)</p>
+
 <a name="14-10-2025" /><a href="#14-10-2025"><hr><h2><b>October 14, 2025</b></h2></a>
 <blockquote>
 <p>
@@ -46,7 +215,7 @@ There was a terribly ghastly silence.
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.13.tar.gz>Toybox 0.8.13</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.13>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.13>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.13>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.13>mkroot images</a>
 bootable under QEMU 10.1.0 (built using a <a href=/bin/mkroot/0.8.13/linux-patches/>lightly patched</a> linux-6.17).</p>
@@ -75,7 +244,7 @@ treats an existing file as always newer than a missing file.</b>
 <b>toy_exec_which()</b> clears inherited signal handlers for internal command
 calls, <b>ps -o psr= $$</b> no longer outputs a blank header line,
 <b>readahead</b> was using the wrong value on some platforms (for sadly
-<a href=https://github.com/landley/toybox/commit/a3e5f1b1eaf2>complicated reasons</a> having to do with legacy syscall
+<a href=https://codeberg.org/landley/toybox/commit/a3e5f1b1eaf2>complicated reasons</a> having to do with legacy syscall
 padding of 64 bit values on 32 bit platforms),
 <b>devmem</b> properly zeroes small reads and supports big endian
 targets (reported by Hsiang-Ying Fu),
@@ -111,7 +280,7 @@ and "..", allow ! and redirects to interleave with prefix assignments,
 the debug printfs use #define DEBUG instead of being commented out,
 and Avery Terrel implemented several more $PS1 escapes in the prompt
 logic. Elliott Hughes added ip6gre to <b>ip</b>.
-Oliver Webb identified several upstream fixes to the public domain <b>xzcat</b>
+Iris Webb identified several upstream fixes to the public domain <b>xzcat</b>
 repo we could use, including the new ARM64 BCJ decoder.
 Dmitry Koroban pointed out a fix needed in <b>dhcp</b>,
 and Zikai Chen added <b>dhcp -u</b> to use UDP instead of broadcast replies.
@@ -164,7 +333,7 @@ up and suddenly remembering where he was.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.12.tar.gz>Toybox 0.8.12</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.12>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.12>git commit</a>)
 is out, with prebuilt <a href=/bin/toybox/0.8.12>static binaries</a> and
 <a href=/bin/mkroot/0.8.12>mkroot images</a>
 bootable under QEMU 9.2.0 (built using a <a href=/bin/mkroot/0.8.12/linux-patches/>lightly patched</a> linux-6.12).</p>
@@ -185,7 +354,7 @@ preserving original input groups and the latter continuous), and
 Elliott added NPROCESSORS_CONF and NPROCESSORS_ONLN to <b>getconf</b>,
 added -f FILE and --no-sync to <b>devmem</b>, and
 taught <b>tar</b> to call out to zstd.
-Oliver Webb added <b>test -ef -ot -nt</b>,
+Iris Webb added <b>test -ef -ot -nt</b>,
 Brian Norris added <b>dmesg -W</b>.
 Karthikeyan Ramasubramanian added <b>devmen --no-mmap</b>.
 Kana Steimle added <b>mount LABEL=</b>.
@@ -285,7 +454,7 @@ actually performs its intended function but bug reports about code that
 doesn't work = remove it).</p>
 
 <p>More <b>toysh</b> work, most notably a
-<a href=https://github.com/landley/toybox/commit/7a2f81c82d1c>design change</a>
+<a href=https://codeberg.org/landley/toybox/commit/7a2f81c82d1c>design change</a>
 that allows "trap" to asynchronlysly call functions from an interrupt handler
 (by removing the recursive do_source() function, moving the read/parse/run
 loop to sh_main(), and giving each sh_fcall stack entry a FILE *source
@@ -300,7 +469,7 @@ from builtins nest multiple levels deep if necessary (in case builtins call
 builtins, which is less likely under the new design), bump script filehandle
 to high fd and CLOEXEC it (instead of leaking into children).
 Another one line fix had
-<a href=https://github.com/landley/toybox/commit/0b2d5c2bb3f1>several paragraphs</a>
+<a href=https://codeberg.org/landley/toybox/commit/0b2d5c2bb3f1>several paragraphs</a>
 of explanation, but boils down to "kernels with static initramfs have no
 stdin/stdout/stderr so toysh needs to cope when redirect opens one
 of those as a temporary filehandle". Fixed backslash parsing in $'' so \'
@@ -320,7 +489,7 @@ use on its own.</p>
 <p><u>Portability</u>:
 Fixed <b>hwclock</b> when settimeofday() syscall isn't available (which
 musl and glibc broke in
-<a href=https://github.com/landley/toybox/commit/da1474b1589a>different ways</a>),
+<a href=https://codeberg.org/landley/toybox/commit/da1474b1589a>different ways</a>),
 endianness checking now uses the compiler's built-in <b>__BYTE_ORDER__</b> macro
 instead of needing to #include headers. The nommu-friendly <b>xvdaemon()</b>
 will now chdir("/") so background processes don't pin mount points, and
@@ -332,7 +501,7 @@ consider that a NOP).</p>
 
 <u>Documentation</u>:
 <b>sysctl</b> now accepts -A as an alias for -a but
-<a href=https://github.com/landley/toybox/commit/41e7186b012e>doesn't try to explain it</a>.
+<a href=https://codeberg.org/landley/toybox/commit/41e7186b012e>doesn't try to explain it</a>.
 More FAQ entries. and added some links to the end of <a href=license.html>license.html</a>.
 Old entries in this news page no longer drive vi's html syntax highlighting nuts.
 Elliott clarified the relationship between <b>ls -s</b> and --block-size</b>.
@@ -376,7 +545,7 @@ Added "ar" to the airlock install's PENDING list because the dropbear build
 grew a dependency on it. (You'd think that would use the cross compiler's
 prefixed-ar, but no.)
 Squelched more spurious clang warnings
-<a href=https://github.com/landley/toybox/commit/b9cb58b797b7>about nothing</a>.</p>
+<a href=https://codeberg.org/landley/toybox/commit/b9cb58b797b7>about nothing</a>.</p>
 
 <a name="08-04-2024" /><a href="#08-04-2024"><hr><h2><b>April 8, 2024</b></h2></a>
 <blockquote>
@@ -390,7 +559,7 @@ a whale any more.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.11.tar.gz>Toybox 0.8.11</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.11>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.11>git commit</a>)
 is out, with prebuilt <a href=/bin/toybox/0.8.11>static binaries</a> and
 <a href=/bin/mkroot/0.8.11>mkroot images</a>
 bootable under QEMU (built using a <a href=/bin/mkroot/0.8.11/linux-patches>lightly patched</a> linux-6.8).</p>
@@ -402,7 +571,7 @@ dependencies.</p>
 
 <p><u>New commands</u>:
 Rob added <b>tsort</b>, and promoted <b>fold</b> and <b>getopt</b>.
-Oliver Webb added <b>ts</b> and <b>csplit</b>, and 
+Iris Webb added <b>ts</b> and <b>csplit</b>, and 
 Elliott added <b>memeater</b>.</p>
 
 <p>And one command got temporarily de-promoted: <b>passwd</b> is "default n"
@@ -410,12 +579,12 @@ Elliott added <b>memeater</b>.</p>
 infrastructure rewrite that isn't quite done yet. (See the Library section.)</p>
 
 <u>Features</u>:
-The new "<a href=https://github.com/landley/toybox/commit/d1acc6e88be5>canned</a>"
+The new "<a href=https://codeberg.org/landley/toybox/commit/d1acc6e88be5>canned</a>"
 toybox build in <b>scripts/prereq/build.sh</b> lets toybox provide its own
 build prerequisites by compiling a minimal toybox against saved headers (ala
 "cc -I scripts/prereq/generated file1.c file2.c..."). This provides
 most of the commands toybox needs to configure and build itself (except make,
-bash, and the compiler toolchain). This may help <a href=https://github.com/landley/toybox/commit/3bbc31c78b41>bootstrap</a> toybox on systems
+bash, and the compiler toolchain). This may help <a href=https://codeberg.org/landley/toybox/commit/3bbc31c78b41>bootstrap</a> toybox on systems
 that don't provide a modern Linux command line out of the box: install
 toybox-prereq at the start of the $PATH, add
 a .config file, and run <b>scripts/make.sh</b>.</p>
@@ -438,7 +607,7 @@ cache size querying to <b>sysconf</b> (supported by glibc and bionic but
 not musl-libc), and added a "paste" menu to <b>microcom</b>. Kalesh Singh
 taught <b>readelf</b> to decode a new note type (NT_ANDROID_TYPE_PAD_SEGMENT).
 Christopher Ferris improved <b>readelf</b> section flags handling,
-with test. Oliver Webb suggested <b>count -l</b>.
+with test. Iris Webb suggested <b>count -l</b>.
 Aditya submitted <b>netcat -z</b>.</p>
 
 <u>Bugfixes</u>:
@@ -468,7 +637,7 @@ not actually used uninitialized" there were some uninitialized variables in
 <p>Elliott added an error message to catch <b>xxd -r</b> receiving -p format
 input without -p,
 fixed <b>readelf -n</b> for x86-64 ibt/shstk notes
-(<a href=https://github.com/landley/toybox/commit/6c23ff0168c1>whatever those
+(<a href=https://codeberg.org/landley/toybox/commit/6c23ff0168c1>whatever those
 are</a>),
 and fixed <b>blkid</b> not to check filesystem signatures that would continue
 past the end of the loaded buffer.
@@ -552,7 +721,7 @@ builtins), fixed calling "exec" on NOFORK commands (which MUST run
 in the shell's process context), redid the code to handle trailing
 backslashes gluing lines together, and it no longer leaks script
 filehandles into child processes.
-Oliver Webb noticed that OLDTOY(MAYFORK) aliases didn't become shell
+Iris Webb noticed that OLDTOY(MAYFORK) aliases didn't become shell
 builtins, added <b>tr -t</b>, in <b>vi</b> added line gotos in ex mode,
 'g', 'v', 'j' commands, and backwards search, cleaned up stuff in
 <b>xzcat</b>, <b>getopt</b>, <b>bc</b>, and removed a bunch of useless autogenerated
@@ -597,8 +766,8 @@ The website now has a <a href=quick.html>quickstart</a> page,
 and the site now defaults to the about page (updated index.html symlink).
 The "current release" is now in the common header displayed by most pages.
 The mkroot dir has a
-<a href=https://github.com/landley/toybox/blob/0.8.11/mkroot/README>README</a>, and its <a href=faq.html#mkroot>faq entry</a>
-has been updated.
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.11/mkroot/README>README</a>,
+and its <a href=faq.html#mkroot>faq entry</a> has been updated.
 New option to compress help text with <b>gzip</b>, and help text size now shows
 up in <b>make bloatcheck</b>.
 Fix <b>sed --help</b> to show full help, <b>patch -F</b> is now mentioned
@@ -652,7 +821,7 @@ The <b>tar</b> tests now fetch user/group names with "stat" because
 between Linux, Android, FreeBSD, and MacOS, there aren't really consistent
 user and group names for any existing files. Added nbd-client.test
 Thiébaud Weksteen fixed the <b>getfattr</b>/<b>setfattr</b> tests on
-filesystems using selinux. Oliver Webb added <b>sha3sum</b> tests.
+filesystems using selinux. Iris Webb added <b>sha3sum</b> tests.
 Elliott stabilized another slightly racy <b>ifconfig</b> test (big test
 farm, hits the weird corner cases).</p>
 
@@ -667,12 +836,12 @@ New <b>scripts/probes</b> directory to collect scripts that aren't actually
 used by the build, with a README in it.
 Updated .gitignore so it doesn't complain about spurious name collisions in
 subdirectories. Elliott shut up a
-<a href=https://github.com/landley/toybox/commit/2c36636377e1>truly sad</a>
+<a href=https://codeberg.org/landley/toybox/commit/2c36636377e1>truly sad</a>
 warning where despite sizeof(ptrdiff_t) always being sizeof(long), gcc
 nevertheless warns if you printf("%ld", ptr-ptr) and wants a magic invented
 "%td" type on 32 bit systems (but is just fine on 64 bit). (Or we could add a
 literally NOP typecast to long.) And silenced a spurious gcc 13.2 warning
-in date.c. And Rob shut up <a href=https://github.com/landley/toybox/commit/a17fee778851>more broken gcc warnings</a>.
+in date.c. And Rob shut up <a href=https://codeberg.org/landley/toybox/commit/a17fee778851>more broken gcc warnings</a>.
 Updated .gitignore so it doesn't complain about spurious name collisions in
 subdirectories.</p>
 
@@ -689,10 +858,10 @@ liquid that was almost, but not quite, entirely unlike tea.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.10.tar.gz>Toybox 0.8.10</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.10>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.10>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.10>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.10>mkroot images</a>
-bootable under QEMU (built using a <a href=https://github.com/landley/linux/tree/mkroot-6.4>lightly patched</a> linux-6.4).</p>
+bootable under QEMU (built using a <a href=/bin/mkroot/0.8.10/linux-patches/>lightly patched</a> linux-6.4).</p>
 
 <p>New command <b>shuf</b>, and Elliott added <b>i2ctransfer</b>.
 Finished cleaning up <b>dd</b> a promoted it out of pending.</p>
@@ -919,10 +1088,10 @@ continuum!"</br>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.9.tar.gz>Toybox 0.8.9</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.9>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.9>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.9>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.9>mkroot images</a>
-bootable under QEMU (built using a <a href=https://github.com/landley/linux/tree/mkroot-6.1>lightly patched</a> linux-6.1).</p>
+bootable under QEMU (built using a <a href=https://landley.net/bin/mkroot/0.8.9/linux-patches>lightly patched</a> linux-6.1).</p>
 
 <p>The new <b>nbd-server</b> command interoperates with nbd-client to serve
 network block devices (using the v1 protocol), and Moritz Weber contributed a read-only <b>git</b>
@@ -1110,7 +1279,7 @@ outputs "See command" for visible aliases, plus fixes for broken corner
 cases like <b>nohup --help</b>.
 The <a href=https://landley.net/toybox/git>local git repo</a>
 now has a simple index.html generated by a
-<a href=https://github.com/landley/toybox/blob/0.8.9/scripts/git-static-index.sh>small shell script</a>,
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.9/scripts/git-static-index.sh>small shell script</a>,
 linking to the <b>git format-patch</b> files for
 each commit, applicable via <b>git am</b>.</p>
 
@@ -1134,7 +1303,7 @@ way that bricks don't.</p>
 </p></blockquote>
 
 <p><a href=downloads/toybox-0.8.8.tar.gz>Toybox 0.8.8</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.8>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.8>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.8>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.8>mkroot images</a>
 bootable under QEMU (built using vanilla linux-5.19).</p>
@@ -1278,7 +1447,7 @@ plus simply deleting some config options due to the 7 year horizon expiring
 so we can trust it to be there now.</p>
 
 <p>Usual batch of musl workarounds for behavior that
-<a href=https://github.com/landley/toybox/commit/9a5d7a063c8c>doesn't match</a>
+<a href=https://codeberg.org/landley/toybox/commit/9a5d7a063c8c>doesn't match</a>
 glibc and bionic or where they've been
 <a href=https://www.openwall.com/lists/musl/2022/07/27/5>arguing about</a>
 stuff for years without actually fixing it.
@@ -1375,7 +1544,7 @@ the entire battle fleet was accidentally swallowed by a small dog.</p>
 <p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.8.7.tar.gz>Toybox 0.8.7</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.7>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.7>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.7>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.7>mkroot images</a>
 bootable under QEMU (using vanilla linux-5.17).</p>
@@ -1515,13 +1684,14 @@ knock my house down but otherwise no, not especially, why?</p>
 <p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.8.6.tar.gz>Toybox 0.8.6</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.6>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.6>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.6>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.6>mkroot images</a>
 bootable under QEMU (using vanilla linux-5.15).</p>
 
 <p><u>Make root</u>: The <a href=faq.html#mkroot>system builder</a> got upgraded, with better
-logging and layout of the output directory, plus <a href=https://github.com/landley/toybox/blob/0.8.6/scripts/mkroot.sh>scripts/mkroot.sh</a>
+logging and layout of the output directory, plus
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.6/scripts/mkroot.sh>scripts/mkroot.sh</a>
 should be easier to read and understand now.
 (Also added basic support for the <a href=http://lists.landley.net/pipermail/toybox-landley.net/2021-August/012497.html>qualcomm hexagon</a>,
 although it just builds a chroot filesystem, you can't boot a hexagon kernel under qemu
@@ -1624,7 +1794,7 @@ without -p.
 Rob fixed the 32 bit <b>readelf</b> build on Android, fixed a race condition
 in <b>tar</b> leading
 to the occasional spurious archiver warning,
-<a href=https://github.com/landley/toybox/commit/127cff38809e>changed cp</a>
+<a href=https://codeberg.org/landley/toybox/commit/127cff38809e>changed cp</a>
 to work around a posix violation in the kernel, made xparsedate() handle more
 whitespace and ignore trailing + or - (a NOP timezone), made <b>su</b> log the
 right username, switched getuid() checks to geteuid() in <b>df</b> and <b>ping</b>,
@@ -1643,7 +1813,7 @@ The <a href=https://github.com/torvalds/linux/commit/d18760560593>kernel fix</a>
 it in. Similarly, the
 FS_IOC_{GET,SET}{VERSION,FLAGS} ioctl family are <a href=https://www.spinics.net/lists/linux-api/msg49101.html>historically broken</a>
 (taking an unsigned int argument while advertising signed long),
-which <a href=https://github.com/landley/toybox/commit/dcfac5c983ad>we fixed</a> and reported upstream to a long
+which <a href=https://codeberg.org/landley/toybox/commit/dcfac5c983ad>we fixed</a> and reported upstream to a long
 round of bikeshedding (sadly
 the result seems to have been the man page maintainer
 <a href=https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/commit/man2?id=3de87d46840d>giving up</a>
@@ -1704,7 +1874,7 @@ until they were all suddenly wiped out by a virulent disease contracted from
 a dirty telephone.</p><p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.8.5.tar.gz>Toybox 0.8.5</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.5>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.5>git commit</a>)
 is out, with prebuilt <a href=downloads/binaries/0.8.5>static binaries</a> and
 <a href=downloads/binaries/mkroot/0.8.5>mkroot images</a>
 bootable under QEMU (using vanilla linux-5.12, except that s390 needed another
@@ -1838,11 +2008,11 @@ are sure what is normal anyway."</p>
 </blockquote>
 
 <p>After a longer and slightly more
-<a href=https://github.com/landley/toybox/commit/07a896862ddf>turbulent</a>
+<a href=https://codeberg.org/landley/toybox/commit/07a896862ddf>turbulent</a>
 development cycle than some,
 <a href=downloads/toybox-0.8.4.tar.gz>Toybox 0.8.4</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.4>git commit</a>)
-is out with new commands <b>sha3sum</b> and <b><a href=https://github.com/landley/toybox/commit/6b4c32ae3986>watchdog</a></b>.</p>
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.4>git commit</a>)
+is out with new commands <b>sha3sum</b> and <b><a href=https://codeberg.org/landley/toybox/commit/6b4c32ae3986>watchdog</a></b>.</p>
 
 <p>There are <a href=downloads/binaries/mkroot/0.8.4>prebuilt mkroot binaries</a>
 now, tiny toybox linux systems for a dozen architectures, all bootable under
@@ -1923,9 +2093,9 @@ ignoring dangling symlinks, fixed stty <a href=https://github.com/landley/toybox
 compression enabled, taught blkid not to show empty tags, taught xparsedate()
 to read date's default output format, fixed a recent echo -e \0 regression,
 changed cpio -p parsing to match a <a href=http://lists.landley.net/pipermail/toybox-landley.net/2020-August/011955.html>bug</a> in the gnu version
-which an existing script <a href=https://github.com/landley/toybox/commit/fa1af3b085cc>depended on</a>,
+which an existing script <a href=https://codeberg.org/landley/toybox/commit/fa1af3b085cc>depended on</a>,
 and switched hwclock back to looking
-only at /dev/rtc0 for <a href=https://github.com/landley/toybox/commit/70e2232ce61c>reasons</a> involving kernel version skew and vendor bug reports.</p>
+only at /dev/rtc0 for <a href=https://codeberg.org/landley/toybox/commit/70e2232ce61c>reasons</a> involving kernel version skew and vendor bug reports.</p>
 
 <p>David Legault pointed out that unescape2() (and thus echo -e) wasn't handling
 \0 right.
@@ -2003,7 +2173,7 @@ survive out there, you've really got to know where your
 </blockquote>
 
 <p>Despite everything <a href=downloads/toybox-0.8.3.tar.gz>Toybox 0.8.3</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.3>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.3>git commit</a>)
 is finally out, with new commands <b>rtcwake</b> from Elliott Hughes and
 <b>blkdiscard</b> from Patrick Oppenlander.
 The big news is "<b>make root</b>" now boots to a shell prompt,
@@ -2016,15 +2186,16 @@ packages (toybox and linux). The trivial version is "make root &amp;&amp; sudo c
 root/host/fs /init". Here's
 a <a href=http://lists.landley.net/pipermail/toybox-landley.net/2020-April/011667.html>post with instructions</a> if you want to know how to build the
 cross compilers for testing the various architectures. The self-contained
-<a href=https://github.com/landley/toybox/blob/0.8.3/scripts/mkroot.sh>script
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.3/scripts/mkroot.sh>script
 that builds a simple bootable Linux system</a> is 250 lines long, and
 should be easy to read if you want to know how it works.</p>
 
 <p>It also has basic module support, meaning arguments that aren't X=Y variable
 assignments are the names of scripts to run to build more
-packages at the end of the build. I checked in an <a href=https://github.com/landley/toybox/blob/master/scripts/root/dropbear>example package</a>,
+packages at the end of the build. I checked in an
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.3/scripts/root/dropbear>example package</a>,
 and there's generic "download and extract source tarballs"
-<a href=https://github.com/landley/toybox/blob/master/scripts/root/plumbing>plumbing</a> available to such modules.
+<a href=https://codeberg.org/landley/toybox/src/tag/0.8.3/scripts/root/plumbing>plumbing</a> available to such modules.
 (The Makefile doesn't know how to pass module names through to the script,
 so instead of "make root" you have to
 call the script directly, ala "scripts/mkroot.sh CROSS=sh4 LINUX=~/linux dropbear".)</p>
@@ -2255,7 +2426,7 @@ were real small furry creatures from Alpha Centauri."
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.2.tar.gz>Toybox 0.8.2</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.2>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.2>git commit</a>)
 is finally out (only two months late).</p>
 
 <p>The new commands this time are minor variants of existing ones
@@ -2502,7 +2673,7 @@ have an EBADF in it, and added a missing "static" in lib/net.c.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.1.tar.gz>Toybox 0.8.1</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.1>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.1>git commit</a>)
 is out.</p>
 
 <p>Android is now using toybox as part of a <a href=http://lists.landley.net/pipermail/toybox-landley.net/2018-November/009824.html>"hermetic" build</a>
@@ -2682,7 +2853,7 @@ been left blank to save on printing costs."</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.8.0.tar.gz>Toybox 0.8.0</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.8.0>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.8.0>git commit</a>)
 is out.</p>
 
 <p>Toybox now builds on MacOS and FreeBSD, thanks to the efforts of Elliott
@@ -2803,7 +2974,7 @@ This has made a lot of people very angry and been widely regarded as a bad move.
 </blockquote>
 
 <p><a href=downloads/toybox-0.7.8.tar.gz>Toybox 0.7.8</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.8>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.8>git commit</a>)
 is out (a month late).</p>
 
 <p>Toybox <a href=http://lists.landley.net/pipermail/toybox-landley.net/2018-October/009769.html>now builds</a> with the Android NDK (r18 release), almost out of the box.
@@ -2933,7 +3104,7 @@ theory which states that this has already happened.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.7.7.tar.gz>Toybox 0.7.7</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.7>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.7>git commit</a>)
 is out.</p>
 
 <p><u>New commands</u>: Rob Landley added <b>getconf</b>, Elliott Hughes added
@@ -3022,7 +3193,7 @@ clang stop complaining about an error that should never happen.</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.7.6.tar.gz>Toybox 0.7.6</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.6>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.6>git commit</a>)
 is out, a month and change late.</p>
 
 <p>This release adds a <b>crc32</b> command and
@@ -3086,7 +3257,7 @@ mad now?</p>
 </blockquote>
 
 <p><a href=downloads/toybox-0.7.5.tar.gz>Toybox 0.7.5</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.5>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.5>git commit</a>)
 is out.</p>
 
 <p>This is another <b>mostly bugfix release</b>. I delayed it a bit trying to get some
@@ -3146,7 +3317,7 @@ To summarize the summary: anyone who is capable of getting themselves made Presi
 </blockquote>
 
 <p><a href=downloads/toybox-0.7.4.tar.gz>Toybox 0.7.4</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.4>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.4>git commit</a>)
 is out. No new commands this time, but
 <b>chrt</b> and <b>dmesg</b> got promoted out of pending.</p>
 
@@ -3233,7 +3404,7 @@ away from it. Zaphod Beeblebrox was amazingly good at his job.</p>
 <p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p>Despite everything, <a href=downloads/toybox-0.7.3.tar.gz>Toybox 0.7.3</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.3>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.3>git commit</a>)
 is out. The <u>new commands</u> this time are <b>ftpget</b>, <b>ftpput</b>, <b>microcom</b>, and <b>ascii</b>.<p>
 
 <p>We also had two command _demotions_ out of defconfig:
@@ -3343,7 +3514,7 @@ we have normality. Anything you still can't cope with is therefore your
 own problem.</p><p> - The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.7.2.tar.gz>Toybox 0.7.2</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.2>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.2>git commit</a>)
 is out.</p>
 
 <p>During this development cycle, Elliott Hughes <a href=http://androidbackstage.blogspot.com/2016/07/episode-53-adb-on-adb.html>got interviewed
@@ -3478,7 +3649,7 @@ liquid that is almost, but not quite, entirely unlike tea.</p>
 <p> - The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.7.1.tar.gz>Toybox 0.7.1</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.1>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.1>git commit</a>)
 is out. (Yes, I forgot to update the --version string, but I already
 uploaded the <a href=downloads/binaries/0.7.1>binaries</a>.)</p>
 
@@ -3537,7 +3708,7 @@ the corresponding tests, made "insmod -" work, fixed top -b and tail -NUM,
 pointed out that ps shouldn't trim numeric fields for display size limits,
 and added some more
 explicit "sort" calls to make pipelines so build tempfiles are easier to cache.
-Rob <a href=https://github.com/landley/toybox/commit/32b3587af261>fixed an insane sed thing</a> the perl 5.22 build was doing.
+Rob <a href=https://codeberg.org/landley/toybox/commit/32b3587af261>fixed an insane sed thing</a> the perl 5.22 build was doing.
 Fixed mount -o to properly pass in leftover string data, and
 <a href=http://lists.landley.net/pipermail/toybox-landley.net/2016-March/004790.html>documented how to use toybox to mount nfs</a> (warning: kernel patch
 to fix some bitrot in the kernel NFS driver's string parsing attached
@@ -3659,7 +3830,7 @@ you, is that you've never actually known what the question is."
 </p><p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.7.0.tar.gz>Toybox 0.7.0</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.7.0>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.7.0>git commit</a>)
 is out.</p>
 
 <p>The new commands in defconfig are <b>iotop</b>, <b>top</b>, <b>pgrep</b>,
@@ -3820,7 +3991,7 @@ said, taking a pull of beer. "Why - do you think it's the sort of thing you're
 likely to say?"</p><p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.6.1.tar.gz>Toybox 0.6.1</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.6.1>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.6.1>git commit</a>)
 is out.</p>
 
 <p>We have a new <b>ps</b> command with all the -o fields posix wants (although
@@ -3970,7 +4141,7 @@ hitchhiker would require several inconveniently large buildings to carry it
 around in.</p><p>- The Hitchhiker's Guide to the Galaxy</p></blockquote>
 
 <p><a href=downloads/toybox-0.6.0.tar.gz>Toybox 0.6.0</a>
-(<a href=https://github.com/landley/toybox/releases/tag/0.6.0>git commit</a>)
+(<a href=https://codeberg.org/landley/toybox/src/tag/0.6.0>git commit</a>)
 is out. (Yes, git. See the <a href=#05-04-2015>previous news entry</a>.)</p>
 
 <p>Sorry for the unusually long gap between releases. Since last release Ye
@@ -4200,7 +4371,7 @@ and <a href=https://github.com/kraj/meta-musl/tree/master/recipes-core/toybox>op
 and <a href=https://packages.gentoo.org/package/sys-apps/toybox>gentoo</a>
 and so on have all been using Georgi Chorbadzhiyski's git mirror rather
 than the mercurial repository, I bit the bullet and switched the project's repo
-<a href=https://github.com/landley/toybox>to git</a>. Georgi's
+<a href=https://codeberg.org/landley/toybox>to git</a>. Georgi's
 <a href=https://github.com/gfto/toybox>mirror</a> is now pulling from that.</p>
 
 <a name="25-02-2015" /><a href="#25-02-2015"><hr><h2><b>February 25, 2015</b></h2></a>

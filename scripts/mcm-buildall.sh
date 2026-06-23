@@ -4,6 +4,7 @@
 # This isn't directly used by toybox, but is useful for testing.
 
 trap "exit 1" INT
+export CFLAGS+=-fdebug-prefix-map=$PWD=
 
 if [ ! -d litecross ]
 then
@@ -105,7 +106,7 @@ make_toolchain()
   set -x &&
   PATH="$LP" make OUTPUT="$OUTPUT" TARGET="$TARGET" \
     GCC_CONFIG="--disable-nls --disable-libquadmath --disable-decimal-float --disable-multilib --enable-languages=c,c++ $GCC_CONFIG" \
-    COMMON_CONFIG="CFLAGS=\"$CFLAGS -g0 -O2\" CXXFLAGS=\"$CXXFLAGS -g0 -O2\" \
+    COMMON_CONFIG="CFLAGS=\"$CFLAGS -fdebug-prefix-map=$PWD= -g0 -O2\" CXXFLAGS=\"$CXXFLAGS -g0 -O2\" \
     LDFLAGS=\"$LDFLAGS -s\" $COMMON_CONFIG" install -j$(nproc) || exit 1
   set +x
   echo -e '#ifndef __MUSL__\n#define __MUSL__ 1\n#endif' \
@@ -174,14 +175,8 @@ patch_mcm()
   # and doesn't even use the latest musl release by default, so fix it up.
 
   # Select newer package versions and don't use dodgy mirrors
-  sed -i 's/mirror//;s/\(LINUX_VER =\).*/\1 6.8/;s/\(GCC_VER =\).*/\1 11.2.0/' \
+  sed -i 's/mirror//;s/\(LINUX_VER =\).*/\1 6.15.7/;s/\(GCC_VER =\).*/\1 15.1.0/' \
     Makefile &&
-  echo 'c9ab5b95c0b8e9e41290d3fc53b4e5cb2e8abb75  linux-6.8.tar.xz' > \
-    hashes/linux-6.8.tar.xz.sha1 &&
-  # mcm redundantly downloads tarball if hash file has newer timestamp,
-  # and it whack-a-moles how to download kernels by version for some reason.
-  touch -d @1 hashes/linux-6.8.tar.xz.sha1 &&
-  sed -i 's/\(.*linux-\)3\(.*\)v3.x/\16\2v6.x/' Makefile &&
 
   # nommu toolchains need to vfork()+pipe, and or1k has different kernel arch
   sed -i -e 's/--enable-fdpic$/& --enable-twoprocess/' \
@@ -190,7 +185,6 @@ patch_mcm()
 
   # Packages detect nommu via the absence of fork(). Musl provides a broken
   # fork() on nommu builds that always returns -ENOSYS at runtime. Rip it out.
-  # (Currently only for superh/jcore since no generic #ifdef __FDPIC__ symbol.)
 
   PP=patches/musl-"$(sed -n 's/MUSL_VER[ \t]*=[ \t]*//p' Makefile)" &&
   mkdir -p "$PP" &&
@@ -211,7 +205,7 @@ patch_mcm()
 +++ b/src/misc/forkpty.c
 @@ -8,2 +8,3 @@
  
-+#ifndef __SH_FDPIC__
++#ifndef __FDPIC__
  int forkpty(int *pm, char *name, const struct termios *tio, const struct winsize *ws)
 @@ -57,1 +58,2 @@
  }
@@ -220,7 +214,7 @@ patch_mcm()
 +++ b/src/misc/wordexp.c
 @@ -25,2 +25,3 @@
  
-+#ifndef __SH_FDPIC__
++#ifndef __FDPIC__
  static int do_wordexp(const char *s, wordexp_t *we, int flags)
 @@ -177,2 +178,3 @@
  }
@@ -230,7 +224,7 @@ patch_mcm()
 +++ b/src/process/fork.c
 @@ -7,2 +7,3 @@
  
-+#ifndef __SH_FDPIC__
++#ifndef __FDPIC__
  static void dummy(int x)
 @@ -37,1 +38,2 @@
  }
@@ -246,7 +240,7 @@ patch_mcm()
 +++ b/arch/sh/bits/syscall.h.in
 @@ -2,3 +2,5 @@
  #define __NR_exit                   1
-+#ifndef __SH_FDPIC__
++#ifndef __FDPIC__
  #define __NR_fork                   2
 +#endif
  #define __NR_read                   3
@@ -261,38 +255,6 @@ EOF
 -  ch_id = fork ();
 +  ch_id = vfork ();
    switch (ch_id)
-EOF
-
-  # Fix a gcc bug that breaks x86-64 build in gcc 11.2.0,
-  # from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100017#c20
-
-  PP=patches/gcc-"$(sed -n 's/GCC_VER[ \t]*=[ \t]*//p' Makefile)" &&
-  mkdir -p "$PP" &&
-  cat > "$PP"/0006-fixinc.patch << 'EOF' &&
-diff -ruN gcc-11.2.0.orig/configure gcc-11.2.0/configure
---- gcc-11.2.0.orig/configure	2021-07-28 01:55:06.628278148 -0500
-+++ gcc-11.2.0/configure	2023-11-17 03:07:53.819283027 -0600
-@@ -16478,7 +16478,7 @@
- fi
- 
- 
--RAW_CXX_FOR_TARGET="$CXX_FOR_TARGET"
-+RAW_CXX_FOR_TARGET="$CXX_FOR_TARGET -nostdinc++"
- 
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking where to find the target ar" >&5
- $as_echo_n "checking where to find the target ar... " >&6; }
-diff -ruN gcc-11.2.0.orig/configure.ac gcc-11.2.0/configure.ac
---- gcc-11.2.0.orig/configure.ac	2021-07-28 01:55:06.628278148 -0500
-+++ gcc-11.2.0/configure.ac	2023-11-17 03:08:05.975282593 -0600
-@@ -3520,7 +3520,7 @@
- ACX_CHECK_INSTALLED_TARGET_TOOL(WINDRES_FOR_TARGET, windres)
- ACX_CHECK_INSTALLED_TARGET_TOOL(WINDMC_FOR_TARGET, windmc)
- 
--RAW_CXX_FOR_TARGET="$CXX_FOR_TARGET"
-+RAW_CXX_FOR_TARGET="$CXX_FOR_TARGET -nostdinc++"
- 
- GCC_TARGET_TOOL(ar, AR_FOR_TARGET, AR, [binutils/ar])
- GCC_TARGET_TOOL(as, AS_FOR_TARGET, AS, [gas/as-new])
 EOF
 
   # So the && chain above is easier to extend

@@ -119,7 +119,7 @@ It's obvious that waiting for disk access is 1000x slower than doing stuff in
 RAM (and making the disk seek is 10x slower than sequential reads/writes),
 but it's just as true that a loop which stays in L1 cache is many times faster
 than a loop that has to wait for a DRAM fetch on each iteration.  Don't worry
-about whether "&" is faster than "%" until your executable loop stays in L1
+about whether "&amp;" is faster than "%" until your executable loop stays in L1
 cache and the data access is fetching cache lines intelligently.  (To
 understand DRAM, L1, and L2 cache, read Hannibal's marvelous ram guide at Ars
 Technica:
@@ -633,7 +633,7 @@ supplied). A user with a ~20 word english vocabulary is
 more likely to know (or guess) "bad" than the longer message, and you can
 use "bad" in place of "invalid", "inappropriate", "unrecognized"...
 Similarly when atolx_range() complains about range constraints with
-"4 < 17" or "12 > 5", it's intentional: those don't need to be translated.</p>
+"4 &lt; 17" or "12 &gt; 5", it's intentional: those don't need to be translated.</p>
 
 <p>The strerror() messages produced by perror_exit() and friends should be
 localized by libc, and our error functions also prepend the command name
@@ -795,7 +795,7 @@ if (thingy) {
 } else thingy;
 
 if (blah blah blah...
-    && blah blah blah)
+    &amp;&amp; blah blah blah)
 {
   thingy;
 }

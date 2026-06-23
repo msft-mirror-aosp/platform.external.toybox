@@ -7,7 +7,7 @@
 a single <a href=license.html>BSD-licensed</a> executable. It's simple, small, fast, and reasonably
 standards-compliant (<a href=http://opengroup.org/onlinepubs/9699919799>POSIX-2008</a> and <a href=http://refspecs.linuxfoundation.org/LSB_4.1.0>LSB 4.1</a>).</p>
 
-<p>Toybox's main goal is to make Android
+<p>Toybox was trying to make Android
 <a href=http://landley.net/aboriginal/about.html#selfhost>self-hosting</a>
 by improving Android's command line utilities so it can
 build an installable Android Open Source Project image
@@ -16,7 +16,15 @@ Embedded Linux Conference explaining this plan
 (<a href=http://landley.net/talks/celf-2013.txt>outline</a>,
 <a href=https://www.youtube.com/watch?v=SGmtP5Lg_t0>video</a>), Google
 <a href=https://lwn.net/Articles/629362/>merged toybox into AOSP</a> and
-began shipping toybox in Android Marshmallow in 2015.</p>
+began shipping toybox in Android Marshmallow in 2015. Google then went
+really weird between <a href=https://www.wheresyoured.at/the-men-who-killed-google/>2019</a>
+and <a href=https://blog.google/company-news/inside-google/message-ceo/january-update/>2023</a>, and has
+continued alarmingly along that
+<a href=https://lists.landley.net/pipermail/toybox/2025-September/009803.html>trajectory</a>,
+but the fundamental problem of
+phones and tablets being restricted devices rather than general purpose
+computers (unlike the mainframes, minicomputers, and microcomputers that
+<a href=https://landley.net/notes-2011.html#26-06-2011>came before</a>) remains.</p>
 
 <p>Toybox aims to provide one quarter of a theoretical "minimal native
 development environment", which is the simplest Linux system capable of
@@ -59,13 +67,17 @@ at ELC was devoted to this question, and has the following sections:</p>
   </ul>
 </ul>
 
-<p>A more recent talk from 2019 compares
+<p>A talk from 2019 compares
 <a href=https://www.youtube.com/watch?v=MkJkyMuBm3g#t=1m18s>BusyBox vs toybox</a>
 and explains the design decisions behind both.
 (A 2015 toybox talk was part of the channel
 <a href=https://marc.info/?l=linux-embedded&m=158159902514847&w=2>accidentally deleted</a> off youtube by the Linux Foundation,
 but the <a href=https://landley.net/talks/celf-2015.txt>outline</a> is
 still available.)</p>
+
+<p>A 2026 talk describes how toybox's <a href=https://codeberg.org/landley/toybox/src/branch/master/mkroot>mkroot/mkroot.sh</a> is intended to build the
+<a href=https://www.youtube.com/watch?v=vM_Gbx-c2Qs>simplest possible
+Linux system</a>.</p>
 
 <b><h2><a name="context" />What context was toybox created in?</h2></b>
 
@@ -191,9 +203,9 @@ needs to add it after 1.0 to eliminate another gpl build prerequite from
 AOSP.)</p>
 
 <p><a name="2" /><a href="#2_back">[2]</a>
-The dividing line is
+The dividing line was
 "Is there an acceptably licensed version Android can ship, or do we have
-to write one?" Since android is not "GNU/Linux" in any way, we need to
+to write one?" Since android was not "GNU/Linux" in any way, we needed to
 clean out all traces of gnu software from its build to get a clean
 self-hosting system.</p>
 

@@ -119,10 +119,12 @@ testing '<< \' $'cat<<EOF\nabc\\\ndef\nEOF\n' 'abcdef\n' '' ''
 testing '<< "\"' $'cat<<\\EOF\nabc\\\ndef\nEOF\n' 'abc\\\ndef\n' '' ''
 testing '<<""' $'cat<<"";echo hello\npotato\n\necho huh' 'potato\nhello\nhuh\n'\
   '' ''
-$BROKEN testing '<< trailing \' $'cat<<EOF 2>/dev/null\nabcde\nnext\\\nEOF\nEOF' \
+testing '<< trailing \' $'cat<<EOF 2>/dev/null\nabcde\nnext\\\nEOF\nEOF' \
   'abcde\nnextEOF\n' '' ''
-$BROKEN testing '<< trailing \ 2' $'cat<<EOF\nabcde\nEO\\\nF\necho hello' \
+testing '<< trailing \ 2' $'cat<<EOF\nabcde\nEO\\\nF\necho hello' \
   'abcde\nhello\n' '' ''
+testing '<< ${} across lines' $'cat<<}\n${PATH\\\n}\necho\n}' "$PATH\necho\n" '' ''
+
 testing '<< $(a)' $'cat<<$(a)\nx\n$(a)' 'x\n' '' ''
 testing 'HERE straddle' $'cat<<EOF;if true\nhello\nEOF\nthen echo also; fi' \
   'hello\nalso\n' '' ''
@@ -321,6 +323,12 @@ testing 'loop in && ||' \
   'false && for i in a b c; do echo $i; done || echo no' 'no\n' '' ''
 testing "continue" 'for i in a b c; do for j in d e f; do echo $i $j; continue 2; done; done' \
   "a d\nb d\nc d\n" "" ""
+# old kernels max env space was 131072, default 6.16 pipe buffer size is 64k
+$BROKEN testing 'builtins are backgrounded in pipes' 'echo $(seq 1 23000) | wc -c' \
+  '126894\n' '' ''
+$BROKEN testing 'pipe and pipe blocks nest' \
+  'if true; then if true; then echo one | sed s/one/two/; fi | sed s/two/three/ | sed s/three/four/; fi | sed s/four/five/' \
+  'five\n' '' ''
 $BROKEN testing "piped loops that don't exit" \
   'while X=$(($X+1)); do echo $X; done | while read i; do echo $i; done | head -n 5' \
   '1\n2\n3\n4\n5\n' '' ''
