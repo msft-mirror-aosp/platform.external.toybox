@@ -17,4 +17,9 @@ third_party {
     value: "https://github.com/landley/toybox"
     version: "b7ec52ac35e075caffca5d330995d44e8dbfc8c3"
   }
+  security: {
+    tag: "android:on_device_usage"
+    tag: "android:privilege_level:privileged"
+    tag: "android:untrusted_input"
+  }
 }
