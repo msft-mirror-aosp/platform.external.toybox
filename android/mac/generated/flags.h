@@ -394,6 +394,17 @@
 #undef FLAG_3
 #endif
 
+// command   ^pVv
+#undef OPTSTR_command
+#define OPTSTR_command "^pVv"
+#ifdef CLEANUP_command
+#undef CLEANUP_command
+#undef FOR_command
+#undef FLAG_v
+#undef FLAG_V
+#undef FLAG_p
+#endif
+
 // continue   >1
 #undef OPTSTR_continue
 #define OPTSTR_continue ">1"
@@ -1180,9 +1191,9 @@
 #undef FLAG_a
 #endif
 
-// getty   <2t#<0H:I:l:f:iwnmLh
+// getty   (show-issue)t#<0H:I:l:f:iwnmLh
 #undef OPTSTR_getty
-#define OPTSTR_getty "<2t#<0H:I:l:f:iwnmLh"
+#define OPTSTR_getty "(show-issue)t#<0H:I:l:f:iwnmLh"
 #ifdef CLEANUP_getty
 #undef CLEANUP_getty
 #undef FOR_getty
@@ -1197,6 +1208,7 @@
 #undef FLAG_I
 #undef FLAG_H
 #undef FLAG_t
+#undef FLAG_show_issue
 #endif
 
 // gitcheckout   <1
@@ -3601,6 +3613,19 @@
 #undef FLAG_t
 #endif
 
+// type   afPpt[-tp][-tP]
+#undef OPTSTR_type
+#define OPTSTR_type "afPpt[-tp][-tP]"
+#ifdef CLEANUP_type
+#undef CLEANUP_type
+#undef FOR_type
+#undef FLAG_t
+#undef FLAG_p
+#undef FLAG_P
+#undef FLAG_f
+#undef FLAG_a
+#endif
+
 // uclampset   p#am#<-1>1024M#<-1>1024R
 #undef OPTSTR_uclampset
 #define OPTSTR_uclampset "p#am#<-1>1024M#<-1>1024R"
@@ -3612,6 +3637,14 @@
 #undef FLAG_m
 #undef FLAG_a
 #undef FLAG_p
+#endif
+
+// ucsicontrol   <1&
+#undef OPTSTR_ucsicontrol
+#define OPTSTR_ucsicontrol "<1&"
+#ifdef CLEANUP_ucsicontrol
+#undef CLEANUP_ucsicontrol
+#undef FOR_ucsicontrol
 #endif
 
 // ulimit   >1P#<1SHavutsrRqpnmlifedc[-SH][!apvutsrRqnmlifedc]
@@ -3640,6 +3673,14 @@
 #undef FLAG_H
 #undef FLAG_S
 #undef FLAG_P
+#endif
+
+// umask   >1
+#undef OPTSTR_umask
+#define OPTSTR_umask ">1"
+#ifdef CLEANUP_umask
+#undef CLEANUP_umask
+#undef FOR_umask
 #endif
 
 // umount   cndDflrat*v[!na]
@@ -4362,6 +4403,16 @@
 #define FLAG_1 (1LL<<0)
 #define FLAG_2 (1LL<<1)
 #define FLAG_3 (1LL<<2)
+#endif
+
+#ifdef FOR_command
+#define CLEANUP_command
+#ifndef TT
+#define TT this.command
+#endif
+#define FLAG_v (FORCED_FLAG<<0)
+#define FLAG_V (FORCED_FLAG<<1)
+#define FLAG_p (FORCED_FLAG<<2)
 #endif
 
 #ifdef FOR_continue
@@ -5108,6 +5159,7 @@
 #define FLAG_I (FORCED_FLAG<<8)
 #define FLAG_H (FORCED_FLAG<<9)
 #define FLAG_t (FORCED_FLAG<<10)
+#define FLAG_show_issue (FORCED_FLAG<<11)
 #endif
 
 #ifdef FOR_gitcheckout
@@ -7322,6 +7374,18 @@
 #define FLAG_t (FORCED_FLAG<<3)
 #endif
 
+#ifdef FOR_type
+#define CLEANUP_type
+#ifndef TT
+#define TT this.type
+#endif
+#define FLAG_t (FORCED_FLAG<<0)
+#define FLAG_p (FORCED_FLAG<<1)
+#define FLAG_P (FORCED_FLAG<<2)
+#define FLAG_f (FORCED_FLAG<<3)
+#define FLAG_a (FORCED_FLAG<<4)
+#endif
+
 #ifdef FOR_uclampset
 #define CLEANUP_uclampset
 #ifndef TT
@@ -7332,6 +7396,13 @@
 #define FLAG_m (FORCED_FLAG<<2)
 #define FLAG_a (FORCED_FLAG<<3)
 #define FLAG_p (FORCED_FLAG<<4)
+#endif
+
+#ifdef FOR_ucsicontrol
+#define CLEANUP_ucsicontrol
+#ifndef TT
+#define TT this.ucsicontrol
+#endif
 #endif
 
 #ifdef FOR_ulimit
@@ -7359,6 +7430,13 @@
 #define FLAG_H (FORCED_FLAG<<17)
 #define FLAG_S (FORCED_FLAG<<18)
 #define FLAG_P (FORCED_FLAG<<19)
+#endif
+
+#ifdef FOR_umask
+#define CLEANUP_umask
+#ifndef TT
+#define TT this.umask
+#endif
 #endif
 
 #ifdef FOR_umount

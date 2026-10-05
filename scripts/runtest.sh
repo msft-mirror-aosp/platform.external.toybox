@@ -54,8 +54,9 @@ wrong_args()
 {
   if [ $# -ne 5 ]
   then
-    printf "%s\n" "Test $NAME has the wrong number of arguments ($# $*)" >&2
-    exit
+    printf "%s\n" "Test '$1' has $# arguments" >&2
+    for ((i=1;i<=$#;i++)); do echo "$i:'${@:$i:1}'" >&2; done
+    exit 1
   fi
 }
 
@@ -90,11 +91,12 @@ optional()
 # Evalute command line and skip next test when false
 skipnot()
 {
-  if verbose_has quiet
+  if verbose_has spam
   then
-    eval "$@" >/dev/null 2>&1
-  else
+    echo "$@"
     eval "$@"
+  else
+    eval "$@" >/dev/null 2>&1
   fi
   [ $? -eq 0 ] || { ((++SKIP)); return 1; }
 }

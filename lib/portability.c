@@ -54,7 +54,7 @@ void xgetrandom(void *buf, unsigned buflen)
 // Get list of mounted filesystems, including stat and statvfs info.
 // Returns a reversed list, which is good for finding overmounts and such.
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__IsBSD__)
 
 #include <sys/mount.h>
 
@@ -93,7 +93,7 @@ struct mtab_list *xgetmountlist(char *path)
   return mtlist;
 }
 
-#else
+#elif defined(__linux__)
 
 #include <mntent.h>
 
@@ -133,7 +133,7 @@ struct mtab_list *xgetmountlist(char *path)
   struct mtab_list *mtlist = 0, *mt;
   struct mntent *me;
   FILE *fp;
-  char *p = path ? path : "/proc/mounts";
+  char *p = path ? : "/proc/mounts";
 
   if (!(fp = setmntent(p, "r"))) perror_exit("bad %s", p);
 
@@ -166,10 +166,11 @@ struct mtab_list *xgetmountlist(char *path)
 
   return mtlist;
 }
-
+#else
+#error
 #endif
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__IsBSD__)
 
 #include <sys/event.h>
 
@@ -216,7 +217,7 @@ int xnotify_wait(struct xnotify *not, char **path)
   }
 }
 
-#else
+#elif defined(__linux__)
 
 #include <sys/inotify.h>
 
@@ -260,7 +261,8 @@ int xnotify_wait(struct xnotify *not, char **path)
     }
   }
 }
-
+#else
+#error
 #endif
 
 #ifdef __APPLE__
@@ -313,7 +315,7 @@ ssize_t xattr_fset(int fd, const char* name,
   return fsetxattr(fd, name, value, size, 0, flags);
 }
 
-#elif !defined(__FreeBSD__) && !defined(__OpenBSD__)
+#elif defined(__linux__)
 
 ssize_t xattr_get(const char *path, const char *name, void *value, size_t size)
 {
@@ -363,7 +365,11 @@ ssize_t xattr_fset(int fd, const char* name,
   return fsetxattr(fd, name, value, size, flags);
 }
 
-
+#elif defined(__IsBSD__)
+#warning no xattr support in BSD
+// No xattr for bsd
+#else
+#error
 #endif
 
 #ifdef __APPLE__
@@ -515,10 +521,11 @@ int dev_minor(int dev)
   return ((dev&0xfff00000)>>12)|(dev&0xff);
 #elif defined(__APPLE__)
   return dev&0xffffff;
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__IsBSD__)
   return minor(dev);
 #else
 #error
+  return dev&0xff;
 #endif
 }
 
@@ -528,10 +535,11 @@ int dev_major(int dev)
   return (dev&0xfff00)>>8;
 #elif defined(__APPLE__)
   return (dev>>24)&0xff;
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__IsBSD__)
   return major(dev);
 #else
 #error
+  return dev>>8;
 #endif
 }
 
@@ -541,20 +549,21 @@ int dev_makedev(int major, int minor)
   return (minor&0xff)|((major&0xfff)<<8)|((minor&0xfff00)<<12);
 #elif defined(__APPLE__)
   return (minor&0xffffff)|((major&0xff)<<24);
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__IsBSD__)
   return makedev(major, minor);
 #else
 #error
+  return (major<<8)|minor;
 #endif
 }
 
 char *fs_type_name(struct statfs *statfs)
 {
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__IsBSD__)
   // macOS has an `f_type` field, but assigns values dynamically as filesystems
   // are registered. They do give you the name directly though, so use that.
   return statfs->f_fstypename;
-#else
+#elif defined(__linux__)
   char *s = NULL;
   struct {unsigned num; char *name;} nn[] = {
     {0xADF5, "adfs"}, {0xADFF, "affs"}, {0x5346414F, "afs"}, {0x187, "autofs"},
@@ -577,10 +586,12 @@ char *fs_type_name(struct statfs *statfs)
   };
   int i;
 
-  for (i=0; i<ARRAY_LEN(nn); i++)
+  for (i = 0; i<ARRAY_LEN(nn); i++)
     if (nn[i].num == statfs->f_type) s = nn[i].name;
   if (!s) sprintf(s = libbuf, "0x%x", (unsigned)statfs->f_type);
   return s;
+#else
+#error
 #endif
 }
 

@@ -129,7 +129,8 @@ extern struct toy_context {
 
 // Two big temporary buffers: one for use by commands, one for library functions
 
-extern char **environ, *toybox_version, toybuf[4096], libbuf[4096];
+extern char **environ, toybuf[4096], libbuf[4096];
+extern const char *toybox_version;
 
 #define FLAG(x) (!!(toys.optflags&FLAG_##x))  // Return 1 if flag set, 0 if not
 
@@ -141,5 +142,5 @@ extern char **environ, *toybox_version, toybuf[4096], libbuf[4096];
 #ifndef TOYBOX_VENDOR
 #define TOYBOX_VENDOR ""
 #endif
-#define TOYBOX_VERSION "0.8.14"TOYBOX_VENDOR
+#define TOYBOX_VERSION "0.8.15"TOYBOX_VENDOR
 #endif

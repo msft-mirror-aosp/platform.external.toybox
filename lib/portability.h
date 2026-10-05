@@ -8,6 +8,10 @@
 // This must come before we #include any system header file to take effect!
 #define _FILE_OFFSET_BITS 64
 
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#define __IsBSD__
+#endif
+
 #ifdef __APPLE__
 // macOS 10.13 doesn't have the POSIX 2008 direct access to timespec in
 // struct stat, but we can ask it to give us something equivalent...
@@ -137,12 +141,11 @@ void *memmem(const void *haystack, size_t haystack_length,
 #define IS_BIG_ENDIAN (!IS_LITTLE_ENDIAN)
 
 #ifdef __APPLE__
-
 #include <libkern/OSByteOrder.h>
 #define bswap_16(x) OSSwapInt16(x)
 #define bswap_32(x) OSSwapInt32(x)
 #define bswap_64(x) OSSwapInt64(x)
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__IsBSD__)
 #include <sys/endian.h>
 #define bswap_16(x) bswap16(x)
 #define bswap_32(x) bswap32(x)
@@ -177,7 +180,7 @@ void *memmem(const void *haystack, size_t haystack_length,
 
 #ifdef __APPLE__
 #include <util.h>
-#elif !defined(__FreeBSD__) && !defined(__OpenBSD__)
+#elif !defined(__IsBSD__)
 #include <pty.h>
 #else
 #include <termios.h>
@@ -217,7 +220,7 @@ int posix_fallocate(int, off_t, off_t);
 #include <xlocale.h>
 #endif
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__IsBSD__)
 static inline long statfs_bsize(struct statfs *sf) { return sf->f_iosize; }
 static inline long statfs_frsize(struct statfs *sf) { return sf->f_bsize; }
 #else

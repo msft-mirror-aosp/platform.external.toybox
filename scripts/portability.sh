@@ -24,9 +24,9 @@ fi
 
 # Disable pointless warnings only clang produces
 [ -n "$("$CROSS_COMPILE$CC" --version | grep -w clang)" ] &&
-  CFLAGS+=" -Wno-string-plus-int -Wno-invalid-source-encoding" ||
+  CFLAGS+=" -Wno-string-plus-int -Wno-invalid-source-encoding -Wno-incompatible-pointer-types-discards-qualifiers" ||
 # And ones only gcc produces
-  CFLAGS+=" -Wno-restrict -Wno-format-overflow"
+  CFLAGS+=" -Wno-restrict -Wno-format-overflow -Wno-discarded-qualifiers"
 
 # Address Sanitizer
 if [ -n "$ASAN" ]; then

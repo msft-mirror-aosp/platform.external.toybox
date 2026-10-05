@@ -2,7 +2,7 @@
  *
  * Copyright 2013 Brad Conroy <bconroy@uis.edu>
  *
- * See ftp://ftp.kernel.org/pub/linux/utils/util-linux/v2.24/libblkid-docs/api-index-full.html
+ * See https://man7.org/linux/man-pages/man8/blkid.8.html
  * TODO: -U and -L should require arguments
 
 USE_BLKID(NEWTOY(blkid, "ULo:s*[!LU]", TOYFLAG_BIN|TOYFLAG_LINEBUF))

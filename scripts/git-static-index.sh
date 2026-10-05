@@ -21,7 +21,7 @@ do
   AUTHOR2="&lt;${AUTHOR/*</}"
   AUTHOR2="${AUTHOR2::20}"
   read DATE
-  DATE="${DATE/ /&nbsp;}"
+  DATE="${DATE/ /\&nbsp;}"
   read DESC
   echo "<tr valign=top><td><a href=commit/$HASH>$HASH</a></td><td>$AUTHOR1<br />$AUTHOR2</td><td>$DATE</td><td>$DESC</td></tr>"
 done

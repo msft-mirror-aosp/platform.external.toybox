@@ -111,8 +111,8 @@ COMPFLAGS="$(compflags)" && eval "$COMPFLAGS" &&
   echo $'#!/bin/sh\n'
   echo "$COMPFLAGS"
   echo FILES=$'"\n'"$(fold -s <<<"$TOYFILES")"$'\n"\n' &&
-  echo -e "\$BUILD lib/*.c \$FILES \$LINK -o $OUTNAME"
-} >> "$GENDIR"/build.sh && chmod +x "$GENDIR"/build.sh || exit 1
+  echo -e "\$SKIP \$BUILD lib/*.c \$FILES \$LINK -o $OUTNAME"
+} > "$GENDIR"/build.sh && chmod +x "$GENDIR"/build.sh || exit 1
 
 # newtoys.h is a list of USE_XXX(NEWTOY(xxx...)) lines, one per command.
 { # The multiplexer is the first element in the array

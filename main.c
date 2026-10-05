@@ -12,7 +12,10 @@
 #define NEWTOY(name, opts, flags) {#name, name##_main, OPTSTR_##name, flags},
 #define OLDTOY(name, oldname, flags) \
   {#name, oldname##_main, OPTSTR_##oldname, flags},
-
+// sticking "const" on this doesn't help because it's got function pointers
+// in its initializer. In theory static binaries should still be able to put
+// it in rodata, but neither gcc nor llvm is smart enough to do so, and
+// neither static PIE nor fdpic would benefit.
 struct toy_list toy_list[] = {
 #include "generated/newtoys.h"
 };
@@ -21,7 +24,8 @@ struct toy_list toy_list[] = {
 
 struct toy_context toys;
 union global_union this;
-char *toybox_version = TOYBOX_VERSION, toybuf[4096], libbuf[4096];
+char toybuf[4096], libbuf[4096];
+const char *toybox_version = TOYBOX_VERSION;
 
 struct toy_list *toy_find(char *name)
 {
@@ -83,13 +87,13 @@ static const int NEED_TRIMHELP =
 
 #if CFG_TOYBOX_ZHELP
 #include "generated/zhelp.h"
-static char *help_data = 0;
+static const char *help_data = 0;
 #else
 #include "generated/help.h"
 static const char help_array[] =
 #include "generated/newtoys.h"
 ;
-static char *help_data = (void *)help_array;
+static const char *help_data = help_array;
 #define zhelp_data 0
 #define ZHELP_LEN 0
 #endif
@@ -97,7 +101,7 @@ static char *help_data = (void *)help_array;
 void show_help(int flags)
 {
   int i = toys.which-toy_list;
-  char *s, *ss;
+  char *s;
 
   if (!CFG_TOYBOX_HELP) return;
 
@@ -111,8 +115,7 @@ void show_help(int flags)
       : " (see https://landley.net/toybox)");
 
   for (;;) {
-    s = (void *)help_data;
-    while (i--) s += strlen(s) + 1;
+    for (s = help_data; i--; s += strlen(s)+1);
     // If it's an alias, restart search for real name
     if (*s != 255) break;
     i = toy_find(++s)-toy_list;
@@ -127,8 +130,7 @@ void show_help(int flags)
   // Only "help -u" calls HELP_USAGE
   if (CFG_HELP && (flags&HELP_USAGE)) {
     strstart(&s, "usage: ");
-    for (ss = s; *ss && *ss!='\n'; ss++);
-    printf("%.*s\n", (int)(ss-s), s);
+    printf("%.*s\n", (int)strcspn(s, "\n"), s);
   } else if (!NEED_TRIMHELP || !(toys.which->flags&TOYFLAG_TRIMHELP)) puts(s);
   // TRIMHELP lines starting with ! are only displayed with BIGHELP,
   // and the starting ! is edited out either way.
@@ -303,7 +305,7 @@ void toy_exec(char *argv[])
 void toybox_main(void)
 {
   char *toy_paths[] = {"usr/", "bin/", "sbin/", 0}, *s = toys.argv[1];
-  int i, len = 0;
+  int i, j, len = 0;
   unsigned width = 80;
 
   // fast path: try to exec immediately.
@@ -328,11 +330,9 @@ void toybox_main(void)
   for (i = 1; i<ARRAY_LEN(toy_list); i++) {
     int fl = toy_list[i].flags;
     if (fl & TOYMASK_LOCATION) {
-      if (toys.argv[1]) {
-        int j;
+      if (toys.argv[1])
         for (j = 0; toy_paths[j]; j++)
           if (fl & (1<<j)) len += printf("%s", toy_paths[j]);
-      }
       len += printf("%s",toy_list[i].name);
       if (++len > width-15) len = 0;
       xputc(len ? ' ' : '\n');
@@ -343,19 +343,13 @@ void toybox_main(void)
 
 int main(int argc, char *argv[])
 {
-  // don't segfault if our environment is crazy
-  // TODO mooted by kernel commit dcd46d897adb7 5.17 kernel Jan 2022
-  if (!*argv) return 127;
-
-  // Snapshot stack location so we can detect recursion depth later.
   // Nommu has special reentry path, !stacktop = "vfork/exec self happened"
   if (!CFG_TOYBOX_FORK && (0x80 & **argv)) **argv &= 0x7f;
-  else {
-    int stack_start;  // here so probe var won't permanently eat stack
 
-    toys.stacktop = &stack_start;
-  }
+  // Snapshot stack location so we can detect recursion depth later.
+  else toys.stacktop = &argc;
 
+  // This is a constant so dead code elimination will remove the unused branch
   if (CFG_TOYBOX) {
     // Call the multiplexer with argv[] as its arguments so it can toy_find()
     toys.argv = argv-1;

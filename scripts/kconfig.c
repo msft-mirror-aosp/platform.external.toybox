@@ -260,8 +260,8 @@ void read_dotconfig(struct kconfig *klist, FILE *fp)
 
   for (; (line = getrimline(fp)); free(line)) {
     // kconfig has a crazy way to say SYMBOL=n
-    if (!strncmp(line, "# CONFIG_", 9) && (s = strchr(line, ' '))
-      && !strcmp(s, " is not set\n"))
+    if (!strncmp(line, "# CONFIG_", 9) && (s = strchr(line+9, ' '))
+      && !strcmp(s, " is not set"))
     {
       *s = 0;
       name = line+9;
@@ -304,7 +304,7 @@ void options(char *opt)
     return;
   }
 
-  if ((ss = getenv("KCONFIG_ALLCONFIG"))) {
+  if ((ss = getenv("KCONFIG_ALLCONFIG")) && *ss) {
     if (!(fp = fopen(ss, "r")))
       exit(dprintf(2, "bad KCONFIG_ALLCONFIG=%s\n", ss)|1);
     read_dotconfig(kc, fp);

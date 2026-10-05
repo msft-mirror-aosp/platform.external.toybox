@@ -171,17 +171,12 @@ make_tuple()
 
 patch_mcm()
 {
-  # musl-cross-make commit fe915821b652 has been current for a year and a half,
-  # and doesn't even use the latest musl release by default, so fix it up.
-
   # Select newer package versions and don't use dodgy mirrors
-  sed -i 's/mirror//;s/\(LINUX_VER =\).*/\1 6.15.7/;s/\(GCC_VER =\).*/\1 15.1.0/' \
-    Makefile &&
+  sed -i -e 's/mirror//;s/\(LINUX_VER =\).*/\1 6.15.7/' \
+    -e 's/\(GCC_VER =\).*/\1 15.1.0/' -e 's/ftpmirror\./ftp./' Makefile &&
 
-  # nommu toolchains need to vfork()+pipe, and or1k has different kernel arch
-  sed -i -e 's/--enable-fdpic$/& --enable-twoprocess/' \
-      -e '/or1k/!s/^\(TARGET_ARCH_MANGLED = \)\(.*\)/\1$(patsubst or1k,openrisc,\2)/' \
-      litecross/Makefile &&
+  # nommu toolchains need to vfork()+pipe
+  sed -i -e 's/--enable-fdpic$/& --enable-twoprocess/' litecross/Makefile &&
 
   # Packages detect nommu via the absence of fork(). Musl provides a broken
   # fork() on nommu builds that always returns -ENOSYS at runtime. Rip it out.

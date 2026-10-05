@@ -37,7 +37,7 @@ void comma_collate(char **old, char *new)
     if (atold[strlen(atold)-1] == ',') comma = "";
     temp = xmprintf("%s%s%s", atold, comma, new);
   } else temp = xstrdup(new);
-  free (atold);
+  free(atold);
   *old = temp;
 }
 

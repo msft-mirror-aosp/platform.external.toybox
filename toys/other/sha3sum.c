@@ -98,7 +98,7 @@ void sha3sum_main(void)
   char *s;
 
   // Decompress RC table
-  for (s = (void *)rcpack, i = 127; i; s += 3) for (i>>=1,k = j = 0; k<24; k++)
+  for (s = rcpack, i = 127; i; s += 3) for (i>>=1,k = j = 0; k<24; k++)
     if (1&(s[k>>3]>>(7-(k&7)))) TT.rc[k] |= 1ULL<<i;
 
   loopfiles(toys.optargs, do_sha3sum);
