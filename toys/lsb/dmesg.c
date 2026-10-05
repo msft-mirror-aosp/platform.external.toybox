@@ -136,8 +136,8 @@ void dmesg_main(void)
     int fd;
 
     // Each read returns one message. By default, we block when there are no
-    // more messages (--follow); O_NONBLOCK is needed for for usual behavior.
-    fd = open("/dev/kmsg", O_RDONLY|O_NONBLOCK*!(FLAG(w) || FLAG(W)));
+    // more messages (--follow); O_NONBLOCK is needed for usual behavior.
+    fd = xopen("/dev/kmsg", WARN_ONLY|O_RDONLY|O_NONBLOCK*!(FLAG(w)||FLAG(W)));
     if (fd == -1) goto klogctl_mode;
 
     // SYSLOG_ACTION_CLEAR(5) doesn't actually remove anything from /dev/kmsg,

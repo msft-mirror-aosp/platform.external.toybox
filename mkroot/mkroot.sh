@@ -26,7 +26,7 @@ if [ -n "$CROSS_COMPILE" ]; then
 
 elif [ -n "$CROSS" ]; then # CROSS=all/allnonstop/$ARCH else list known $ARCHes
   [ ! -d "${CCC:=$PWD/ccc}" ] && die "No ccc symlink to compiler directory."
-  TARGETS="$(ls "$CCC" | sed -n 's/-.*cross//p' | sort -u)"
+  TARGETS="$(ls -F "$CCC/" | sed -n 's/-.*cross\///p' | sort -u)"
 
   # CROSS=one,two,three builds multiple targets, or all/allnonstop
   [ "${CROSS/,/}" == "$CROSS" ] || { TARGETS="${CROSS//,/ }"; CROSS=all; }

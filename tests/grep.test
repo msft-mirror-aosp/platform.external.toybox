@@ -108,6 +108,7 @@ testcmd "-w '$'" "-w '\$'" '' '' 'abc  abc\n'
 testcmd "-w '$' 2" "-w '\$'" 'abc \n' '' 'abc \n'
 testcmd "'^' is ''" "'^'" 'potato\n' '' 'potato\n'
 testcmd "'^' is '' 2" "'^x*'" 'potato\n' '' 'potato\n'
+testcmd "'^.' fastpath" "'^.'" 'hello\n' '' 'hello\n'
 testcmd "-w '^'" "-w '^'" '' '' 'abc  abc\n'
 testcmd "-w '^' 2" "-w '^'" ' abc\n' '' ' abc\n'
 testcmd "-w \\1" "-wo '\\(x\\)\\1'" "xx\n" "" "xx"
@@ -156,9 +157,10 @@ testcmd "-l overrides -C" "-l -C1 two test input" "test\ninput\n" \
   "three\ntwo\none\n" ""
 rm test
 
-# match after NUL byte
 testcmd "match after NUL byte" "-a two" "one\0and two three\n" \
   "" 'one\0and two three'
+testcmd "NUL in -B" "-B2 X" "A\0BBBBBB\xff\xff\xff\x7f\nX\n" \
+  "" 'A\0BBBBBB\xff\xff\xff\x7f\nX\n'
 
 # BREs versus EREs
 testcmd "implicit BRE |" "'uno|dos'" "uno|dos\n" "" "uno\ndos\nuno|dos\n"

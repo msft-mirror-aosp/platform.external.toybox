@@ -74,4 +74,15 @@ echo -e ".PHONY: $WORKING $PENDING" | $SED 's/ \([^ ]\)/ test_\1/g'
 
 brun kconfig -h > "$GENDIR"/help.h || exit 1
 
-[ $# -ne 1 ] || brun kconfig "$1" > "${KCONFIG_CONFIG:-.config}"
+if [ $# -eq 1 ]
+then
+  # when $KCONFIG_ALLCONFIG and $KCONFIG_CONFIG are the same, redirect would zap
+  if [ "$KCONFIG_ALLCONFIG" -ef "$KCONFIG_CONFIG" ]
+  then
+    X=$(mktemp) &&
+    mv "$KCONFIG_ALLCONFIG" $X &&
+    export KCONFIG_ALLCONFIG=$X &&
+    trap "rm -f $X" EXIT || exit 1
+  fi
+  brun kconfig "$1" > "${KCONFIG_CONFIG:-.config}"
+fi

@@ -88,8 +88,8 @@ static unsigned short elf_short(char **p)
 static int fits(char *what, int n, unsigned long long off, unsigned long long size)
 {
   if (off > TT.size || size > TT.size || off > TT.size-size) {
-    if (n == -1) *toybuf = 0;
-    else snprintf(toybuf, sizeof(toybuf), " %d", n);
+    *toybuf = 0;
+    if (n != -1) sprintf(toybuf, " %d", n);
     printf("%s%s's offset %llu + size %llu > file size %llu\n",
       what, toybuf, off, size, TT.size);
     return 0;
@@ -454,6 +454,16 @@ static void show_notes(unsigned long offset, unsigned long size)
   }
 }
 
+static void do_flag(int shift, long long *flags, char **out, char c)
+{
+  long long bit = 1<<shift;
+
+  if (bit&*flags) {
+    *(*out)++ = c;
+    *flags ^= bit;
+  }
+}
+
 static void scan_elf()
 {
   struct sh dynamic = {}, dynstr = {}, dynsym = {}, shstr = {}, strtab = {},
@@ -553,14 +563,12 @@ static void scan_elf()
     }
 
     if (FLAG(S)) {
-      char sh_flags[13] = {}, *p = sh_flags;
+      char sh_flags[16] = {}, *p = sh_flags;
       unsigned long long flags = s.flags;
 
-      #define DO_FLAG(bit, ch) \
-        do { if (flags & (bit)) { *p++ = ch; flags &= ~(bit); } } while (0)
-      for (j=0; j<12; j++) DO_FLAG((1<<j), "WAXxMSILOGTC"[j]);
-      if (machine == EM_ARM || machine == EM_ARM64) DO_FLAG(0x20000000, 'y');
-      else if (machine == EM_X86_64) DO_FLAG(0x10000000, 'l');
+      for (j = 0; j<12; j++) do_flag(j, &flags, &p, "WAXxMSILOGTC"[j]);
+      if (machine==EM_ARM || machine==EM_ARM64) do_flag(29, &flags, &p, 'y');
+      else if (machine==EM_X86_64) do_flag(28, &flags, &p, 'l');
       if (flags) *p++ = 'x';
       printf("  [%2d] %-17s %-15s %0*llx %06llx %06llx %02llx %3s %2d %2d %2lld\n",
              i, s.name, sh_type(s.type), w, s.addr, s.offset, s.size,

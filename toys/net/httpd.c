@@ -107,7 +107,7 @@ void handle(int infd, int outfd)
 
   if (!s) return;
 
-  if (!getsockname(0, (void *)&toybuf, &i)) {
+  if (!getsockname(0, (void *)toybuf, &i)) {
     if (FLAG(v))
       dprintf(2, "Hello %s\n%s\n", ntop((void *)toybuf), s);
   }

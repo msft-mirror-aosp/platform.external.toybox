@@ -320,7 +320,7 @@ static void do_regular_file(int fd, char *name)
     xputc('\n');
   } else if (len>4 && strstart(&s, "BZh") && isdigit(*s))
     xprintf("bzip2 compressed data, block size = %c00k\n", *s);
-  else if (len>31 && peek_be(s, 7) == 0xfd377a585a0000ULL)
+  else if (len>31 && !memcmp(s, "\xfd\x37\x7a\x58\x5a\x00", 7))
     xputs("xz compressed data");
   else if (len>10 && strstart(&s, "\x28\xb5\x2f\xfd"))
     xputs("zstd compressed data");
