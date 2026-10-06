@@ -501,11 +501,6 @@ cc_defaults {
     name: "toybox-shared-defaults",
     defaults: ["toybox-defaults"],
 
-    // This doesn't actually prevent us from dragging in libc++ at runtime
-    // on the device because libnetd_client.so is C++, but it improves host
-    // startup time.
-    stl: "none",
-
     target: {
         android: {
             shared_libs: [
@@ -521,6 +516,7 @@ cc_defaults {
                 "libcrypto",
                 "libz",
             ],
+            stl: "libc++_static",
         },
     },
 }
